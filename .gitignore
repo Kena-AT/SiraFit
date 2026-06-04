@@ -2,6 +2,7 @@
 *.docx
 *.doc
 *.pdf
+*.txt
 
 # Design files
 *.pen
@@ -19,7 +20,8 @@ __pycache__/
 *.py[cod]
 
 # Node modules
-node_modules/
+frontend/node_modules
+backend/node_modules
 
 # Environment files
 .env
