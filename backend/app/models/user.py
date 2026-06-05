@@ -19,6 +19,9 @@ class User(Base):
 
     preferences = relationship("UserPreference", back_populates="user", uselist=False)
     refresh_tokens = relationship("RefreshToken", back_populates="user")
+    applications = relationship("JobApplication", back_populates="user", cascade="all, delete-orphan")
+    resumes = relationship("Resume", back_populates="user", cascade="all, delete-orphan")
+    audit_logs = relationship("AuditLog", back_populates="user")
 
 class UserPreference(Base):
     __tablename__ = "user_preferences"
