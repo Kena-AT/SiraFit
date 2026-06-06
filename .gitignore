@@ -28,7 +28,7 @@ backend/node_modules
 .env.*
 
 # Logs
-*.log
+
 logs/
 
 # IDE/editor settings
