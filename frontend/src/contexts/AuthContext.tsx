@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 
 type User = {
   id: string;
@@ -16,13 +16,14 @@ type AuthContextType = {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   register: (email: string, password: string, full_name?: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -60,8 +61,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('access_token', data.access_token);
       localStorage.setItem('refresh_token', data.refresh_token);
       setUser({ id: 'mock-id', email, full_name: null, is_active: true, is_verified: true });
+      router.push('/dashboard');
     } else {
-      throw new Error('Login failed');
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Login failed');
+    }
+  };
+
+  const logout = async () => {
+    try {
+      const refreshToken = localStorage.getItem('refresh_token');
+      
+      // Call backend to revoke refresh token
+      if (refreshToken) {
+        await fetch('/api/v1/auth/logout', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+          },
+          body: JSON.stringify({ refresh_token: refreshToken }),
+        });
+      }
+    } catch (error) {
+      console.error('Failed to logout:', error);
+    } finally {
+      // Clear tokens regardless of logout API result
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      setUser(null);
+      router.push('/login');
     }
   };
 
@@ -73,18 +102,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     if (response.ok) {
-      const data = await response.json();
-      // Login automatically after registration
-      await login(email, password);
+      // Redirect to verification page
+      router.push('/verify-email');
     } else {
-      throw new Error('Registration failed');
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Registration failed');
     }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    setUser(null);
   };
 
   const value = {
