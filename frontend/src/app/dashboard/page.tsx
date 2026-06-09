@@ -1,4 +1,27 @@
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
+
 export default function DashboardPage() {
+  const { isAuthenticated, user } = useAuth();
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/login');
+    }
+    setIsLoading(false);
+  }, [isAuthenticated, router]);
+
+  if (isLoading) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center">
+        <div className="w-12 h-12 border-4 border-brand border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6 max-w-6xl mx-auto">
       <h1 className="text-2xl font-bold text-text-primary">Welcome to your high-density workspace</h1>
