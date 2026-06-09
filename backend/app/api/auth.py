@@ -218,3 +218,47 @@ def refresh_token(
         "refresh_token": new_refresh_token,
         "token_type": "bearer",
     }
+
+@router.post("/logout")
+def logout(
+    *,
+    db: Session = Depends(get_db),
+    refresh_token: str
+) -> Any:
+    """Revoke refresh token on logout"""
+    try:
+        payload = jwt.decode(refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        token_data = payload
+        
+        if token_data.get("type") != "refresh":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid token type",
+            )
+            
+    except (jwt.PyJWTError, Exception):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Could not validate token",
+        )
+    
+    user_id = token_data.get("sub")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid token payload",
+        )
+    
+    # Revoke the refresh token
+    token = db.query(RefreshToken).filter(
+        RefreshToken.token == refresh_token,
+        RefreshToken.user_id == user_id,
+        RefreshToken.is_revoked == False,
+        RefreshToken.expires_at > datetime.utcnow()
+    ).first()
+    
+    if token:
+        token.is_revoked = True
+        db.commit()
+    
+    return {"message": "Logged out successfully"}
