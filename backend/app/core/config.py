@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from pydantic import AnyUrl, EmailStr
+from pydantic import EmailStr
 from functools import lru_cache
 import os
 
@@ -15,8 +15,8 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
-    # Database
-    DATABASE_URL: AnyUrl
+    # Database — plain str so both postgres:// and sqlite:// work
+    DATABASE_URL: str
 
     # CORS
     CORS_ORIGINS: str

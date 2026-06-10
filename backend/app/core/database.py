@@ -2,8 +2,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from app.core.config import settings
 
-# Convert AnyUrl to string for SQLAlchemy
-DATABASE_URL = str(settings.DATABASE_URL)
+# DATABASE_URL is a plain str — works with both PostgreSQL and SQLite (for tests)
+DATABASE_URL = settings.DATABASE_URL
 
 engine = create_engine(DATABASE_URL, echo=False)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

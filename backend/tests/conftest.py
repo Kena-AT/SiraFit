@@ -1,15 +1,36 @@
 """
 Shared pytest fixtures for backend tests.
-Uses an in-memory SQLite database for speed and zero external dependencies.
+Uses an in-memory SQLite database for speed — no external services needed.
 """
+import os
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.main import app
+# Provide all required env vars BEFORE any app imports
+os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+os.environ.setdefault("SECRET_KEY", "test_secret_key_not_for_production_use")
+os.environ.setdefault("ALGORITHM", "HS256")
+os.environ.setdefault("ACCESS_TOKEN_EXPIRE_MINUTES", "15")
+os.environ.setdefault("REFRESH_TOKEN_EXPIRE_DAYS", "7")
+os.environ.setdefault("SMTP_HOST", "smtp.example.com")
+os.environ.setdefault("SMTP_PORT", "587")
+os.environ.setdefault("SMTP_USER", "test@example.com")
+os.environ.setdefault("SMTP_PASSWORD", "dummy")
+os.environ.setdefault("SMTP_FROM", "noreply@sirafit.com")
+os.environ.setdefault("CORS_ORIGINS", "http://localhost:3000")
+os.environ.setdefault("ENVIRONMENT", "testing")
+
+# Now import after env is set
+from app.main import app as fastapi_app
 from app.core.database import Base, get_db
+
+# Import ALL models so SQLite creates every table
+import app.models.user  # noqa: F401
+import app.models.job   # noqa: F401
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 
@@ -29,7 +50,7 @@ def override_get_db():
         db.close()
 
 
-app.dependency_overrides[get_db] = override_get_db
+fastapi_app.dependency_overrides[get_db] = override_get_db
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -41,9 +62,9 @@ def setup_db():
 
 
 @pytest.fixture(scope="session")
-def client():
+def client(setup_db):
     """Shared test client for the whole session."""
-    return TestClient(app)
+    return TestClient(fastapi_app)
 
 
 @pytest.fixture(scope="session")
@@ -57,7 +78,7 @@ def registered_user(client):
             "full_name": "Fixture User",
         },
     )
-    assert response.status_code == 201
+    assert response.status_code == 201, response.text
     return response.json()
 
 
@@ -68,5 +89,5 @@ def auth_tokens(client, registered_user):
         "/api/v1/auth/login",
         data={"username": "fixture@example.com", "password": "Password123!"},
     )
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
     return response.json()

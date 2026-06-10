@@ -47,7 +47,6 @@ class JobApplication(Base):
     user = relationship("User", back_populates="applications")
     job = relationship("Job", back_populates="applications")
     resumes = relationship("Resume", back_populates="application", cascade="all, delete-orphan")
-    audit_logs = relationship("AuditLog", back_populates="target", cascade="all, delete-orphan")
 
 
 class Resume(Base):
