@@ -1,0 +1,567 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Backend Architecture
+1. Backend Architecture Overview
+Architecture Style
+SiraFit uses a modular monolith backend architecture.
+Reasoning:
+faster development velocity 
+simpler operations 
+easier debugging 
+lower infrastructure complexity 
+avoids premature distributed systems 
+easier transactional consistency 
+simpler local development 
+The system is logically modular but deploys as a unified backend service initially.
+The architecture separates:
+API layer 
+domain logic 
+async workers 
+AI orchestration 
+scraping runtime 
+sync engine 
+persistence 
+infrastructure concerns 
+The backend is composed of:
+
+2. Backend Technology Selection
+Core Stack
+Critical Architectural Decision
+No Kubernetes initially.
+Reason:
+operational overhead too high 
+user scale too small 
+distributed debugging complexity unnecessary 
+Deployment target:
+Docker Compose initially 
+optional ECS/Fly.io/Render later 
+3. Project Structure
+sirafit/
+├── apps/
+│   ├── api/
+│   ├── worker/
+│   ├── scheduler/
+│   └── agent/
+│
+├── modules/
+│   ├── auth/
+│   ├── users/
+│   ├── profiles/
+│   ├── resumes/
+│   ├── jobs/
+│   ├── applications/
+│   ├── ai/
+│   ├── scraping/
+│   ├── scoring/
+│   ├── analytics/
+│   ├── notifications/
+│   ├── sync/
+│   └── search/
+│
+├── shared/
+│   ├── db/
+│   ├── cache/
+│   ├── config/
+│   ├── logging/
+│   ├── observability/
+│   ├── security/
+│   ├── storage/
+│   ├── events/
+│   ├── queues/
+│   ├── errors/
+│   └── utils/
+│
+├── infra/
+│   ├── docker/
+│   ├── nginx/
+│   ├── scripts/
+│   └── monitoring/
+│
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   ├── api/
+│   ├── workers/
+│   └── e2e/
+│
+└── alembic/
+4. Domain & Module Organization
+Core Rule
+Each module owns:
+API routes 
+schemas 
+services 
+models 
+internal business logic 
+Cross-module access occurs only through service interfaces.
+No direct cross-module DB access.
+Major Modules
+Auth Module
+Owns:
+login 
+refresh 
+token revocation 
+device sessions 
+RBAC 
+Profiles Module
+Owns:
+structured resume profile 
+profile versioning 
+canonical user data 
+Jobs Module
+Owns:
+normalized jobs 
+deduplication state 
+import lifecycle 
+AI Module
+Owns:
+prompt execution 
+schema validation 
+repair loops 
+provider fallback 
+Applications Module
+Owns:
+pipeline tracking 
+status transitions 
+recruiter notes 
+Sync Module
+Owns:
+operation logs 
+reconciliation 
+snapshots 
+conflict resolution 
+5. API Layer Architecture
+API Style
+REST-first architecture.
+Reasons:
+predictable 
+debuggable 
+frontend-friendly 
+easier caching 
+simpler auth boundaries 
+Route Structure
+/api/v1/auth
+/api/v1/users
+/api/v1/profiles
+/api/v1/jobs
+/api/v1/resumes
+/api/v1/applications
+/api/v1/analytics
+/api/v1/search
+/api/v1/notifications
+/api/v1/sync
+API Layer Separation
+Route Layer
+    ↓
+Request Validation
+    ↓
+Service Layer
+    ↓
+Repository Layer
+    ↓
+Database
+Routes contain no business logic.
+6. Authentication & Authorization Design
+Authentication Strategy
+Access Token:
+JWT 
+short-lived 
+15 minutes 
+Refresh Token:
+rotating 
+DB-backed 
+revocable 
+Session Model
+Every login creates:
+device_session
+Tracks:
+device_id 
+IP 
+user agent 
+last activity 
+refresh token lineage 
+Authorization
+RBAC-lite.
+Roles:
+user 
+admin 
+Object-level ownership enforced server-side.
+7. Business Logic Layer Design
+Service Structure
+modules/jobs/
+├── service.py
+├── repository.py
+├── schemas.py
+├── models.py
+├── validators.py
+└── routes.py
+Service Responsibilities
+Services own:
+orchestration 
+validation coordination 
+transaction boundaries 
+retry-safe operations 
+Repositories own:
+query logic only 
+8. Database Access Architecture
+Database Strategy
+Primary DB:
+PostgreSQL
+Core Principles
+normalized OLTP schema 
+JSONB only for flexible metadata 
+deterministic migrations 
+strong FK integrity 
+Important Tables
+users
+Stores:
+auth metadata 
+preferences 
+account state 
+profiles
+Canonical structured resume data.
+jobs
+Stores:
+normalized jobs 
+extracted metadata 
+enrichment state 
+resumes
+Stores:
+tailored resume JSON 
+render artifacts 
+applications
+Stores:
+application lifecycle 
+ai_generations
+Stores:
+prompts 
+outputs 
+validation state 
+retry state 
+sync_operations
+Append-only sync log.
+Query Strategy
+Use:
+cursor pagination 
+indexed filtering 
+projection queries 
+eager loading selectively 
+Avoid:
+ORM-heavy implicit joins 
+N+1 queries 
+unrestricted filtering 
+9. Queue & Worker Architecture
+Queue Topology
+Separate queues:
+scraping
+ai_generation
+pdf_rendering
+notifications
+analytics
+sync_repair
+dead_letter
+Worker Isolation
+Dedicated workers per queue type.
+Reason:
+AI workloads must not block scraping workloads.
+Retry Rules
+AI Tasks
+Retries:
+max 3 
+exponential backoff 
+Scraping
+Retries:
+max 5 
+cooldown windows 
+Validation Failures
+No infinite repair loops.
+Single repair attempt maximum.
+10. Async Processing Design
+Synchronous Operations
+Remain synchronous:
+login 
+CRUD operations 
+lightweight searches 
+profile edits 
+Async Operations
+Move async:
+scraping 
+AI analysis 
+resume generation 
+PDF rendering 
+analytics aggregation 
+Async Job Lifecycle
+PENDING
+RUNNING
+COMPLETED
+FAILED_RETRYABLE
+FAILED_FINAL
+No hidden retry recursion.
+11. Caching Strategy
+Redis Usage
+Use Redis for:
+rate limiting 
+queue transport 
+hot cache 
+short-lived search cache 
+Cache Rules
+Cache only:
+expensive reads 
+analytics summaries 
+search results 
+Never cache:
+authorization decisions 
+mutable profile writes 
+12. File & Media Handling Architecture
+Object Storage
+Use S3-compatible storage.
+Stores:
+PDFs 
+generated resumes 
+exported files 
+Upload Rules
+Allowed:
+PDF 
+DOCX 
+TXT 
+Virus scanning:
+async ClamAV worker 
+Signed URLs:
+short-lived 
+private-by-default 
+13. AI Workflow Architecture
+AI Boundary
+AI cannot:
+mutate authoritative state directly 
+bypass validators 
+control workflows 
+AI only produces candidate structured outputs.
+AI Pipeline
+Input Context
+    ↓
+Prompt Builder
+    ↓
+Provider Execution
+    ↓
+Schema Validator
+    ↓
+Repair Attempt
+    ↓
+Persistence
+Provider Model
+User-supplied Gemini API keys initially.
+Future:
+provider abstraction 
+OpenAI fallback 
+Anthropic support 
+14. Event & Realtime Architecture
+Event Model
+Internal domain events only.
+No Kafka initially.
+Realtime
+Use lightweight WebSockets for:
+job progress 
+batch status 
+notifications 
+Fallback:
+polling 
+15. Error Handling Strategy
+Standard Error Format
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid resume schema",
+    "request_id": "req_123"
+  }
+}
+Centralized Exception Middleware
+Handles:
+validation 
+auth failures 
+rate limits 
+internal errors 
+No raw stack traces exposed.
+16. Validation Strategy
+Validation Layers
+API Validation
+Pydantic request validation.
+Domain Validation
+Business rule validation.
+AI Validation
+Schema enforcement.
+Scraping Validation
+Extraction anomaly detection.
+17. Security Architecture
+Core Security Measures
+JWT auth 
+refresh rotation 
+password hashing 
+RBAC 
+CSRF protection 
+input sanitization 
+SQL parameterization 
+signed uploads 
+audit logging 
+Secrets
+Environment-managed secrets only.
+No secrets in repo.
+18. Observability & Monitoring Design
+Logging
+Structured JSON logs.
+Fields:
+request_id 
+user_id 
+job_id 
+worker_id 
+trace_id 
+Metrics
+Track:
+API latency 
+queue depth 
+retry rates 
+AI failures 
+scraping failures 
+sync lag 
+Tracing
+OpenTelemetry tracing:
+API 
+DB 
+queue 
+AI execution 
+19. Testing Strategy
+Unit Tests
+Focus:
+validators 
+services 
+scoring logic 
+Integration Tests
+Test:
+DB interactions 
+queue execution 
+auth flows 
+E2E Tests
+Test:
+resume generation 
+scraping pipelines 
+application workflows 
+20. Deployment & Infrastructure Strategy
+Initial Deployment
+Docker Compose:
+api 
+worker 
+postgres 
+redis 
+nginx 
+Environments
+local 
+staging 
+production 
+Strict config isolation.
+21. CI/CD Recommendations
+CI Pipeline
+Run:
+lint 
+type checks 
+tests 
+migrations validation 
+security scans 
+CD
+Initial:
+manual approval deploys 
+Reason:
+safer operational control early.
+22. Performance & Scalability Analysis
+Hot Paths
+Most expensive:
+AI generation 
+semantic search 
+scraping 
+Scalability Strategy
+Scale independently:
+API replicas 
+workers 
+scraping runtimes 
+DB remains centralized initially.
+23. Operational Risk Analysis
+Highest Risks
+Retry Storms
+Mitigation:
+retry caps 
+cooldowns 
+DLQs 
+Scraper Drift
+Mitigation:
+extraction validators 
+quarantine buckets 
+AI Cost Explosion
+Mitigation:
+strict idempotency 
+caching 
+batch throttling 
+Sync Corruption
+Mitigation:
+snapshots 
+replay boundaries 
+reconciliation repair 
+24. Production Readiness Assessment
+Current architecture is suitable for:
+100–1,000 active users 
+moderate async workloads 
+moderate scraping volume 
+The architecture is operationally realistic for:
+solo founder 
+small engineering team 
+25. Tradeoff Analysis
+Why Modular Monolith
+Chosen over microservices because:
+simpler debugging 
+lower ops cost 
+easier transactions 
+faster iteration 
+Why REST Instead of GraphQL
+simpler caching 
+easier contracts 
+lower frontend complexity 
+Why Redis + Celery
+Operationally mature.
+Easy to debug.
+Sufficient for current scale.
+26. Future Backend Evolution Strategy
+Future evolution paths:
+Likely Future Extractions
+Possible later separation:
+AI orchestration service 
+scraping cluster 
+analytics pipeline 
+Not Needed Initially
+Avoid:
+Kubernetes 
+Kafka 
+event sourcing everywhere 
+distributed SQL 
+CQRS overengineering 
+Evolution Rule
+Scale only when:
+operational pain is measurable 
+bottlenecks are observable 
+metrics justify complexity
