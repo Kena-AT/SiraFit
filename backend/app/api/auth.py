@@ -156,7 +156,12 @@ def verify_email(
             detail="Could not validate token",
         )
 
-    user = db.query(User).filter(User.id == user_id).first()
+    try:
+        user_uuid = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token subject")
+
+    user = db.query(User).filter(User.id == user_uuid).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
@@ -208,7 +213,12 @@ def reset_password(
             detail="Could not validate token",
         )
 
-    user = db.query(User).filter(User.id == user_id).first()
+    try:
+        user_uuid = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token subject")
+
+    user = db.query(User).filter(User.id == user_uuid).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
@@ -242,14 +252,19 @@ def refresh_token(
         if payload.get("type") != "refresh":
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token type")
 
-    except (jwt.PyJWTError, Exception):
+    except jwt.PyJWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
         )
 
     user_id = payload.get("sub")
-    user = db.query(User).filter(User.id == user_id).first()
+    try:
+        user_uuid = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token subject")
+
+    user = db.query(User).filter(User.id == user_uuid).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     if not user.is_active:
@@ -301,11 +316,17 @@ def logout(
             user_id = payload.get("sub")
 
             if user_id:
-                token = db.query(RefreshToken).filter(
-                    RefreshToken.token == token_str,
-                    RefreshToken.user_id == user_id,
-                    RefreshToken.is_revoked == False,
-                ).first()
+                try:
+                    user_uuid = uuid.UUID(user_id)
+                except ValueError:
+                    user_uuid = None
+
+                if user_uuid:
+                    token = db.query(RefreshToken).filter(
+                        RefreshToken.token == token_str,
+                        RefreshToken.user_id == user_uuid,
+                        RefreshToken.is_revoked == False,
+                    ).first()
 
                 if token:
                     token.is_revoked = True

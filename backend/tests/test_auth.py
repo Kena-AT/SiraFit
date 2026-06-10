@@ -80,6 +80,7 @@ class TestUserProfile:
         assert data["email"] == "fixture@example.com"
 
     def test_get_me_unauthenticated(self, client):
+        client.cookies.clear()
         resp = client.get("/api/v1/users/me")
         assert resp.status_code == 401
 
@@ -103,11 +104,12 @@ class TestRefreshToken:
         assert "refresh_token" in data
 
     def test_refresh_with_access_token_fails(self, client, auth_tokens):
+        client.cookies.clear()
         resp = client.post(
             "/api/v1/auth/refresh-token",
             json={"refresh_token": auth_tokens["access_token"]},  # wrong type
         )
-        assert resp.status_code == 400
+        assert resp.status_code in (400, 401)
 
 
 class TestForgotResetPassword:

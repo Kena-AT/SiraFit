@@ -53,7 +53,13 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    user = db.query(User).filter(User.id == token_data.sub).first()
+    import uuid
+    try:
+        user_uuid = uuid.UUID(token_data.sub)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid token subject")
+
+    user = db.query(User).filter(User.id == user_uuid).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     if not user.is_active:
