@@ -10,9 +10,13 @@ export function middleware(request: NextRequest) {
   );
 
   if (isProtectedRoute) {
-    // For now, allow access - in production, check for auth token
-    // This would involve checking cookies, headers, or local storage
-    return NextResponse.next();
+    // Check for access_token cookie
+    const token = request.cookies.get('access_token');
+    
+    if (!token) {
+      const loginUrl = new URL('/login', request.url);
+      return NextResponse.redirect(loginUrl);
+    }
   }
 
   return NextResponse.next();

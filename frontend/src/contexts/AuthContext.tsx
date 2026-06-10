@@ -30,21 +30,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Check for existing session on mount
   useEffect(() => {
     const checkSession = async () => {
-      const token = localStorage.getItem('access_token');
-      if (token) {
-        try {
-          const response = await fetch('/api/v1/users/me', {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (response.ok) {
-            const userData = await response.json();
-            setUser(userData);
-          }
-        } catch (error) {
-          console.error('Failed to check session:', error);
+      try {
+        const response = await fetch('/api/v1/users/me');
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData);
         }
+      } catch (error) {
+        console.error('Failed to check session:', error);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
     checkSession();
   }, []);
@@ -57,11 +53,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     if (response.ok) {
-      const data = await response.json();
-      localStorage.setItem('access_token', data.access_token);
-      localStorage.setItem('refresh_token', data.refresh_token);
-      setUser({ id: 'mock-id', email, full_name: null, is_active: true, is_verified: true });
-      router.push('/dashboard');
+      // Cookies are automatically set by backend.
+      // Now fetch user details.
+      const meResponse = await fetch('/api/v1/users/me');
+      if (meResponse.ok) {
+        const userData = await meResponse.json();
+        setUser(userData);
+        router.push('/dashboard');
+      } else {
+        throw new Error('Failed to fetch user details after login');
+      }
     } else {
       const errorData = await response.json();
       throw new Error(errorData.detail || 'Login failed');
@@ -70,25 +71,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      const refreshToken = localStorage.getItem('refresh_token');
-      
-      // Call backend to revoke refresh token
-      if (refreshToken) {
-        await fetch('/api/v1/auth/logout', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-          },
-          body: JSON.stringify({ refresh_token: refreshToken }),
-        });
-      }
+      await fetch('/api/v1/auth/logout', {
+        method: 'POST',
+      });
     } catch (error) {
       console.error('Failed to logout:', error);
     } finally {
-      // Clear tokens regardless of logout API result
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
       setUser(null);
       router.push('/login');
     }

@@ -1,6 +1,40 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function LoginPage() {
+  const { login } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    if (!email.trim()) {
+      setError('Email is required');
+      return;
+    }
+    if (!password) {
+      setError('Password is required');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await login(email.trim().toLowerCase(), password);
+      // login() handles redirect to /dashboard on success
+    } catch (err: any) {
+      setError(err.message || 'Login failed. Please check your credentials.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4 bg-background-primary">
       <div className="w-full max-w-[448px] flex flex-col gap-8">
@@ -14,14 +48,24 @@ export default function LoginPage() {
 
         {/* Auth Card */}
         <div className="bg-background-secondary border border-border-light rounded-lg p-8 shadow-sm flex flex-col gap-6">
-          <form className="flex flex-col gap-6">
+          {error && (
+            <div className="p-3 rounded-md bg-red-50 border border-red-200 text-sm text-red-600 text-center">
+              {error}
+            </div>
+          )}
+
+          <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-text-primary" htmlFor="email">Email</label>
               <input 
                 id="email"
-                type="email" 
+                type="email"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setError(''); }}
                 className="px-3 py-2 border border-border rounded-md text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand"
                 placeholder="Ex. dev@example.com"
+                autoComplete="email"
+                disabled={isLoading}
               />
             </div>
             
@@ -32,14 +76,22 @@ export default function LoginPage() {
               </div>
               <input 
                 id="password"
-                type="password" 
+                type="password"
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setError(''); }}
                 className="px-3 py-2 border border-border rounded-md text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand"
                 placeholder="Enter your password"
+                autoComplete="current-password"
+                disabled={isLoading}
               />
             </div>
 
-            <button type="submit" className="w-full bg-brand text-white py-2.5 rounded-md text-sm font-medium hover:opacity-90 transition-opacity">
-              Sign In
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-brand text-white py-2.5 rounded-md text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
           
