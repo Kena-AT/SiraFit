@@ -34,3 +34,7 @@ logs/
 # IDE/editor settings
 .vscode/
 .idea/
+
+venv/
+.venv/
+env/
