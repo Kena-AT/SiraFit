@@ -1,9 +1,27 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  /* Brand colors */
+  --color-brand: #3525cd;
+  --color-brand-light: #d0e1fb;
+  
+  /* Background colors */
+  --color-background-primary: #fcf8ff;
+  --color-background-secondary: #ffffff;
+  --color-background-muted: #f0ecf9;
+  
+  /* Border colors */
+  --color-border: #c7c4d8;
+  --color-border-light: #e4e1ee;
+  
+  /* Text colors */
+  --color-text-primary: #1b1b24;
+  --color-text-secondary: #464555;
+  --color-text-muted: #777587;
+}
 
 @layer base {
   body {
-    @apply bg-background-primary text-text-primary font-sans;
+    @apply bg-background-primary text-text-primary;
   }
 }
