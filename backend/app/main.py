@@ -69,10 +69,10 @@ async def global_exception_handler(request, exc: Exception):
 @app.on_event("startup")
 async def startup_event():
     """Startup event handler"""
-    logger.info("app_started", event="startup")
+    logger.info("app_started", event_type="startup")
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Shutdown event handler"""
-    logger.info("app_stopped", event="shutdown")
+    logger.info("app_stopped", event_type="shutdown")
