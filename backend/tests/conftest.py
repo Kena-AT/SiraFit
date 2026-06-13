@@ -21,7 +21,7 @@ os.environ.setdefault("SMTP_PORT", "587")
 os.environ.setdefault("SMTP_USER", "test@example.com")
 os.environ.setdefault("SMTP_PASSWORD", "dummy")
 os.environ.setdefault("SMTP_FROM", "noreply@sirafit.com")
-os.environ.setdefault("CORS_ORIGINS", "http://localhost:3000")
+os.environ.setdefault("CORS_ORIGINS", "http://localhost:3001")
 os.environ.setdefault("ENVIRONMENT", "testing")
 
 # Now import after env is set

@@ -73,7 +73,7 @@ class EmailService:
 
     def send_verification_email(self, email: EmailStr, token: str) -> bool:
         """Send email verification email"""
-        verification_url = f"http://localhost:3000/verify-email?token={token}"
+        verification_url = f"http://localhost:3001/verify-email?token={token}"
         subject = "Verify your SiraFit account"
         
         html_content = f"""
@@ -101,7 +101,7 @@ class EmailService:
 
     def send_password_reset_email(self, email: EmailStr, token: str) -> bool:
         """Send password reset email"""
-        reset_url = f"http://localhost:3000/reset-password?token={token}"
+        reset_url = f"http://localhost:3001/reset-password?token={token}"
         subject = "Reset your SiraFit password"
         
         html_content = f"""

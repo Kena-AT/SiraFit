@@ -17,7 +17,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} min-h-screen bg-background-primary flex flex-col text-text-primary`}>
+      <body className={`${inter.className} min-h-screen flex flex-col`}>
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
