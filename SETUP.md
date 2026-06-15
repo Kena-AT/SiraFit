@@ -73,7 +73,7 @@ npm install
 npm run dev
 ```
 
-Frontend is now running at → **http://localhost:3001**
+Frontend is now running at → **http://localhost:3030**
 
 ---
 

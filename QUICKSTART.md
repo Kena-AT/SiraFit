@@ -39,7 +39,7 @@ SMTP_FROM=kenakaye11@gmail.com
 PROJECT_NAME=SiraFit API
 VERSION=1.0.0
 API_V1_STR=/api/v1
-CORS_ORIGINS=http://localhost:3001,http://localhost:8000
+CORS_ORIGINS=http://localhost:3030,http://localhost:8000
 ```
 
 ### 5. Run database migrations
@@ -75,12 +75,12 @@ Create a `.env.local` file in the `frontend` directory with:
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
-### 4. Start the development server (Port 3001)
+### 4. Start the development server (Port 3030)
 ```cmd
 npm run dev
 ```
 
-**Frontend will be running at:** http://localhost:3001
+**Frontend will be running at:** http://localhost:3030
 
 ---
 

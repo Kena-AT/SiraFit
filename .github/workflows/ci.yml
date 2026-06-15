@@ -39,7 +39,7 @@ jobs:
           SMTP_USER: test@example.com
           SMTP_PASSWORD: dummy_password
           SMTP_FROM: noreply@sirafit.com
-          CORS_ORIGINS: http://localhost:3001
+          CORS_ORIGINS: http://localhost:3030
           ENVIRONMENT: testing
         run: pytest tests/ -v --tb=short
 
