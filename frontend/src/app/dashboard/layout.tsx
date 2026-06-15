@@ -1,11 +1,16 @@
+'use client';
+
 import Link from 'next/link';
 import { Home, Search, FileText, BarChart3, Settings, Bell, User } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const { user, logout } = useAuth();
+
   return (
     <div className="flex h-screen bg-background-primary overflow-hidden">
       
@@ -50,12 +55,21 @@ export default function DashboardLayout({
               <div className="w-8 h-8 rounded-full bg-border-light flex items-center justify-center text-text-secondary">
                 <User className="w-4 h-4" />
               </div>
-              <div className="flex flex-col">
-                <span className="text-sm font-medium text-text-primary leading-tight">Jane Doe</span>
-                <span className="text-xs text-text-muted">dev@example.com</span>
+              <div className="flex flex-col truncate">
+                <span className="text-sm font-medium text-text-primary leading-tight truncate">
+                  {user?.full_name || 'User'}
+                </span>
+                <span className="text-xs text-text-muted truncate">
+                  {user?.email || 'Loading...'}
+                </span>
               </div>
             </div>
-            <Link href="/logout" className="block px-4 py-2 mt-2 text-xs font-medium text-text-secondary hover:text-brand hover:underline">Log out</Link>
+            <button 
+              onClick={() => logout()} 
+              className="block px-4 py-2 mt-2 text-xs font-medium text-text-secondary hover:text-brand hover:underline w-full text-left"
+            >
+              Log out
+            </button>
           </div>
         </div>
       </aside>
