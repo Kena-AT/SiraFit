@@ -31,6 +31,7 @@ from app.core.database import Base, get_db
 # Import ALL models so SQLite creates every table
 import app.models.user  # noqa: F401
 import app.models.job   # noqa: F401
+import app.models.profile  # noqa: F401
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 
@@ -91,3 +92,40 @@ def auth_tokens(client, registered_user):
     )
     assert response.status_code == 200, response.text
     return response.json()
+
+
+@pytest.fixture(scope="function")
+def db():
+    """Provide a fresh database session for each test function."""
+    db_session = TestingSessionLocal()
+    try:
+        yield db_session
+    finally:
+        db_session.close()
+
+
+@pytest.fixture(scope="function")
+def test_user(db):
+    """Create a test user for function-scoped tests."""
+    from app.models.user import User
+    from app.core.security import get_password_hash
+    
+    user = User(
+        email="test@example.com",
+        full_name="Test User",
+        hashed_password=get_password_hash("password123"),
+        is_verified=True
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@pytest.fixture(scope="function")
+def auth_headers(test_user):
+    """Generate auth headers for function-scoped tests."""
+    from app.core.security import create_access_token
+    
+    token = create_access_token({"sub": test_user.email})
+    return {"Authorization": f"Bearer {token}"}

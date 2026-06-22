@@ -41,9 +41,9 @@ export default function ProfileEditorPage() {
     loadProfile();
   }, [token]);
 
-  // Debounced save function
+  // Debounced save function using use-debounce
   const debouncedSave = useCallback(
-    debounce(async (profileData: Profile) => {
+    useDebouncedCallback(async (profileData: Profile) => {
       if (!token || !profileData) return;
       
       setSaving(true);
