@@ -54,3 +54,71 @@ postgresql://neondb_owner:npg_zoEByw26USid@ep-icy-block-ape62ltm-pooler.c-7.us-e
 this is the connection string for the database
 Use the[design.pen](file;file:///c%3A/Users/hp/Documents/Programming/Projects/SiraFit/design.pen) for the the designs
 Ask any questions you may have before starting the implementation. Ask for any credentials you may want for env file
+
+Sprint 2: Resume Master Profile
+
+Goals
+
+Users can build and manage their structured career profile.
+
+Tasks
+
+Backend
+
+Profile domain 
+
+Experience management 
+
+Projects management 
+
+Skills management 
+
+Education management 
+
+Certifications management 
+
+Resume JSON schema validation 
+
+Frontend
+
+Profile editor 
+
+Dynamic form sections 
+
+Validation system 
+
+Autosave support 
+
+Database
+
+profiles table 
+
+experiences table 
+
+projects table 
+
+skills table 
+
+education table 
+
+certifications table 
+
+QA
+
+Profile CRUD tests 
+
+Validation tests 
+
+Deliverables
+
+Structured resume profile system 
+
+Resume source-of-truth storage 
+
+Pages Implemented
+
+Dashboard Home 
+
+Resume Profiles Page 
+
+Resume Profile Editor
