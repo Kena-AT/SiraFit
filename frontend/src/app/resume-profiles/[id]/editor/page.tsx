@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import debounce from 'lodash/debounce';
+import { useDebouncedCallback } from 'use-debounce';
 import { useAuth } from '@/contexts/AuthContext';
 import { getProfile, updateProfile } from '@/lib/api/profiles';
 import { Profile, Experience, Education, Skill, Project, Certification } from '@/types/profile';
