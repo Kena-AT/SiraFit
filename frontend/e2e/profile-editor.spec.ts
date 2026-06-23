@@ -17,7 +17,7 @@ test.describe('Profile Editor', () => {
 
   test('can navigate to profile list page', async ({ page }) => {
     // Navigate to resume profiles page
-    await page.goto('http://localhost:3030/resume-profiles');
+    await page.goto('http://localhost:3030/dashboard/resumes');
     
     // Check if the page loaded
     await expect(page.locator('h1', { hasText: 'Resume Profiles' })).toBeVisible();
@@ -28,19 +28,19 @@ test.describe('Profile Editor', () => {
 
   test('can open profile editor', async ({ page }) => {
     // Navigate to profile page
-    await page.goto('http://localhost:3030/resume-profiles');
+    await page.goto('http://localhost:3030/dashboard/resumes');
     
     // Click Edit Profile
     await page.click('a:has-text("Edit Profile")');
     
     // Should navigate to editor
-    await expect(page).toHaveURL(/\/resume-profiles\/.+\/editor/);
+    await expect(page).toHaveURL(/\/dashboard/resumes\/.+\/editor/);
     await expect(page.locator('h1', { hasText: 'Edit Resume Profile' })).toBeVisible();
   });
 
   test('can edit basic profile fields with autosave', async ({ page }) => {
     // Go directly to editor (profile should be created automatically)
-    await page.goto('http://localhost:3030/resume-profiles');
+    await page.goto('http://localhost:3030/dashboard/resumes');
     await page.click('a:has-text("Edit Profile")');
     
     // Wait for editor to load
@@ -73,7 +73,7 @@ test.describe('Profile Editor', () => {
   });
 
   test('can add and edit work experience', async ({ page }) => {
-    await page.goto('http://localhost:3030/resume-profiles');
+    await page.goto('http://localhost:3030/dashboard/resumes');
     await page.click('a:has-text("Edit Profile")');
     
     // Wait for page to load
@@ -103,7 +103,7 @@ test.describe('Profile Editor', () => {
   });
 
   test('can remove work experience', async ({ page }) => {
-    await page.goto('http://localhost:3030/resume-profiles');
+    await page.goto('http://localhost:3030/dashboard/resumes');
     await page.click('a:has-text("Edit Profile")');
     
     // Add an experience first
@@ -128,7 +128,7 @@ test.describe('Profile Editor', () => {
   });
 
   test('can add education entry', async ({ page }) => {
-    await page.goto('http://localhost:3030/resume-profiles');
+    await page.goto('http://localhost:3030/dashboard/resumes');
     await page.click('a:has-text("Edit Profile")');
     
     // Click Add Education
@@ -148,7 +148,7 @@ test.describe('Profile Editor', () => {
   });
 
   test('can add skills', async ({ page }) => {
-    await page.goto('http://localhost:3030/resume-profiles');
+    await page.goto('http://localhost:3030/dashboard/resumes');
     await page.click('a:has-text("Edit Profile")');
     
     // Add first skill
@@ -170,7 +170,7 @@ test.describe('Profile Editor', () => {
   });
 
   test('can add project', async ({ page }) => {
-    await page.goto('http://localhost:3030/resume-profiles');
+    await page.goto('http://localhost:3030/dashboard/resumes');
     await page.click('a:has-text("Edit Profile")');
     
     // Click Add Project
@@ -186,7 +186,7 @@ test.describe('Profile Editor', () => {
   });
 
   test('can add certification', async ({ page }) => {
-    await page.goto('http://localhost:3030/resume-profiles');
+    await page.goto('http://localhost:3030/dashboard/resumes');
     await page.click('a:has-text("Edit Profile")');
     
     // Click Add Certification
@@ -202,7 +202,7 @@ test.describe('Profile Editor', () => {
   });
 
   test('displays validation errors for required fields', async ({ page }) => {
-    await page.goto('http://localhost:3030/resume-profiles');
+    await page.goto('http://localhost:3030/dashboard/resumes');
     await page.click('a:has-text("Edit Profile")');
     
     // Add experience without required fields
@@ -220,7 +220,7 @@ test.describe('Profile Editor', () => {
   });
 
   test('can collapse and expand sections', async ({ page }) => {
-    await page.goto('http://localhost:3030/resume-profiles');
+    await page.goto('http://localhost:3030/dashboard/resumes');
     await page.click('a:has-text("Edit Profile")');
     
     // Personal Information should be open by default
@@ -240,11 +240,11 @@ test.describe('Profile Editor', () => {
   });
 
   test('can navigate back from editor', async ({ page }) => {
-    await page.goto('http://localhost:3030/resume-profiles');
+    await page.goto('http://localhost:3030/dashboard/resumes');
     await page.click('a:has-text("Edit Profile")');
     
     // Should be on editor page
-    await expect(page).toHaveURL(/\/resume-profiles\/.+\/editor/);
+    await expect(page).toHaveURL(/\/dashboard/resumes\/.+\/editor/);
     
     // Click Back button
     await page.click('button:has-text("Back")');
@@ -254,7 +254,7 @@ test.describe('Profile Editor', () => {
   });
 
   test('persists data after page reload', async ({ page }) => {
-    await page.goto('http://localhost:3030/resume-profiles');
+    await page.goto('http://localhost:3030/dashboard/resumes');
     await page.click('a:has-text("Edit Profile")');
     
     // Fill in a field
@@ -275,7 +275,7 @@ test.describe('Profile Editor', () => {
   });
 
   test('shows character count for fields with max length', async ({ page }) => {
-    await page.goto('http://localhost:3030/resume-profiles');
+    await page.goto('http://localhost:3030/dashboard/resumes');
     await page.click('a:has-text("Edit Profile")');
     
     // Type in first name
