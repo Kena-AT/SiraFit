@@ -239,4 +239,7 @@ function ResumeEditorPage() {
           + Add Certification
         </button>
       </SectionCard>
+    </div>
+  );
+}
 

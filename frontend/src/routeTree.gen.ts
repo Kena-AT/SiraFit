@@ -54,6 +54,7 @@ import { Route as AppApplicationsFollowupsRouteImport } from './routes/_app.appl
 import { Route as AppApplicationsIdRouteImport } from './routes/_app.applications.$id'
 import { Route as AppAnalyticsSkillsRouteImport } from './routes/_app.analytics.skills'
 import { Route as AppAnalyticsMarketRouteImport } from './routes/_app.analytics.market'
+import { Route as AppResumesIdEditorRouteImport } from './routes/_app.resumes.$id.editor'
 
 const VerifyEmailRoute = VerifyEmailRouteImport.update({
   id: '/verify-email',
@@ -281,6 +282,11 @@ const AppAnalyticsMarketRoute = AppAnalyticsMarketRouteImport.update({
   path: '/market',
   getParentRoute: () => AppAnalyticsRoute,
 } as any)
+const AppResumesIdEditorRoute = AppResumesIdEditorRouteImport.update({
+  id: '/editor',
+  path: '/editor',
+  getParentRoute: () => AppResumesIdRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -313,7 +319,7 @@ export interface FileRoutesByFullPath {
   '/jobs/$jobId': typeof AppJobsJobIdRoute
   '/jobs/history': typeof AppJobsHistoryRoute
   '/jobs/import': typeof AppJobsImportRoute
-  '/resumes/$id': typeof AppResumesIdRoute
+  '/resumes/$id': typeof AppResumesIdRouteWithChildren
   '/resumes/builder': typeof AppResumesBuilderRoute
   '/resumes/profile-editor': typeof AppResumesProfileEditorRoute
   '/resumes/profiles': typeof AppResumesProfilesRoute
@@ -327,6 +333,7 @@ export interface FileRoutesByFullPath {
   '/jobs/': typeof AppJobsIndexRoute
   '/resumes/': typeof AppResumesIndexRoute
   '/settings/': typeof AppSettingsIndexRoute
+  '/resumes/$id/editor': typeof AppResumesIdEditorRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -353,7 +360,7 @@ export interface FileRoutesByTo {
   '/jobs/$jobId': typeof AppJobsJobIdRoute
   '/jobs/history': typeof AppJobsHistoryRoute
   '/jobs/import': typeof AppJobsImportRoute
-  '/resumes/$id': typeof AppResumesIdRoute
+  '/resumes/$id': typeof AppResumesIdRouteWithChildren
   '/resumes/builder': typeof AppResumesBuilderRoute
   '/resumes/profile-editor': typeof AppResumesProfileEditorRoute
   '/resumes/profiles': typeof AppResumesProfilesRoute
@@ -367,6 +374,7 @@ export interface FileRoutesByTo {
   '/jobs': typeof AppJobsIndexRoute
   '/resumes': typeof AppResumesIndexRoute
   '/settings': typeof AppSettingsIndexRoute
+  '/resumes/$id/editor': typeof AppResumesIdEditorRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -401,7 +409,7 @@ export interface FileRoutesById {
   '/_app/jobs/$jobId': typeof AppJobsJobIdRoute
   '/_app/jobs/history': typeof AppJobsHistoryRoute
   '/_app/jobs/import': typeof AppJobsImportRoute
-  '/_app/resumes/$id': typeof AppResumesIdRoute
+  '/_app/resumes/$id': typeof AppResumesIdRouteWithChildren
   '/_app/resumes/builder': typeof AppResumesBuilderRoute
   '/_app/resumes/profile-editor': typeof AppResumesProfileEditorRoute
   '/_app/resumes/profiles': typeof AppResumesProfilesRoute
@@ -415,6 +423,7 @@ export interface FileRoutesById {
   '/_app/jobs/': typeof AppJobsIndexRoute
   '/_app/resumes/': typeof AppResumesIndexRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
+  '/_app/resumes/$id/editor': typeof AppResumesIdEditorRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -463,6 +472,7 @@ export interface FileRouteTypes {
     | '/jobs/'
     | '/resumes/'
     | '/settings/'
+    | '/resumes/$id/editor'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -503,6 +513,7 @@ export interface FileRouteTypes {
     | '/jobs'
     | '/resumes'
     | '/settings'
+    | '/resumes/$id/editor'
   id:
     | '__root__'
     | '/'
@@ -550,6 +561,7 @@ export interface FileRouteTypes {
     | '/_app/jobs/'
     | '/_app/resumes/'
     | '/_app/settings/'
+    | '/_app/resumes/$id/editor'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -883,6 +895,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAnalyticsMarketRouteImport
       parentRoute: typeof AppAnalyticsRoute
     }
+    '/_app/resumes/$id/editor': {
+      id: '/_app/resumes/$id/editor'
+      path: '/editor'
+      fullPath: '/resumes/$id/editor'
+      preLoaderRoute: typeof AppResumesIdEditorRouteImport
+      parentRoute: typeof AppResumesIdRoute
+    }
   }
 }
 
@@ -951,8 +970,20 @@ const AppJobsRouteChildren: AppJobsRouteChildren = {
 const AppJobsRouteWithChildren =
   AppJobsRoute._addFileChildren(AppJobsRouteChildren)
 
+interface AppResumesIdRouteChildren {
+  AppResumesIdEditorRoute: typeof AppResumesIdEditorRoute
+}
+
+const AppResumesIdRouteChildren: AppResumesIdRouteChildren = {
+  AppResumesIdEditorRoute: AppResumesIdEditorRoute,
+}
+
+const AppResumesIdRouteWithChildren = AppResumesIdRoute._addFileChildren(
+  AppResumesIdRouteChildren,
+)
+
 interface AppResumesRouteChildren {
-  AppResumesIdRoute: typeof AppResumesIdRoute
+  AppResumesIdRoute: typeof AppResumesIdRouteWithChildren
   AppResumesBuilderRoute: typeof AppResumesBuilderRoute
   AppResumesProfileEditorRoute: typeof AppResumesProfileEditorRoute
   AppResumesProfilesRoute: typeof AppResumesProfilesRoute
@@ -960,7 +991,7 @@ interface AppResumesRouteChildren {
 }
 
 const AppResumesRouteChildren: AppResumesRouteChildren = {
-  AppResumesIdRoute: AppResumesIdRoute,
+  AppResumesIdRoute: AppResumesIdRouteWithChildren,
   AppResumesBuilderRoute: AppResumesBuilderRoute,
   AppResumesProfileEditorRoute: AppResumesProfileEditorRoute,
   AppResumesProfilesRoute: AppResumesProfilesRoute,
@@ -1037,3 +1068,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
