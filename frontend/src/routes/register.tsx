@@ -49,16 +49,16 @@ function RegisterPage() {
     }
     setIsLoading(true);
     setMessage(null);
-    try {
-      const response = await fetch("/api/v1/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          full_name: formData.full_name.trim(),
-          email: formData.email.trim().toLowerCase(),
-          password: formData.password,
-        }),
-      });
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/auth/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            full_name: formData.full_name.trim(),
+            email: formData.email.trim().toLowerCase(),
+            password: formData.password,
+          }),
+        });
       if (response.ok) {
         setMessage({ type: "success", text: "Registration successful! Please verify your email." });
         setFormData({ full_name: "", email: "", password: "", confirmPassword: "" });

@@ -22,6 +22,8 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
@@ -31,7 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const response = await fetch('/api/v1/users/me');
+        const response = await fetch(`${API_URL}/api/v1/users/me`, { credentials: 'include' });
         if (response.ok) {
           const userData = await response.json();
           setUser(userData);
@@ -46,16 +48,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    const response = await fetch('/api/v1/auth/login', {
+    const response = await fetch(`${API_URL}/api/v1/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ username: email, password }),
+      credentials: 'include',
     });
 
     if (response.ok) {
       // Cookies are automatically set by backend.
       // Now fetch user details.
-      const meResponse = await fetch('/api/v1/users/me');
+      const meResponse = await fetch(`${API_URL}/api/v1/users/me`, { credentials: 'include' });
       if (meResponse.ok) {
         const userData = await meResponse.json();
         setUser(userData);
@@ -71,8 +74,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch('/api/v1/auth/logout', {
+      await fetch(`${API_URL}/api/v1/auth/logout`, {
         method: 'POST',
+        credentials: 'include',
       });
     } catch (error) {
       console.error('Failed to logout:', error);
@@ -83,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const register = async (email: string, password: string, full_name?: string) => {
-    const response = await fetch('/api/v1/auth/register', {
+    const response = await fetch(`${API_URL}/api/v1/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, full_name }),
