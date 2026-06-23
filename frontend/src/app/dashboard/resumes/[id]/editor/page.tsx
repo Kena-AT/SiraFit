@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useDebouncedCallback } from 'use-debounce';
-import { useAuth } from '@/contexts/AuthContext';
 import { getProfile, updateProfile } from '@/lib/api/profiles';
 import { Profile, Experience, Education, Skill, Project, Certification } from '@/types/profile';
 import SectionCard from '@/components/SectionCard';
@@ -16,7 +15,6 @@ import { validateProfile } from '@/lib/validation/profile';
 export default function ProfileEditorPage() {
   const params = useParams();
   const router = useRouter();
-  const { token } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -24,11 +22,9 @@ export default function ProfileEditorPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (!token) return;
-
     const loadProfile = async () => {
       try {
-        const data = await getProfile(token);
+        const data = await getProfile();
         setProfile(data);
       } catch (error) {
         console.error('Failed to load profile:', error);
@@ -38,11 +34,11 @@ export default function ProfileEditorPage() {
     };
 
     loadProfile();
-  }, [token]);
+  }, []);
 
   const debouncedSave = useCallback(
     useDebouncedCallback(async (profileData: Profile) => {
-      if (!token || !profileData) return;
+      if (!profileData) return;
 
       setSaving(true);
       setSaveStatus('saving');
@@ -56,7 +52,7 @@ export default function ProfileEditorPage() {
         }
 
         setErrors({});
-        const updated = await updateProfile(token, profileData);
+        const updated = await updateProfile(profileData);
         setProfile(updated);
         setSaveStatus('saved');
 
@@ -68,7 +64,7 @@ export default function ProfileEditorPage() {
         setSaving(false);
       }
     }, 1000),
-    [token]
+    []
   );
 
   const handleFieldChange = (field: keyof Profile, value: any) => {
