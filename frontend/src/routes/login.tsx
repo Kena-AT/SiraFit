@@ -1,19 +1,48 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { AuthShell } from "@/components/sirafit/shell";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
-export const Route = createFileRoute("/login")({
-  head: () => ({ meta: [{ title: "Log in · SiraFit" }] }),
-  component: () => (
-    <AuthShell title="Welcome back" subtitle="Log in to your SiraFit dashboard." footer={<>No account? <Link to="/register" className="font-medium text-foreground hover:underline">Create one</Link>.</>}>
-      <form className="space-y-4">
-        <div className="space-y-1.5"><Label htmlFor="email">Email</Label><Input id="email" type="email" placeholder="alex@rivera.dev" /></div>
-        <div className="space-y-1.5"><div className="flex items-center justify-between"><Label htmlFor="pwd">Password</Label><Link to="/forgot-password" className="text-[11px] text-muted-foreground hover:text-foreground">Forgot?</Link></div><Input id="pwd" type="password" placeholder="••••••••" /></div>
-        <Button asChild className="w-full"><Link to="/dashboard">Log in</Link></Button>
-        <div className="text-center text-[11px] text-muted-foreground">Protected by device-based auth tokens.</div>
-      </form>
-    </AuthShell>
-  ),
+export const Route = createFileRoute('/login')({
+  component: LoginPage,
 });
+
+function LoginPage() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const { login } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await login(email, password);
+      navigate({ to: '/dashboard' });
+    } catch (err: any) {
+      setError(err.message || 'Login failed');
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-md">
+        <h1 className="text-2xl font-bold mb-6">Sign In</h1>
+        {error && <div className="text-red-500 mb-4">{error}</div>}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label>Email</Label>
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          </div>
+          <div>
+            <Label>Password</Label>
+            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          </div>
+          <Button type="submit" className="w-full">Sign In</Button>
+        </form>
+      </div>
+    </div>
+  );
+}
