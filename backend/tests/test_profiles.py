@@ -222,7 +222,7 @@ class TestProfileEndpoints:
 
         # Login as user2 and try to access profile
         from app.core.security import create_access_token
-        token = create_access_token({"sub": user2.email})
+        token = create_access_token(str(user2.id))
         headers = {"Authorization": f"Bearer {token}"}
 
         response = client.get("/api/v1/profiles/me", headers=headers)

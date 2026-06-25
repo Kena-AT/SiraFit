@@ -98,10 +98,19 @@ def auth_tokens(client, registered_user):
 def db():
     """Provide a fresh database session for each test function."""
     db_session = TestingSessionLocal()
+    
+    # Override the app's get_db dependency to use this session
+    def _get_db():
+        yield db_session
+    
+    fastapi_app.dependency_overrides[get_db] = _get_db
+    
     try:
         yield db_session
     finally:
         db_session.close()
+        # Restore the original override
+        fastapi_app.dependency_overrides[get_db] = override_get_db
 
 
 @pytest.fixture(scope="function")
@@ -127,5 +136,5 @@ def auth_headers(test_user):
     """Generate auth headers for function-scoped tests."""
     from app.core.security import create_access_token
     
-    token = create_access_token({"sub": test_user.email})
+    token = create_access_token(str(test_user.id))
     return {"Authorization": f"Bearer {token}"}
