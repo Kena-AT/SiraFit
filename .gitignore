@@ -1,42 +1,18 @@
-# Ignore generated and binary artifacts
-*.docx
-*.doc
-*.pdf
+# Ignore environment files
+.env
+.env.local
+backend/.env
+backend/.env.local
 
-# Design files
-*.pen
-*.sketch
-*.fig
-*.xd
-*.psd
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Python caches
+# Ignore Python
 __pycache__/
 *.py[cod]
-
-# Node modules
-frontend/node_modules
-backend/node_modules
-
-# Environment files (keep .env.example if needed)
-.env
-.env.*
-
-# Logs
-*.log
-logs/
-
-# IDE/editor settings
-.vscode/
-.idea/
-
-venv/
 .venv/
-env/
+venv/
+.pytest_cache/
 
-# Keep requirements.txt (needed for CI)
-!requirements.txt
+# Ignore Node
+node_modules/
+dist/
+.output/
+.vercel/

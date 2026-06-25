@@ -24,12 +24,12 @@ app = FastAPI(
 )
 
 # CORS
-print(f"DEBUG: CORS_ORIGINS loaded: {settings.cors_origins_list}")
+# Enforce strict origin checking based on environment
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
 
@@ -42,28 +42,13 @@ app.include_router(health_router, prefix="/health", tags=["health"])
 # Include API routes
 app.include_router(api_router, prefix=settings.API_V1_STR, tags=["api"])
 
-
-@app.get("/")
-def root():
-    return {
-        "message": "SiraFit API",
-        "version": settings.VERSION,
-        "status": "running",
-    }
-
-
 @app.exception_handler(Exception)
-async def global_exception_handler(request, exc: Exception):
-    """Global exception handler for unhandled exceptions"""
-    logger.error(
-        "unhandled_exception",
-        path=request.url.path,
-        method=request.method,
-        error=str(exc),
-    )
+async def global_exception_handler(request: Request, exc: Exception):
+    """Global exception handler to mask internal errors."""
+    logger.error("unhandled_exception", path=request.url.path, method=request.method, error=str(exc))
     return JSONResponse(
         status_code=500,
-        content={"detail": "Internal server error"},
+        content={"detail": "A system error occurred. Please try again later."},
     )
 
 

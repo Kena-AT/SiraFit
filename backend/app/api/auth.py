@@ -28,13 +28,14 @@ COOKIE_MAX_AGE = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60  # seconds
 
 
 def _set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
-    """Write tokens into HttpOnly cookies."""
+    """Write tokens into secure, HttpOnly cookies."""
     response.set_cookie(
         key="access_token",
         value=access_token,
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         httponly=True,
         samesite="lax",
+        # Only set secure=True in production (requires HTTPS)
         secure=settings.ENVIRONMENT == "production",
     )
     response.set_cookie(
