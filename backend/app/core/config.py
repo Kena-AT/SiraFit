@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 from pydantic import EmailStr
 from functools import lru_cache
 import os
-
+from pathlib import Path
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "SiraFit API"
@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
 
     class Config:
-        env_file = ".env"
+        env_file = str(Path(__file__).resolve().parent.parent.parent.parent / ".env")
         case_sensitive = True
         extra = "ignore"  # Ignore extra environment variables
 
