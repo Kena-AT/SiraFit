@@ -3,6 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 import uuid
 
+
 # --- Job ---
 class JobBase(BaseModel):
     title: str = Field(..., max_length=255)
@@ -27,6 +28,23 @@ class JobResponse(JobBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+
+# --- Job Data (extracted/normalized, not yet saved) ---
+class JobData(BaseModel):
+    external_id: str
+    title: str
+    company: str
+    location: Optional[str] = None
+    description: Optional[str] = None
+    salary_min: Optional[int] = None
+    salary_max: Optional[int] = None
+    currency: Optional[str] = None
+    tags: List[str] = []
+    url: Optional[str] = None
+    source: str = "manual"
+    is_duplicate: bool = False
+
+
 # --- Job Import ---
 class JobImportCreate(BaseModel):
     source_type: str  # "url", "description", "csv"
@@ -40,9 +58,16 @@ class JobImportResponse(BaseModel):
     ok_count: int
     fail_count: int
     created_at: datetime
-    
+    updated_at: datetime
+
     model_config = ConfigDict(from_attributes=True)
-    
+
+class ImportResultResponse(BaseModel):
+    import_record: JobImportResponse
+    jobs: List[JobData] = []
+    errors: List[str] = []
+
+
 # --- Job Application ---
 class JobApplicationBase(BaseModel):
     status: Optional[str] = "applied"
@@ -63,7 +88,7 @@ class JobApplicationResponse(JobApplicationBase):
     score_reason: Optional[str] = None
     created_at: datetime
     updated_at: datetime
-    
+
     job: Optional[JobResponse] = None
 
     model_config = ConfigDict(from_attributes=True)

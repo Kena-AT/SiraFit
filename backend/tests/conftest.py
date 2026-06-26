@@ -118,9 +118,11 @@ def test_user(db):
     """Create a test user for function-scoped tests."""
     from app.models.user import User
     from app.core.security import get_password_hash
+    import uuid
     
+    unique_email = f"test_{uuid.uuid4().hex[:8]}@example.com"
     user = User(
-        email="test@example.com",
+        email=unique_email,
         full_name="Test User",
         hashed_password=get_password_hash("password123"),
         is_verified=True
