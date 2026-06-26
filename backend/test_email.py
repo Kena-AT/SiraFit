@@ -19,7 +19,7 @@ def test_email():
     print("=" * 60)
     print(f"SMTP Host: {os.getenv('SMTP_HOST')}")
     print(f"SMTP Port: {os.getenv('SMTP_PORT')}")
-    print(f"SMTP User: {os.getenv('SMTP_USER')}")
+    print(f"SMTP User: {os.getenv('SMTP_USER')[:3]}***")  # Mask user
     print(f"SMTP From: {os.getenv('SMTP_FROM')}")
     print(f"Sending test email to: {test_email_address}")
     print("=" * 60)
