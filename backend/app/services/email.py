@@ -21,7 +21,8 @@ class EmailService:
 
     def _create_connection(self):
         """Create SMTP connection with STARTTLS"""
-        server = smtplib.SMTP(self.host, self.port)
+        server = smtplib.SMTP(self.host, self.port, timeout=5)
+        server.ehlo()
         server.starttls()
         server.login(self.user, self.password)
         return server

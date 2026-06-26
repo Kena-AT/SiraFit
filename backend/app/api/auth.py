@@ -5,6 +5,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 import jwt
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 
 from app.core.database import get_db
 from app.core.security import verify_password, create_access_token, create_refresh_token, get_password_hash
@@ -21,6 +22,7 @@ from app.core.config import settings
 from app.services.email import email_service
 
 router = APIRouter()
+_email_executor = ThreadPoolExecutor(max_workers=2)
 
 # ─── Cookie helpers ────────────────────────────────────────────────────────────
 
@@ -28,23 +30,30 @@ COOKIE_MAX_AGE = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60  # seconds
 
 
 def _set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
-    """Write tokens into secure, HttpOnly cookies."""
+    """Write tokens into secure, HttpOnly cookies.
+    In development (non‑production) we set SameSite=None and do not require HTTPS so the cookies are sent on cross‑origin fetches.
+    In production we keep SameSite=lax and require secure cookies.
+    """
+    is_production = settings.ENVIRONMENT == "production"
+    # In dev, SameSite=None allows cross‑origin fetches; secure=False because we use plain HTTP locally.
+    # In prod, we keep SameSite=lax (or you may choose stricter) and secure=True.
+    samesite_mode = "lax" if is_production else "none"
+    secure_flag = is_production
     response.set_cookie(
         key="access_token",
         value=access_token,
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         httponly=True,
-        samesite="lax",
-        # Only set secure=True in production (requires HTTPS)
-        secure=settings.ENVIRONMENT == "production",
+        samesite=samesite_mode,
+        secure=secure_flag,
     )
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         max_age=COOKIE_MAX_AGE,
         httponly=True,
-        samesite="lax",
-        secure=settings.ENVIRONMENT == "production",
+        samesite=samesite_mode,
+        secure=secure_flag,
     )
 
 
@@ -124,9 +133,9 @@ def register_user(
     db.add(prefs)
     db.commit()
 
-    # Send verification email (best-effort — don't fail registration if email fails)
+    # Send verification email in background (best-effort — don't block registration)
     verification_token = create_access_token(user.id, token_type="verification")
-    email_service.send_verification_email(user.email, verification_token)
+    _email_executor.submit(email_service.send_verification_email, user.email, verification_token)
 
     return user
 

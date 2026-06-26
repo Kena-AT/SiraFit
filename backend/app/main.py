@@ -23,18 +23,17 @@ app = FastAPI(
     description="SiraFit API - Career automation platform",
 )
 
-# CORS
-# Enforce strict origin checking based on environment
+# Request timing middleware (added first = innermost)
+app.add_middleware(RequestTimingMiddleware)
+
+# CORS middleware (added last = outermost — must be first to handle OPTIONS preflights)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Request timing middleware
-app.add_middleware(RequestTimingMiddleware)
 
 # Include health checks
 app.include_router(health_router, prefix="/health", tags=["health"])
