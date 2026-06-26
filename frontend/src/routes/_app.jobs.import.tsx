@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, Tag } from "@/components/sirafit/bits";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { importJobs } from "@/lib/api/jobs";
 import { importHistory } from "@/lib/mock";
 
 export const Route = createFileRoute("/_app/jobs/import")({
@@ -12,6 +14,34 @@ export const Route = createFileRoute("/_app/jobs/import")({
 });
 
 function Import() {
+  const [url, setUrl] = useState("");
+  const [description, setDescription] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleImportUrl = async () => {
+    setLoading(true);
+    try {
+        await importJobs({ source_type: 'url', data: url });
+        alert("Import successful");
+    } catch (e) {
+        alert("Import failed");
+    } finally {
+        setLoading(false);
+    }
+  }
+
+  const handleImportDescription = async () => {
+    setLoading(true);
+    try {
+        await importJobs({ source_type: 'description', data: description });
+        alert("Import successful");
+    } catch (e) {
+        alert("Import failed");
+    } finally {
+        setLoading(false);
+    }
+  }
+
   return (
     <PageBody>
       <PageHeader eyebrow="Pipeline" title="Import jobs" description="Paste URLs, paste full descriptions, or upload a batch CSV." actions={<Link to="/jobs/history" className="rounded-md bg-card px-3 py-1.5 text-sm font-medium ring-1 ring-border hover:bg-muted">Import history</Link>} />
@@ -19,8 +49,8 @@ function Import() {
       <div className="grid gap-4 lg:grid-cols-3">
         <Panel title="From URL" description="Lever, Greenhouse, Ashby, or generic" className="lg:col-span-1">
           <div className="space-y-3 p-4">
-            <Input placeholder="https://jobs.lever.co/company/…" />
-            <Button className="w-full">Scrape now</Button>
+            <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://jobs.lever.co/company/…" />
+            <Button className="w-full" onClick={handleImportUrl} disabled={loading}>Scrape now</Button>
             <div className="flex flex-wrap gap-1.5 text-[11px] text-muted-foreground">
               Supported: {["Lever","Greenhouse","Ashby","Workday"].map((s) => (<Tag key={s}>{s}</Tag>))}
             </div>
@@ -28,10 +58,10 @@ function Import() {
         </Panel>
         <Panel title="From description" description="Paste any job description" className="lg:col-span-2">
           <div className="space-y-3 p-4">
-            <Textarea rows={8} placeholder="Paste the full job description here…" />
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={8} placeholder="Paste the full job description here…" />
             <div className="flex items-center justify-between">
               <div className="text-[11px] text-muted-foreground">AI will normalize and score this against your master profile.</div>
-              <Button>Analyze description</Button>
+              <Button onClick={handleImportDescription} disabled={loading}>Analyze description</Button>
             </div>
           </div>
         </Panel>

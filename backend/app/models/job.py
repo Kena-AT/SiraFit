@@ -49,6 +49,23 @@ class JobApplication(Base):
     resumes = relationship("Resume", back_populates="application", cascade="all, delete-orphan")
 
 
+class JobImport(Base):
+    __tablename__ = "job_imports"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    source = Column(String(50), nullable=False)  # url, description, csv
+    status = Column(String(20), default="pending")  # pending, processing, completed, failed
+    total_found = Column(Integer, default=0)
+    ok_count = Column(Integer, default=0)
+    fail_count = Column(Integer, default=0)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    user = relationship("User")
+
+
 class Resume(Base):
     __tablename__ = "resumes"
 

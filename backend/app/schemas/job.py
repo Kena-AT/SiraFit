@@ -27,6 +27,22 @@ class JobResponse(JobBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+# --- Job Import ---
+class JobImportCreate(BaseModel):
+    source_type: str  # "url", "description", "csv"
+    data: str  # The URL or the full description text
+
+class JobImportResponse(BaseModel):
+    id: uuid.UUID
+    source: str
+    status: str
+    total_found: int
+    ok_count: int
+    fail_count: int
+    created_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
+    
 # --- Job Application ---
 class JobApplicationBase(BaseModel):
     status: Optional[str] = "applied"
