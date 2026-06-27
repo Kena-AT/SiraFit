@@ -11,6 +11,7 @@ from app.core.database import get_db
 from app.core.security import verify_password, create_access_token, create_refresh_token, get_password_hash
 from app.models.user import User, RefreshToken
 from app.schemas.user import Token, UserCreate, UserResponse
+from app.api.users import get_current_user
 from app.schemas.auth import (
     ForgotPasswordRequest,
     ResetPasswordRequest,
@@ -18,9 +19,9 @@ from app.schemas.auth import (
     RefreshTokenRequest,
     LogoutRequest,
 )
+
 from app.core.config import settings
 from app.services.email import email_service
-
 router = APIRouter()
 _email_executor = ThreadPoolExecutor(max_workers=2)
 
@@ -137,7 +138,23 @@ def register_user(
     verification_token = create_access_token(user.id, token_type="verification")
     _email_executor.submit(email_service.send_verification_email, user.email, verification_token)
 
-    return user
+
+# ─── Resend verification email ────────────────────────────────────────────────────────
+
+@router.post("/resend-verification", status_code=200)
+def resend_verification(
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Resend a verification link to the currently logged‑in user.
+    The endpoint generates a fresh verification token and sends the email in the
+    background, returning a simple success message.
+    """
+    verification_token = create_access_token(current_user.id, token_type="verification")
+    _email_executor.submit(email_service.send_verification_email, current_user.email, verification_token)
+    return {"detail": "Verification email resent"}
+
 
 
 @router.post("/verify-email")

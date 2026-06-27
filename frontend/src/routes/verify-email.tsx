@@ -1,7 +1,9 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, useRef } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { AuthShell } from "@/components/sirafit/shell";
 import { Button } from "@/components/ui/button";
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export const Route = createFileRoute("/verify-email")({
   head: () => ({ meta: [{ title: "Verify email · SiraFit" }] }),
@@ -9,72 +11,59 @@ export const Route = createFileRoute("/verify-email")({
 });
 
 function VerifyEmailPage() {
-  const navigate = useNavigate();
-  const [code, setCode] = useState(["", "", "", "", "", ""]);
+
   const [isLoading, setIsLoading] = useState(false);
-  const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
+  const [status, setStatus] = useState<string | null>(null);
 
-  const handleChange = (index: number, value: string) => {
-    if (!/^[0-9]?$/.test(value)) return;
-    const newCode = [...code];
-    newCode[index] = value;
-    setCode(newCode);
-
-    // Auto-advance focus
-    if (value && index < 5) {
-      inputsRef.current[index + 1]?.focus();
-    }
-  };
-
-  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Backspace" && !code[index] && index > 0) {
-      inputsRef.current[index - 1]?.focus();
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (code.some((digit) => !digit)) return;
-
+  const handleResend = async () => {
     setIsLoading(true);
-    // Simulate verification delay since backend doesn't have this yet
-    setTimeout(() => {
+    setStatus(null);
+    try {
+      const response = await fetch(`${API_URL}/api/v1/auth/resend-verification`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ detail: "Failed to resend verification" }));
+        throw new Error(err.detail || "Failed to resend verification");
+      }
+      const data = await response.json();
+      setStatus(data.detail || "Verification email resent");
+    } catch (err: any) {
+      setStatus(err.message || "Error resending verification email");
+    } finally {
       setIsLoading(false);
-      navigate({ to: "/login" });
-    }, 1500);
+    }
   };
 
   return (
     <AuthShell
       title="Verify your email"
-      subtitle="We sent a 6-digit code to your inbox."
+      subtitle="We sent a verification link to your email."
       footer={
         <>
-          Didn't get it? <button className="font-medium text-foreground hover:underline">Resend</button>
+          Didn't get it?{' '}
+          <button
+            type="button"
+            className="font-medium text-foreground hover:underline"
+            onClick={handleResend}
+            disabled={isLoading}
+          >
+            {isLoading ? "Resending..." : "Resend"}
+          </button>
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="flex justify-between gap-2">
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <input
-              key={i}
-              ref={(el) => { inputsRef.current[i] = el; }}
-              type="text"
-              inputMode="numeric"
-              maxLength={1}
-              value={code[i]}
-              onChange={(e) => handleChange(i, e.target.value)}
-              onKeyDown={(e) => handleKeyDown(i, e)}
-              className="h-12 w-10 rounded-md border border-input bg-background text-center font-mono text-lg outline-hidden focus:border-[color:var(--brand)]"
-              required
-            />
-          ))}
-        </div>
-        <Button type="submit" className="w-full" disabled={isLoading || code.some((d) => !d)}>
-          {isLoading ? "Verifying..." : "Verify and continue"}
+      <div className="space-y-4">
+        {status && (
+          <div className={status.includes("error") ? "text-red-500" : "text-green-600"}>
+            {status}
+          </div>
+        )}
+        <Button asChild variant="link">
+          <Link to="/login">Back to login</Link>
         </Button>
-      </form>
+      </div>
     </AuthShell>
   );
 }
