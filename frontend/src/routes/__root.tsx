@@ -119,7 +119,10 @@ function RootShell({ children }: { children: ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body>
+      {/* suppressHydrationWarning prevents false-positive mismatch warnings caused
+          by browser extensions (e.g. VS Code DevTools) injecting attributes like
+          class="vsc-initialized" onto <body> before React hydrates. */}
+      <body suppressHydrationWarning>
         {children}
         <Scripts />
       </body>
