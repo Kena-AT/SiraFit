@@ -32,14 +32,14 @@ COOKIE_MAX_AGE = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60  # seconds
 
 def _set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
     """Write tokens into secure, HttpOnly cookies.
-    In development (non‑production) we set SameSite=None and do not require HTTPS so the cookies are sent on cross‑origin fetches.
-    In production we keep SameSite=lax and require secure cookies.
+    In production: SameSite=Lax + Secure=True (HTTPS required).
+    In development: SameSite=Lax + Secure=False (plain HTTP on localhost).
+    NOTE: SameSite=None requires Secure=True; browsers reject SameSite=None on plain HTTP,
+    so we always use Lax which works across different ports on the same localhost host.
     """
     is_production = settings.ENVIRONMENT == "production"
-    # In dev, SameSite=None allows cross‑origin fetches; secure=False because we use plain HTTP locally.
-    # In prod, we keep SameSite=lax (or you may choose stricter) and secure=True.
-    samesite_mode = "lax" if is_production else "none"
-    secure_flag = is_production
+    samesite_mode = "lax"       # Lax works in both dev and prod
+    secure_flag = is_production  # True only in production (HTTPS)
     response.set_cookie(
         key="access_token",
         value=access_token,

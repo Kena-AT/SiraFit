@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (meResponse.ok) {
         const userData = await meResponse.json();
         setUser(userData);
-        navigate({ to: '/dashboard' });
+        // Caller (login page) is responsible for navigation.
       } else {
         throw new Error('Failed to fetch user details after login');
       }
