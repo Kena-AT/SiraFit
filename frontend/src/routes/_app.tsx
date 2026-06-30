@@ -23,19 +23,15 @@ export const Route = createFileRoute("/_app")({
       
       const user = await response.json();
       
-      // Check if user is verified
-      if (!user.is_verified) {
-        throw redirect({
-          to: '/verify-email',
-        });
-      }
-      
-      // Check if user is active
+      // Check if user is active (blocked accounts cannot access)
       if (!user.is_active) {
         throw redirect({
           to: '/login',
         });
       }
+      
+      // Note: We allow unverified users to access the app
+      // They'll see a verification banner prompting them to verify
       
       return { user };
     } catch (error) {
