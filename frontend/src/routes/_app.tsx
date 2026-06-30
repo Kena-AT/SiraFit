@@ -7,21 +7,21 @@ export const Route = createFileRoute("/_app")({
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
     
     try {
-      const response = await fetch(`${API_URL}/api/v1/users/me`, {
-        credentials: 'include',
+      const user = await context.queryClient.fetchQuery({
+        queryKey: ['user', 'me'],
+        queryFn: async () => {
+          const response = await fetch(`${API_URL}/api/v1/users/me`, {
+            credentials: 'include',
+          });
+          
+          if (!response.ok) {
+            throw new Error('Not authenticated');
+          }
+          
+          return response.json();
+        },
+        staleTime: 1000 * 60 * 5, // 5 minutes
       });
-      
-      if (!response.ok) {
-        // Not authenticated, redirect to login
-        throw redirect({
-          to: '/login',
-          search: {
-            redirect: location.href,
-          },
-        });
-      }
-      
-      const user = await response.json();
       
       // Check if user is active (blocked accounts cannot access)
       if (!user.is_active) {

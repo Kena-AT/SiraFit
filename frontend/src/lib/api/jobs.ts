@@ -90,6 +90,10 @@ export const getJobs = async (params: JobSearchParams = {}) => {
   });
   
   if (!response.ok) {
+    if (response.status === 401) {
+      window.location.href = '/login';
+      throw new Error('Session expired. Please log in again.');
+    }
     throw new Error('Failed to fetch jobs');
   }
   return response.json();
