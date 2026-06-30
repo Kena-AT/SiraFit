@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel } from "@/components/sirafit/bits";
-import { skillMatrix } from "@/lib/mock";
 
 export const Route = createFileRoute("/_app/analytics/skills")({
   head: () => ({ meta: [{ title: "Skill insights · SiraFit" }] }),

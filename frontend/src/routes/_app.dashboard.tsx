@@ -1,12 +1,44 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageBody } from "@/components/sirafit/shell";
-import { PageHeader, Panel, Stat, ScorePill, StatusPill, AgentDot, Tag } from "@/components/sirafit/bits";
-import { applicationsByStatus, eventLog, followUps, getJob, jobs } from "@/lib/mock";
+import { PageHeader, Panel, Stat, ScorePill, StatusPill, AgentDot, Tag, EmptyState } from "@/components/sirafit/bits";
 
 export const Route = createFileRoute("/_app/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard · SiraFit" }] }),
   component: Dashboard,
 });
+
+// Mock data - will be replaced with real API calls in Sprint 4
+const jobs = [
+  { id: "1", company: "Acme Corp", role: "Senior Full Stack Engineer", match: 92, scrapedAt: "2h ago" },
+  { id: "2", company: "TechStart", role: "Backend Developer", match: 88, scrapedAt: "5h ago" },
+  { id: "3", company: "DataCo", role: "Python Engineer", match: 85, scrapedAt: "1d ago" },
+  { id: "4", company: "CloudSys", role: "DevOps Engineer", match: 82, scrapedAt: "2d ago" },
+  { id: "5", company: "WebScale", role: "React Developer", match: 78, scrapedAt: "3d ago" },
+];
+
+const applicationsByStatus = {
+  Saved: [1, 2, 3],
+  Applied: [4, 5, 6, 7],
+  Screening: [8, 9],
+  Interview: [10],
+  Offer: [],
+};
+
+const eventLog = [
+  { t: "14:23", kind: "import", e: "Imported 3 jobs from Greenhouse" },
+  { t: "13:05", kind: "match", e: "Scored 12 new jobs against profile" },
+  { t: "12:41", kind: "apply", e: "Applied to Senior Engineer at Acme" },
+  { t: "11:30", kind: "update", e: "Profile updated with new skills" },
+];
+
+const followUps = [
+  { id: "1", what: "Send thank you email", who: "TechStart - Jane Doe", when: "Today" },
+  { id: "2", what: "Prepare for technical round", who: "Acme Corp - John Smith", when: "Tomorrow" },
+  { id: "3", what: "Follow up on application", who: "DataCo - HR Team", when: "Friday" },
+  { id: "4", what: "Review take-home assignment", who: "CloudSys", when: "Next week" },
+];
+
+const getJob = (id: string) => ({ id });
 
 function Dashboard() {
   const top = [...jobs].sort((a, b) => b.match - a.match).slice(0, 5);

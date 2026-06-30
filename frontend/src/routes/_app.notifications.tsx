@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, StatusPill } from "@/components/sirafit/bits";
-import { notifications } from "@/lib/mock";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_app/notifications")({

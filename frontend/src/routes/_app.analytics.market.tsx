@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel } from "@/components/sirafit/bits";
-import { marketRoles } from "@/lib/mock";
 
 export const Route = createFileRoute("/_app/analytics/market")({
   head: () => ({ meta: [{ title: "Market insights · SiraFit" }] }),

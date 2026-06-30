@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, ScorePill, StatusPill } from "@/components/sirafit/bits";
-import { applicationsByStatus, getJob } from "@/lib/mock";
 
 export const Route = createFileRoute("/_app/applications/")({
   head: () => ({ meta: [{ title: "Applications board · SiraFit" }] }),

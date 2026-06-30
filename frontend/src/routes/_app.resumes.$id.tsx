@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, ScorePill } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
-import { profile, resumeVersions } from "@/lib/mock";
 
 export const Route = createFileRoute("/_app/resumes/$id")({
   head: () => ({ meta: [{ title: "Resume preview · SiraFit" }] }),

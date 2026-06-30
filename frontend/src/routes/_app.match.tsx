@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, ScoreMeter, Tag } from "@/components/sirafit/bits";
-import { jobs } from "@/lib/mock";
 
 export const Route = createFileRoute("/_app/match")({
   head: () => ({ meta: [{ title: "Match analysis · SiraFit" }] }),

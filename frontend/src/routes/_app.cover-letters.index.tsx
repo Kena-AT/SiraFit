@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, Tag } from "@/components/sirafit/bits";
-import { coverLetters } from "@/lib/mock";
 
 export const Route = createFileRoute("/_app/cover-letters/")({
   head: () => ({ meta: [{ title: "Cover letters · SiraFit" }] }),

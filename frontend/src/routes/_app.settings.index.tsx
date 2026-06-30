@@ -3,7 +3,6 @@ import { Panel } from "@/components/sirafit/bits";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { profile } from "@/lib/mock";
 
 export const Route = createFileRoute("/_app/settings/")({
   head: () => ({ meta: [{ title: "Account settings · SiraFit" }] }),

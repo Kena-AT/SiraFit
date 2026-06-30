@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, ScoreMeter, Tag } from "@/components/sirafit/bits";
-import { jobs } from "@/lib/mock";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_app/ranking")({
