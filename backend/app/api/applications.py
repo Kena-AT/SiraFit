@@ -1,5 +1,5 @@
-from typing import List, Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import List, Any, Optional
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
 import uuid
 
@@ -9,7 +9,7 @@ from app.models.user import User
 from app.models.job import JobApplication, Job, AuditLog
 from app.models.profile import Profile
 from app.schemas.job import JobApplicationCreate, JobApplicationResponse, JobApplicationUpdate
-from app.services.scoring import calculate_match_score
+from app.services.scoring import analyze_match_score
 
 router = APIRouter()
 
@@ -31,11 +31,14 @@ def get_applications(
     return applications
 
 @router.post("/", response_model=JobApplicationResponse)
-def create_application(
+async def create_application(
     *,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     app_in: JobApplicationCreate,
+    x_ai_api_key: Optional[str] = Header(None, alias="X-AI-API-Key"),
+    x_ai_provider: Optional[str] = Header(None, alias="X-AI-Provider"),
+    x_ai_model: Optional[str] = Header(None, alias="X-AI-Model"),
 ) -> Any:
     """Create a new job application and calculate initial score."""
     job = db.query(Job).filter(Job.id == app_in.job_id).first()
@@ -57,7 +60,13 @@ def create_application(
     # Calculate score
     profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
     if profile:
-        score, reason = calculate_match_score(profile, job)
+        score, reason = await analyze_match_score(
+            profile, 
+            job, 
+            req_api_key=x_ai_api_key, 
+            provider=x_ai_provider, 
+            model=x_ai_model
+        )
         application.score = score
         application.score_reason = reason
 

@@ -7,6 +7,8 @@ from app.api.router import api_router
 from app.core.health import router as health_router
 from app.core.logging import configure_logging
 from app.core.middleware import RequestTimingMiddleware
+from app.core.rate_limiting import add_rate_limit_headers
+from starlette.middleware.base import BaseHTTPMiddleware
 
 # Configure structured logging
 configure_logging()
@@ -17,6 +19,21 @@ logger = structlog.get_logger("app")
 from app.core.database import Base, engine
 Base.metadata.create_all(bind=engine)
 
+
+class RateLimitHeaderMiddleware(BaseHTTPMiddleware):
+    """Middleware to add rate limit headers to all responses."""
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        
+        # Add rate limit headers if they were set during request processing
+        if hasattr(request.state, "rate_limit_remaining"):
+            response.headers["X-RateLimit-Limit"] = str(request.state.rate_limit_limit)
+            response.headers["X-RateLimit-Remaining"] = str(request.state.rate_limit_remaining)
+            response.headers["X-RateLimit-Reset"] = str(request.state.rate_limit_reset)
+        
+        return response
+
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
@@ -25,6 +42,9 @@ app = FastAPI(
 
 # Request timing middleware (added first = innermost)
 app.add_middleware(RequestTimingMiddleware)
+
+# Rate limit header middleware
+app.add_middleware(RateLimitHeaderMiddleware)
 
 # CORS middleware (added last = outermost — must be first to handle OPTIONS preflights)
 app.add_middleware(

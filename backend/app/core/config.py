@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     # Environment
     ENVIRONMENT: str = "development"
 
+    # AI Integration
+    GEMINI_API_KEY: str | None = None
+    OPENROUTER_API_KEY: str | None = None
     class Config:
         env_file = str(Path(__file__).resolve().parent.parent.parent.parent / ".env")
         case_sensitive = True

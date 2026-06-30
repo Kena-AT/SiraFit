@@ -29,9 +29,22 @@ function Landing() {
           <p className="mx-auto mt-5 max-w-2xl text-pretty text-base text-muted-foreground md:text-lg">
             SiraFit ingests jobs from Lever, Greenhouse, and Ashby, scores them deterministically, and tailors structured resumes — all from a local agent you control, with your own Gemini key.
           </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Link to="/dashboard" className="rounded-md bg-foreground px-4 py-2.5 text-sm font-medium text-background ring-1 ring-foreground transition-colors hover:bg-foreground/90">Launch the dashboard</Link>
-            <Link to="/register" className="rounded-md bg-card px-4 py-2.5 text-sm font-medium text-foreground ring-1 ring-border transition-colors hover:bg-muted">Create an account</Link>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+            <Link 
+              to="/register" 
+              className="group inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-6 py-3 text-sm font-semibold text-background shadow-lg ring-1 ring-foreground transition-all duration-200 hover:bg-foreground/90 hover:shadow-xl hover:scale-105"
+            >
+              Get Started
+              <svg className="h-4 w-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </Link>
+            <Link 
+              to="/login" 
+              className="inline-flex items-center justify-center rounded-lg bg-card px-6 py-3 text-sm font-semibold text-foreground ring-1 ring-border transition-all duration-200 hover:bg-muted hover:ring-2"
+            >
+              Sign In
+            </Link>
           </div>
           <div className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-4">
             {[["842","Jobs ingested / day"],["12","ATS sources polled"],["~3.6%","Sector interview rate"],["8.4%","SiraFit user median"]].map(([v,l]) => (
@@ -97,7 +110,15 @@ function Landing() {
           </div>
           <div className="flex items-center gap-3">
             <AgentDot />
-            <Link to="/dashboard" className="rounded-md bg-foreground px-4 py-2.5 text-sm font-medium text-background ring-1 ring-foreground hover:bg-foreground/90">Open dashboard</Link>
+            <Link 
+              to="/register" 
+              className="group inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-6 py-3 text-sm font-semibold text-background shadow-lg ring-1 ring-foreground transition-all duration-200 hover:bg-foreground/90 hover:shadow-xl hover:scale-105"
+            >
+              Get Started
+              <svg className="h-4 w-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </Link>
           </div>
         </div>
       </section>

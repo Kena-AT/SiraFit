@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from app.core.database import get_db
 from app.core.security import verify_password, create_access_token, create_refresh_token, get_password_hash
+from app.core.rate_limiting import check_rate_limit
 from app.models.user import User, RefreshToken
 from app.schemas.user import Token, UserCreate, UserResponse
 from app.api.users import get_current_user
@@ -68,11 +69,15 @@ def _clear_auth_cookies(response: Response) -> None:
 
 @router.post("/login", response_model=Token)
 def login_access_token(
+    request: Request,
     response: Response,
     db: Session = Depends(get_db),
     form_data: OAuth2PasswordRequestForm = Depends(),
 ) -> Any:
     """OAuth2 compatible token login, get an access token for future requests."""
+    # Apply rate limit: 5 login attempts per 5 minutes
+    check_rate_limit(request, "auth_login")
+    
     user = db.query(User).filter(User.email == form_data.username).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
@@ -107,11 +112,15 @@ def login_access_token(
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register_user(
+    request: Request,
     *,
     db: Session = Depends(get_db),
     user_in: UserCreate,
 ) -> Any:
     """Register a new user."""
+    # Apply rate limit: 3 registrations per hour
+    check_rate_limit(request, "auth_register")
+    
     user = db.query(User).filter(User.email == user_in.email).first()
     if user:
         raise HTTPException(
@@ -159,11 +168,15 @@ def resend_verification(
 
 @router.post("/verify-email")
 def verify_email(
+    request: Request,
     *,
     db: Session = Depends(get_db),
     body: VerifyEmailRequest,
 ) -> Any:
     """Verify user email with token."""
+    # Apply rate limit: 5 verification attempts per 5 minutes
+    check_rate_limit(request, "auth_verify_email")
+    
     try:
         payload = jwt.decode(body.token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
 
@@ -201,11 +214,15 @@ def verify_email(
 
 @router.post("/forgot-password")
 def forgot_password(
+    request: Request,
     *,
     db: Session = Depends(get_db),
     body: ForgotPasswordRequest,
 ) -> Any:
     """Request password reset — always returns 200 to avoid email enumeration."""
+    # Apply rate limit: 3 password reset requests per hour
+    check_rate_limit(request, "auth_forgot_password")
+    
     user = db.query(User).filter(User.email == body.email).first()
     if user:
         reset_token = create_access_token(user.id, token_type="reset")
@@ -264,6 +281,9 @@ def refresh_token(
     body: Optional[RefreshTokenRequest] = None,
 ) -> Any:
     """Refresh access token using refresh token (cookie or body)."""
+    # Apply rate limit: 10 refresh attempts per minute
+    check_rate_limit(request, "auth_refresh")
+    
     # Accept token from cookie or request body
     token_str = request.cookies.get("refresh_token") or (body.refresh_token if body else None)
 
