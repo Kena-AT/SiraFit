@@ -61,11 +61,34 @@ export const getImportDetail = async (importId: string): Promise<ImportResult> =
   return response.json();
 };
 
-export const getJobs = async (skip = 0, limit = 100) => {
-  const response = await fetch(`${API_BASE_URL}/api/v1/jobs?skip=${skip}&limit=${limit}`, {
+export interface JobSearchParams {
+  skip?: number;
+  limit?: number;
+  search?: string;
+  company?: string;
+  location?: string;
+  source?: string;
+  tags?: string;
+  min_salary?: number;
+  max_salary?: number;
+  sort_by?: string;
+  sort_order?: 'asc' | 'desc';
+}
+
+export const getJobs = async (params: JobSearchParams = {}) => {
+  const queryParams = new URLSearchParams();
+  
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      queryParams.append(key, value.toString());
+    }
+  });
+  
+  const response = await fetch(`${API_BASE_URL}/api/v1/jobs?${queryParams.toString()}`, {
     credentials: 'include',
     headers: { ...getAIHeaders() }
   });
+  
   if (!response.ok) {
     throw new Error('Failed to fetch jobs');
   }

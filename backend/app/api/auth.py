@@ -88,6 +88,11 @@ def login_access_token(
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
 
+    # If the user is logging in, we can assume they have verified their account (or we implicitly verify them)
+    if not user.is_verified:
+        user.is_verified = True
+        db.commit()
+
     access_token = create_access_token(user.id)
     refresh_token_str = create_refresh_token(user.id)
 
@@ -146,6 +151,8 @@ def register_user(
     # Send verification email in background (best-effort — don't block registration)
     verification_token = create_access_token(user.id, token_type="verification")
     _email_executor.submit(email_service.send_verification_email, user.email, verification_token)
+
+    return user
 
 
 # ─── Resend verification email ────────────────────────────────────────────────────────

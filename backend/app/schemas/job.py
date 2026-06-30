@@ -28,6 +28,13 @@ class JobResponse(JobBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+class JobListResponse(BaseModel):
+    """Paginated list of jobs with metadata."""
+    jobs: List[JobResponse]
+    total: int
+    skip: int
+    limit: int
+
 
 # --- Job Data (extracted/normalized, not yet saved) ---
 class JobData(BaseModel):

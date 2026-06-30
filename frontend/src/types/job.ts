@@ -13,6 +13,30 @@ export interface JobData {
   is_duplicate: boolean;
 }
 
+export interface Job {
+  id: string;
+  external_id: string;
+  title: string;
+  company: string;
+  location?: string;
+  description?: string;
+  salary_min?: number;
+  salary_max?: number;
+  currency?: string;
+  tags: string[];
+  url?: string;
+  source: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JobListResponse {
+  jobs: Job[];
+  total: number;
+  skip: number;
+  limit: number;
+}
+
 export interface JobImportRecord {
   id: string;
   source: string;

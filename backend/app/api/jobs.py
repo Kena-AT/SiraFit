@@ -1,6 +1,7 @@
-from typing import List, Any
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from typing import List, Any, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import or_, and_, func
 import uuid
 
 from app.core.database import get_db
@@ -8,7 +9,7 @@ from app.api.users import get_current_user
 from app.models.user import User
 from app.models.job import Job, JobImport
 from app.schemas.job import (
-    JobCreate, JobResponse, JobImportCreate,
+    JobResponse, JobImportCreate, JobListResponse,
     JobImportResponse, ImportResultResponse, JobData,
 )
 from app.services.job_import import process_import
@@ -16,15 +17,87 @@ from app.services.job_import import process_import
 router = APIRouter()
 
 
-@router.get("/", response_model=List[JobResponse])
+@router.get("/", response_model=JobListResponse)
 def list_jobs(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=500),
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=500, description="Maximum number of records to return"),
+    search: Optional[str] = Query(None, description="Search in title, company, description"),
+    company: Optional[str] = Query(None, description="Filter by company name"),
+    location: Optional[str] = Query(None, description="Filter by location"),
+    source: Optional[str] = Query(None, description="Filter by source (linkedin, indeed, etc)"),
+    tags: Optional[str] = Query(None, description="Comma-separated list of tags to filter"),
+    min_salary: Optional[int] = Query(None, ge=0, description="Minimum salary"),
+    max_salary: Optional[int] = Query(None, ge=0, description="Maximum salary"),
+    sort_by: Optional[str] = Query("created_at", description="Field to sort by"),
+    sort_order: Optional[str] = Query("desc", description="Sort order: asc or desc"),
 ) -> Any:
-    """List all jobs."""
-    return db.query(Job).offset(skip).limit(limit).all()
+    """List jobs with search, filtering, sorting, and pagination."""
+    query = db.query(Job)
+    
+    # Search
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            or_(
+                Job.title.ilike(search_term),
+                Job.company.ilike(search_term),
+                Job.description.ilike(search_term),
+                Job.location.ilike(search_term),
+            )
+        )
+    
+    # Filters
+    if company:
+        query = query.filter(Job.company.ilike(f"%{company}%"))
+    
+    if location:
+        query = query.filter(Job.location.ilike(f"%{location}%"))
+    
+    if source:
+        query = query.filter(Job.source == source)
+    
+    if tags:
+        tag_list = [tag.strip() for tag in tags.split(",")]
+        for tag in tag_list:
+            query = query.filter(Job.tags.contains([tag]))
+    
+    if min_salary is not None:
+        query = query.filter(
+            or_(
+                Job.salary_min >= min_salary,
+                Job.salary_max >= min_salary,
+            )
+        )
+    
+    if max_salary is not None:
+        query = query.filter(
+            or_(
+                Job.salary_max <= max_salary,
+                Job.salary_min <= max_salary,
+            )
+        )
+    
+    # Get total count before pagination
+    total = query.count()
+    
+    # Sorting
+    sort_column = getattr(Job, sort_by, Job.created_at)
+    if sort_order == "asc":
+        query = query.order_by(sort_column.asc())
+    else:
+        query = query.order_by(sort_column.desc())
+    
+    # Pagination
+    jobs = query.offset(skip).limit(limit).all()
+    
+    return JobListResponse(
+        jobs=jobs,
+        total=total,
+        skip=skip,
+        limit=limit,
+    )
 
 
 @router.get("/{job_id}", response_model=JobResponse)
