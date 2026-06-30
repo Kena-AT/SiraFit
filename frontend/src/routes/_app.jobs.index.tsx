@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, ScoreMeter, StatusPill, Tag } from "@/components/sirafit/bits";
 import { Input } from "@/components/ui/input";
+import { jobs } from "@/lib/mock-jobs";
 
 export const Route = createFileRoute("/_app/jobs/")({
   head: () => ({ meta: [{ title: "Jobs Explorer · SiraFit" }] }),
