@@ -3,9 +3,10 @@ import { useState, useEffect, useRef } from "react";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, Tag, EmptyState } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
-import { getJob, triggerAnalysis, getJobAnalysis } from "@/lib/api/jobs";
+import { getJob, triggerAnalysis, getJobAnalysis, getMatchScore } from "@/lib/api/jobs";
 import { AnalysisInsights, AnalysisSkeleton } from "@/components/sirafit/analysis-insights";
-import type { Job, JobAnalysis } from "@/types/job";
+import { MatchScoreCard } from "@/components/sirafit/match-score-card";
+import type { Job, JobAnalysis, JobMatchScore } from "@/types/job";
 
 export const Route = createFileRoute("/_app/jobs/$jobId")({
   head: () => ({ meta: [{ title: "Job details · SiraFit" }] }),
@@ -27,6 +28,10 @@ function JobDetails() {
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Match score state
+  const [matchScore, setMatchScore] = useState<JobMatchScore | null>(null);
+  const [matchScoreLoading, setMatchScoreLoading] = useState(false);
+
   // Load job
   useEffect(() => {
     const fetchJob = async () => {
@@ -44,12 +49,18 @@ function JobDetails() {
     fetchJob();
   }, [jobId]);
 
-  // Load existing analysis on mount (no-op if none exists)
+  // Load existing analysis and match score on mount
   useEffect(() => {
     if (!jobId) return;
     getJobAnalysis(jobId)
       .then((data) => { if (data) setAnalysis(data); })
       .catch(() => {});
+    
+    setMatchScoreLoading(true);
+    getMatchScore(jobId)
+      .then((data) => setMatchScore(data))
+      .catch(() => {})
+      .finally(() => setMatchScoreLoading(false));
   }, [jobId]);
 
   // Polling helper
@@ -259,6 +270,19 @@ function JobDetails() {
 
         {/* Sidebar */}
         <div className="space-y-4">
+          {/* Match Score panel */}
+          <Panel title="Match Score">
+            {matchScoreLoading ? (
+              <div className="p-5 text-sm text-muted-foreground">Loading...</div>
+            ) : matchScore ? (
+              <div className="p-5">
+                <MatchScoreCard score={matchScore} />
+              </div>
+            ) : (
+              <div className="p-5 text-sm text-muted-foreground">No match score available.</div>
+            )}
+          </Panel>
+
           {/* AI Analysis panel */}
           <Panel
             title="AI Analysis"

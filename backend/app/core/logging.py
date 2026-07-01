@@ -19,7 +19,7 @@ def add_request_id(logger, method_name, event_dict):
 def add_timestamp(logger, method_name, event_dict):
     """Inject an ISO-8601 timestamp into every log entry."""
     if "timestamp" not in event_dict:
-        event_dict["timestamp"] = dt.datetime.utcnow().isoformat() + "Z"
+        event_dict["timestamp"] = dt.datetime.now(dt.timezone.utc).isoformat()
     return event_dict
 
 

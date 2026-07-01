@@ -1,8 +1,8 @@
 {
   "buildCommand": "npm run build",
-  "outputDirectory": ".next",
-  "framework": "nextjs",
+  "outputDirectory": "dist",
+  "framework": null,
   "env": {
-    "NEXT_PUBLIC_API_URL": "https://sirafit-backend.onrender.com"
+    "VITE_API_URL": "https://sirafit-backend.onrender.com"
   }
 }

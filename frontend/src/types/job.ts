@@ -75,3 +75,14 @@ export interface JobAnalysis {
   updated_at: string | null;
 }
 
+export interface JobMatchScore {
+  id: string;
+  job_id: string;
+  user_id: string;
+  score: number;
+  breakdown: Record<string, number>;
+  explanation: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+

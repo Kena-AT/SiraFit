@@ -33,6 +33,21 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Navigate to login using the TanStack Router instance.
+ * Lazy-imported to avoid circular deps — the router is created in router.tsx.
+ */
+async function navigateToLogin() {
+  try {
+    const { getRouter } = await import('@/router');
+    const router = getRouter();
+    router.navigate({ to: '/login' });
+  } catch {
+    // Fallback if router is unavailable (e.g. during SSR or before mount)
+    window.location.href = '/login';
+  }
+}
+
 export async function apiFetch(
   path: string,
   init: RequestInit = {},
@@ -59,7 +74,7 @@ export async function apiFetch(
       response = await fetch(url, mergedInit);
     }
     if (response.status === 401) {
-      window.location.href = '/login';
+      navigateToLogin();
       throw new ApiError(401, 'Session expired. Please log in again.');
     }
   }

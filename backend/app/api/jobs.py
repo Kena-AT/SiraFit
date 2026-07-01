@@ -8,13 +8,16 @@ from app.core.database import get_db
 from app.api.users import get_current_user
 from app.models.user import User
 from app.models.job import Job, JobImport, JobAnalysis
+from app.models.score import JobMatchScore
+from app.models.profile import Profile
 from app.schemas.job import (
     JobResponse, JobImportCreate, JobListResponse,
     JobImportResponse, ImportResultResponse, JobData,
-    JobAnalysisResponse, AnalysisRequest,
+    JobAnalysisResponse, AnalysisRequest, JobMatchScoreResponse,
 )
 from app.services.job_import import process_import
 from app.services.job_analysis import run_job_analysis
+from app.services.matching_engine import calculate_match_score
 
 router = APIRouter()
 
@@ -91,6 +94,51 @@ def get_job(
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     return job
+
+
+@router.get("/{job_id}/match-score", response_model=JobMatchScoreResponse)
+def get_match_score(
+    job_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """Calculate and get match score for a job."""
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found. Create a profile first.")
+
+    # Calculate score
+    score_data = calculate_match_score(profile, job)
+    
+    # Save/Update score
+    existing_score = db.query(JobMatchScore).filter(
+        JobMatchScore.user_id == current_user.id,
+        JobMatchScore.job_id == job_id
+    ).first()
+    
+    if existing_score:
+        existing_score.score = score_data["score"]
+        existing_score.breakdown = score_data["breakdown"]
+        existing_score.explanation = score_data["explanation"]
+        db.commit()
+        db.refresh(existing_score)
+        return existing_score
+    else:
+        new_score = JobMatchScore(
+            user_id=current_user.id,
+            job_id=job_id,
+            score=score_data["score"],
+            breakdown=score_data["breakdown"],
+            explanation=score_data["explanation"]
+        )
+        db.add(new_score)
+        db.commit()
+        db.refresh(new_score)
+        return new_score
 
 
 # ---------------------------------------------------------------------------

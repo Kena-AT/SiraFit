@@ -88,3 +88,11 @@ export const getJobAnalysis = async (jobId: string) => {
   return response.json();
 };
 
+export const getMatchScore = async (jobId: string) => {
+  const response = await apiFetch(`/api/v1/jobs/${jobId}/match-score`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch match score');
+  }
+  return response.json();
+};
+

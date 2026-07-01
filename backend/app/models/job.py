@@ -1,9 +1,12 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text, Integer, JSON, Enum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.core.database import Base
+
+def _utcnow():
+    return datetime.now(timezone.utc)
 
 
 class Job(Base):
@@ -22,8 +25,8 @@ class Job(Base):
     url = Column(Text, nullable=True)
     source = Column(String(50), default="manual")  # manual, linkedin, indeed, etc.
     
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=_utcnow)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
     
     applications = relationship("JobApplication", back_populates="job", cascade="all, delete-orphan")
 
@@ -41,8 +44,8 @@ class JobApplication(Base):
     score = Column(Integer, nullable=True)  # AI-generated match score (0-100)
     score_reason = Column(Text, nullable=True)  # AI explanation for score
     
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=_utcnow)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
     
     user = relationship("User", back_populates="applications")
     job = relationship("Job", back_populates="applications")
@@ -68,8 +71,8 @@ class JobAnalysis(Base):
     analysis_version = Column(String(20), nullable=True, default="v1")
     status = Column(String(20), nullable=False, default="pending")  # pending | processing | done | failed
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=_utcnow)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
     job = relationship("Job", backref="analysis")
 
@@ -87,8 +90,8 @@ class JobImport(Base):
     ok_count = Column(Integer, default=0)
     fail_count = Column(Integer, default=0)
     
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=_utcnow)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
     
     user = relationship("User")
 
@@ -105,8 +108,8 @@ class Resume(Base):
     pdf_url = Column(Text, nullable=True)  # URL to generated PDF
     is_primary = Column(Boolean, default=False)
     
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=_utcnow)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
     
     user = relationship("User", back_populates="resumes")
     application = relationship("JobApplication", back_populates="resumes")
@@ -124,6 +127,6 @@ class AuditLog(Base):
     ip_address = Column(String(45), nullable=True)  # IPv4 or IPv6
     user_agent = Column(String(500), nullable=True)
     
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
+    created_at = Column(DateTime, default=_utcnow)
+
     user = relationship("User", back_populates="audit_logs")

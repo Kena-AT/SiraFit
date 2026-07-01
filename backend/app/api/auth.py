@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from fastapi.security import OAuth2PasswordRequestForm
@@ -88,10 +88,11 @@ def login_access_token(
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
 
-    # If the user is logging in, we can assume they have verified their account (or we implicitly verify them)
     if not user.is_verified:
-        user.is_verified = True
-        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email not verified. Please check your inbox or request a new verification link.",
+        )
 
     access_token = create_access_token(user.id)
     refresh_token_str = create_refresh_token(user.id)
@@ -100,7 +101,7 @@ def login_access_token(
     db_token = RefreshToken(
         user_id=user.id,
         token=refresh_token_str,
-        expires_at=datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+        expires_at=datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
     )
     db.add(db_token)
     db.commit()
@@ -324,13 +325,19 @@ def refresh_token(
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
 
-    # Revoke old token
-    old_token = db.query(RefreshToken).filter(
+    # Check that the refresh token has not been revoked
+    stored_token = db.query(RefreshToken).filter(
         RefreshToken.token == token_str,
-        RefreshToken.is_revoked == False,
+        RefreshToken.user_id == user_uuid,
     ).first()
-    if old_token:
-        old_token.is_revoked = True
+    if not stored_token or stored_token.is_revoked:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token has been revoked or is invalid",
+        )
+
+    # Revoke old token (rotation)
+    stored_token.is_revoked = True
 
     new_access_token = create_access_token(user.id)
     new_refresh_token = create_refresh_token(user.id)
@@ -339,7 +346,7 @@ def refresh_token(
     db_token = RefreshToken(
         user_id=user.id,
         token=new_refresh_token,
-        expires_at=datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+        expires_at=datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
     )
     db.add(db_token)
     db.commit()

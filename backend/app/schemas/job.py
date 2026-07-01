@@ -118,6 +118,19 @@ class JobAnalysisResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class JobMatchScoreResponse(BaseModel):
+    id: uuid.UUID
+    job_id: uuid.UUID
+    user_id: uuid.UUID
+    score: int
+    breakdown: Dict[str, Any]
+    explanation: Optional[str] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class AnalysisRequest(BaseModel):
     force_refresh: bool = False
 
