@@ -99,3 +99,15 @@ class JobApplicationResponse(JobApplicationBase):
     job: Optional[JobResponse] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+class JobAnalysisResponse(BaseModel):
+    id: uuid.UUID
+    job_id: uuid.UUID
+    score: int
+    summary: str
+    pros: List[str]
+    cons: List[str]
+    skills_gap: List[str]
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

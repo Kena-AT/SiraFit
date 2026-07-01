@@ -49,6 +49,23 @@ class JobApplication(Base):
     resumes = relationship("Resume", back_populates="application", cascade="all, delete-orphan")
 
 
+class JobAnalysis(Base):
+    __tablename__ = "job_analysis"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    job_id = Column(UUID(as_uuid=True), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, unique=True)
+    
+    score = Column(Integer, nullable=False) # AI match score 0-100
+    summary = Column(Text, nullable=False)
+    pros = Column(JSON, nullable=False)
+    cons = Column(JSON, nullable=False)
+    skills_gap = Column(JSON, nullable=False)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    job = relationship("Job", backref="analysis")
+
+
 class JobImport(Base):
     __tablename__ = "job_imports"
 

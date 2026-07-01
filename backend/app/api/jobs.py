@@ -7,12 +7,13 @@ import uuid
 from app.core.database import get_db
 from app.api.users import get_current_user
 from app.models.user import User
-from app.models.job import Job, JobImport
+from app.models.job import Job, JobImport, JobAnalysis
 from app.schemas.job import (
     JobResponse, JobImportCreate, JobListResponse,
-    JobImportResponse, ImportResultResponse, JobData,
+    JobImportResponse, ImportResultResponse, JobData, JobAnalysisResponse,
 )
 from app.services.job_import import process_import
+from app.services.job_analysis import analyze_job
 
 router = APIRouter()
 
@@ -100,17 +101,50 @@ def list_jobs(
     )
 
 
-@router.get("/{job_id}", response_model=JobResponse)
-def get_job(
+
+@router.post("/{job_id}/analyze", response_model=JobAnalysisResponse)
+def analyze_job_endpoint(
     job_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Any:
-    """Get a single job by ID."""
+    """Trigger AI analysis for a job."""
     job = db.query(Job).filter(Job.id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    return job
+    
+    # Check if analysis already exists
+    existing = db.query(JobAnalysis).filter(JobAnalysis.job_id == job_id).first()
+    if existing:
+        return existing
+        
+    job_dict = {
+        "title": job.title,
+        "company": job.company,
+        "description": job.description
+    }
+    analysis_result = analyze_job(job_dict)
+    
+    new_analysis = JobAnalysis(
+        job_id=job_id,
+        **analysis_result
+    )
+    db.add(new_analysis)
+    db.commit()
+    db.refresh(new_analysis)
+    return new_analysis
+
+@router.get("/{job_id}/analysis", response_model=JobAnalysisResponse)
+def get_job_analysis_endpoint(
+    job_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """Get AI analysis for a job."""
+    analysis = db.query(JobAnalysis).filter(JobAnalysis.job_id == job_id).first()
+    if not analysis:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    return analysis
 
 
 @router.post("/import", response_model=ImportResultResponse)
@@ -163,8 +197,47 @@ def get_import_detail(
     if import_record.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    return ImportResultResponse(
-        import_record=JobImportResponse.model_validate(import_record),
-        jobs=[],
-        errors=[],
+
+@router.post("/{job_id}/analyze", response_model=JobAnalysisResponse)
+def analyze_job_endpoint(
+    job_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """Trigger AI analysis for a job."""
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    # Check if analysis already exists
+    existing = db.query(JobAnalysis).filter(JobAnalysis.job_id == job_id).first()
+    if existing:
+        return existing
+        
+    job_dict = {
+        "title": job.title,
+        "company": job.company,
+        "description": job.description
+    }
+    analysis_result = analyze_job(job_dict)
+    
+    new_analysis = JobAnalysis(
+        job_id=job_id,
+        **analysis_result
     )
+    db.add(new_analysis)
+    db.commit()
+    db.refresh(new_analysis)
+    return new_analysis
+
+@router.get("/{job_id}/analysis", response_model=JobAnalysisResponse)
+def get_job_analysis_endpoint(
+    job_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """Get AI analysis for a job."""
+    analysis = db.query(JobAnalysis).filter(JobAnalysis.job_id == job_id).first()
+    if not analysis:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    return analysis
