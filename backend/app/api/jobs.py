@@ -14,6 +14,7 @@ from app.schemas.job import (
     JobResponse, JobImportCreate, JobListResponse,
     JobImportResponse, ImportResultResponse, JobData,
     JobAnalysisResponse, AnalysisRequest, JobMatchScoreResponse,
+    RankedJobResponse, RankedJobListResponse,
 )
 from app.services.job_import import process_import
 from app.services.job_analysis import run_job_analysis
@@ -205,6 +206,29 @@ async def trigger_analysis(
     )
 
     return stub
+
+
+@router.get("/ranked", response_model=RankedJobListResponse)
+def list_ranked_jobs(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+) -> Any:
+    """List all jobs with their match scores, ranked by score descending."""
+    jobs = db.query(Job).order_by(Job.created_at.desc()).offset(skip).limit(limit).all()
+    items = []
+    for job in jobs:
+        score_record = db.query(JobMatchScore).filter(
+            JobMatchScore.user_id == current_user.id,
+            JobMatchScore.job_id == job.id
+        ).first()
+        items.append(RankedJobResponse(
+            job=JobResponse.model_validate(job),
+            match_score=JobMatchScoreResponse.model_validate(score_record) if score_record else None,
+        ))
+    items.sort(key=lambda r: (r.match_score.score if r.match_score else 0), reverse=True)
+    return RankedJobListResponse(jobs=items, total=len(items))
 
 
 @router.get("/{job_id}/analysis", response_model=JobAnalysisResponse)

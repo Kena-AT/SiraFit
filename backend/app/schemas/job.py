@@ -131,6 +131,16 @@ class JobMatchScoreResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class RankedJobResponse(BaseModel):
+    job: JobResponse
+    match_score: Optional[JobMatchScoreResponse] = None
+
+
+class RankedJobListResponse(BaseModel):
+    jobs: List[RankedJobResponse]
+    total: int
+
+
 class AnalysisRequest(BaseModel):
     force_refresh: bool = False
 
