@@ -1,7 +1,7 @@
 from typing import List, Any, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Header
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, and_, func
+from sqlalchemy import or_
 import uuid
 
 from app.core.database import get_db
@@ -10,142 +10,170 @@ from app.models.user import User
 from app.models.job import Job, JobImport, JobAnalysis
 from app.schemas.job import (
     JobResponse, JobImportCreate, JobListResponse,
-    JobImportResponse, ImportResultResponse, JobData, JobAnalysisResponse,
+    JobImportResponse, ImportResultResponse, JobData,
+    JobAnalysisResponse, AnalysisRequest,
 )
 from app.services.job_import import process_import
-from app.services.job_analysis import analyze_job
+from app.services.job_analysis import run_job_analysis
 
 router = APIRouter()
 
+
+# ---------------------------------------------------------------------------
+# Job listing
+# ---------------------------------------------------------------------------
 
 @router.get("/", response_model=JobListResponse)
 def list_jobs(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    skip: int = Query(0, ge=0, description="Number of records to skip"),
-    limit: int = Query(100, ge=1, le=500, description="Maximum number of records to return"),
-    search: Optional[str] = Query(None, description="Search in title, company, description"),
-    company: Optional[str] = Query(None, description="Filter by company name"),
-    location: Optional[str] = Query(None, description="Filter by location"),
-    source: Optional[str] = Query(None, description="Filter by source (linkedin, indeed, etc)"),
-    tags: Optional[str] = Query(None, description="Comma-separated list of tags to filter"),
-    min_salary: Optional[int] = Query(None, ge=0, description="Minimum salary"),
-    max_salary: Optional[int] = Query(None, ge=0, description="Maximum salary"),
-    sort_by: Optional[str] = Query("created_at", description="Field to sort by"),
-    sort_order: Optional[str] = Query("desc", description="Sort order: asc or desc"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+    search: Optional[str] = Query(None),
+    company: Optional[str] = Query(None),
+    location: Optional[str] = Query(None),
+    source: Optional[str] = Query(None),
+    tags: Optional[str] = Query(None),
+    min_salary: Optional[int] = Query(None, ge=0),
+    max_salary: Optional[int] = Query(None, ge=0),
+    sort_by: Optional[str] = Query("created_at"),
+    sort_order: Optional[str] = Query("desc"),
 ) -> Any:
     """List jobs with search, filtering, sorting, and pagination."""
     query = db.query(Job)
-    
-    # Search
+
     if search:
-        search_term = f"%{search}%"
+        term = f"%{search}%"
         query = query.filter(
             or_(
-                Job.title.ilike(search_term),
-                Job.company.ilike(search_term),
-                Job.description.ilike(search_term),
-                Job.location.ilike(search_term),
+                Job.title.ilike(term),
+                Job.company.ilike(term),
+                Job.description.ilike(term),
+                Job.location.ilike(term),
             )
         )
-    
-    # Filters
+
     if company:
         query = query.filter(Job.company.ilike(f"%{company}%"))
-    
     if location:
         query = query.filter(Job.location.ilike(f"%{location}%"))
-    
     if source:
         query = query.filter(Job.source == source)
-    
     if tags:
-        tag_list = [tag.strip() for tag in tags.split(",")]
-        for tag in tag_list:
+        for tag in [t.strip() for t in tags.split(",")]:
             query = query.filter(Job.tags.contains([tag]))
-    
     if min_salary is not None:
-        query = query.filter(
-            or_(
-                Job.salary_min >= min_salary,
-                Job.salary_max >= min_salary,
-            )
-        )
-    
+        query = query.filter(or_(Job.salary_min >= min_salary, Job.salary_max >= min_salary))
     if max_salary is not None:
-        query = query.filter(
-            or_(
-                Job.salary_max <= max_salary,
-                Job.salary_min <= max_salary,
-            )
-        )
-    
-    # Get total count before pagination
+        query = query.filter(or_(Job.salary_max <= max_salary, Job.salary_min <= max_salary))
+
     total = query.count()
-    
-    # Sorting
-    sort_column = getattr(Job, sort_by, Job.created_at)
-    if sort_order == "asc":
-        query = query.order_by(sort_column.asc())
-    else:
-        query = query.order_by(sort_column.desc())
-    
-    # Pagination
+
+    sort_col = getattr(Job, sort_by, Job.created_at)
+    query = query.order_by(sort_col.asc() if sort_order == "asc" else sort_col.desc())
     jobs = query.offset(skip).limit(limit).all()
-    
-    return JobListResponse(
-        jobs=jobs,
-        total=total,
-        skip=skip,
-        limit=limit,
-    )
+
+    return JobListResponse(jobs=jobs, total=total, skip=skip, limit=limit)
 
 
+# ---------------------------------------------------------------------------
+# Single job
+# ---------------------------------------------------------------------------
 
-@router.post("/{job_id}/analyze", response_model=JobAnalysisResponse)
-def analyze_job_endpoint(
+@router.get("/{job_id}", response_model=JobResponse)
+def get_job(
     job_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Any:
-    """Trigger AI analysis for a job."""
+    """Get a single job by ID."""
     job = db.query(Job).filter(Job.id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    
-    # Check if analysis already exists
+    return job
+
+
+# ---------------------------------------------------------------------------
+# AI Analysis
+# ---------------------------------------------------------------------------
+
+@router.post("/{job_id}/analyze", response_model=JobAnalysisResponse)
+async def trigger_analysis(
+    job_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
+    body: AnalysisRequest = AnalysisRequest(),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    x_ai_api_key: Optional[str] = Header(None, alias="X-AI-API-Key"),
+    x_ai_provider: Optional[str] = Header(None, alias="X-AI-Provider"),
+    x_ai_model: Optional[str] = Header(None, alias="X-AI-Model"),
+) -> Any:
+    """
+    Trigger AI analysis for a job.
+
+    Returns immediately with status=processing (or existing analysis).
+    Analysis runs as a background task; poll GET /{job_id}/analysis for results.
+    Pass force_refresh=true in the body to re-run even if an analysis exists.
+    """
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    # Return existing completed analysis unless force_refresh
     existing = db.query(JobAnalysis).filter(JobAnalysis.job_id == job_id).first()
-    if existing:
+    if existing and existing.status == "done" and not body.force_refresh:
         return existing
-        
-    job_dict = {
-        "title": job.title,
-        "company": job.company,
-        "description": job.description
-    }
-    analysis_result = analyze_job(job_dict)
-    
-    new_analysis = JobAnalysis(
-        job_id=job_id,
-        **analysis_result
+
+    # Create or reset a stub record immediately so the frontend can start polling
+    if existing is None:
+        stub = JobAnalysis(
+            job_id=job_id,
+            status="processing",
+            score=0,
+            summary="",
+            pros=[],
+            cons=[],
+            skills_gap=[],
+            key_requirements=[],
+        )
+        db.add(stub)
+        db.commit()
+        db.refresh(stub)
+    else:
+        existing.status = "processing"
+        db.commit()
+        db.refresh(existing)
+        stub = existing
+
+    # Schedule actual analysis in background
+    background_tasks.add_task(
+        run_job_analysis,
+        job=job,
+        db=db,
+        api_key=x_ai_api_key,
+        provider=x_ai_provider,
+        model=x_ai_model,
     )
-    db.add(new_analysis)
-    db.commit()
-    db.refresh(new_analysis)
-    return new_analysis
+
+    return stub
+
 
 @router.get("/{job_id}/analysis", response_model=JobAnalysisResponse)
-def get_job_analysis_endpoint(
+def get_job_analysis(
     job_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Any:
-    """Get AI analysis for a job."""
+    """Get the stored AI analysis for a job (poll this after triggering)."""
     analysis = db.query(JobAnalysis).filter(JobAnalysis.job_id == job_id).first()
     if not analysis:
-        raise HTTPException(status_code=404, detail="Analysis not found")
+        raise HTTPException(status_code=404, detail="No analysis found for this job. Trigger one first.")
     return analysis
 
+
+# ---------------------------------------------------------------------------
+# Import
+# ---------------------------------------------------------------------------
 
 @router.post("/import", response_model=ImportResultResponse)
 def import_jobs(
@@ -158,7 +186,6 @@ def import_jobs(
     import_record, jobs_data, errors = process_import(
         db, current_user.id, import_in.source_type, import_in.data,
     )
-
     return ImportResultResponse(
         import_record=JobImportResponse.model_validate(import_record),
         jobs=[JobData(**job, is_duplicate=False) for job in jobs_data],
@@ -196,48 +223,8 @@ def get_import_detail(
         raise HTTPException(status_code=404, detail="Import not found")
     if import_record.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized")
-
-
-@router.post("/{job_id}/analyze", response_model=JobAnalysisResponse)
-def analyze_job_endpoint(
-    job_id: uuid.UUID,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> Any:
-    """Trigger AI analysis for a job."""
-    job = db.query(Job).filter(Job.id == job_id).first()
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-    
-    # Check if analysis already exists
-    existing = db.query(JobAnalysis).filter(JobAnalysis.job_id == job_id).first()
-    if existing:
-        return existing
-        
-    job_dict = {
-        "title": job.title,
-        "company": job.company,
-        "description": job.description
-    }
-    analysis_result = analyze_job(job_dict)
-    
-    new_analysis = JobAnalysis(
-        job_id=job_id,
-        **analysis_result
+    return ImportResultResponse(
+        import_record=JobImportResponse.model_validate(import_record),
+        jobs=[],
+        errors=[],
     )
-    db.add(new_analysis)
-    db.commit()
-    db.refresh(new_analysis)
-    return new_analysis
-
-@router.get("/{job_id}/analysis", response_model=JobAnalysisResponse)
-def get_job_analysis_endpoint(
-    job_id: uuid.UUID,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> Any:
-    """Get AI analysis for a job."""
-    analysis = db.query(JobAnalysis).filter(JobAnalysis.job_id == job_id).first()
-    if not analysis:
-        raise HTTPException(status_code=404, detail="Analysis not found")
-    return analysis

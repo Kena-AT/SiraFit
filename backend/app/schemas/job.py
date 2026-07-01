@@ -108,6 +108,16 @@ class JobAnalysisResponse(BaseModel):
     pros: List[str]
     cons: List[str]
     skills_gap: List[str]
+    key_requirements: Optional[List[str]] = None
+    seniority: Optional[str] = None
+    analysis_version: Optional[str] = None
+    status: str = "done"
     created_at: datetime
+    updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AnalysisRequest(BaseModel):
+    force_refresh: bool = False
+

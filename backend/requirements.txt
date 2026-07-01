@@ -17,6 +17,7 @@ pydantic-settings==2.7.0
 PyJWT==2.10.0
 passlib[bcrypt]==1.7.4
 bcrypt==3.2.2
+cryptography==44.0.0
 
 # Email
 fastapi-mail==1.4.1

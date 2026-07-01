@@ -1,15 +1,19 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, Tag, EmptyState } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
-import { getJob } from "@/lib/api/jobs";
-import type { Job } from "@/types/job";
+import { getJob, triggerAnalysis, getJobAnalysis } from "@/lib/api/jobs";
+import { AnalysisInsights, AnalysisSkeleton } from "@/components/sirafit/analysis-insights";
+import type { Job, JobAnalysis } from "@/types/job";
 
 export const Route = createFileRoute("/_app/jobs/$jobId")({
   head: () => ({ meta: [{ title: "Job details · SiraFit" }] }),
   component: JobDetails,
 });
+
+// Poll interval in ms while analysis is processing
+const POLL_INTERVAL = 2500;
 
 function JobDetails() {
   const { jobId } = Route.useParams();
@@ -17,6 +21,13 @@ function JobDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Analysis state
+  const [analysis, setAnalysis] = useState<JobAnalysis | null>(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Load job
   useEffect(() => {
     const fetchJob = async () => {
       setLoading(true);
@@ -33,6 +44,57 @@ function JobDetails() {
     fetchJob();
   }, [jobId]);
 
+  // Load existing analysis on mount (no-op if none exists)
+  useEffect(() => {
+    if (!jobId) return;
+    getJobAnalysis(jobId)
+      .then((data) => { if (data) setAnalysis(data); })
+      .catch(() => {});
+  }, [jobId]);
+
+  // Polling helper
+  const startPolling = () => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = setInterval(async () => {
+      try {
+        const data = await getJobAnalysis(jobId);
+        if (data) {
+          setAnalysis(data);
+          if (data.status === "done" || data.status === "failed") {
+            clearInterval(pollRef.current!);
+            setAnalysisLoading(false);
+            if (data.status === "failed") {
+              setAnalysisError("Analysis failed. Please try again.");
+            }
+          }
+        }
+      } catch {
+        clearInterval(pollRef.current!);
+        setAnalysisLoading(false);
+      }
+    }, POLL_INTERVAL);
+  };
+
+  // Cleanup polling on unmount
+  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
+
+  const handleRunAnalysis = async (forceRefresh = false) => {
+    setAnalysisLoading(true);
+    setAnalysisError(null);
+    try {
+      const stub = await triggerAnalysis(jobId, forceRefresh);
+      setAnalysis(stub);
+      if (stub.status !== "done") {
+        startPolling();
+      } else {
+        setAnalysisLoading(false);
+      }
+    } catch (e: any) {
+      setAnalysisError(e.message || "Failed to start analysis");
+      setAnalysisLoading(false);
+    }
+  };
+
   const formatSalary = (job: Job) => {
     if (!job.salary_min && !job.salary_max) return "Salary not specified";
     const currency = job.currency || "$";
@@ -40,13 +102,14 @@ function JobDetails() {
       return `${currency}${job.salary_min.toLocaleString()} – ${currency}${job.salary_max.toLocaleString()}`;
     }
     if (job.salary_max) return `Up to ${currency}${job.salary_max.toLocaleString()}`;
-    return `${currency}${job.salary_min.toLocaleString()}+`;
+    return `${currency}${job.salary_min!.toLocaleString()}+`;
   };
 
   const formatDate = (dateStr: string) => {
     try {
-      const d = new Date(dateStr);
-      return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+      return new Date(dateStr).toLocaleDateString("en-US", {
+        month: "long", day: "numeric", year: "numeric",
+      });
     } catch {
       return dateStr;
     }
@@ -74,6 +137,8 @@ function JobDetails() {
       </PageBody>
     );
   }
+
+  const isProcessing = analysisLoading || analysis?.status === "processing";
 
   return (
     <PageBody>
@@ -105,9 +170,9 @@ function JobDetails() {
               Back to jobs
             </Link>
             {job.url && (
-              <a 
-                href={job.url} 
-                target="_blank" 
+              <a
+                href={job.url}
+                target="_blank"
                 rel="noopener noreferrer"
                 className="rounded-md bg-card px-3 py-1.5 text-sm font-medium ring-1 ring-border hover:bg-muted"
               >
@@ -125,6 +190,7 @@ function JobDetails() {
       />
 
       <div className="grid gap-4 lg:grid-cols-3">
+        {/* Main content */}
         <div className="space-y-4 lg:col-span-2">
           <Panel title="Job description">
             <div className="space-y-4 p-5">
@@ -133,13 +199,12 @@ function JobDetails() {
               ) : (
                 <p className="text-sm text-muted-foreground">No description available</p>
               )}
-              
               {job.tags && job.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 border-t border-border pt-4">
                   <div className="w-full font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                     Extracted tags
                   </div>
-                  {job.tags.map((t) => (<Tag key={t}>{t}</Tag>))}
+                  {job.tags.map((t) => <Tag key={t}>{t}</Tag>)}
                 </div>
               )}
             </div>
@@ -178,7 +243,7 @@ function JobDetails() {
                   <div className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                     Original URL
                   </div>
-                  <a 
+                  <a
                     href={job.url}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -192,7 +257,82 @@ function JobDetails() {
           </Panel>
         </div>
 
+        {/* Sidebar */}
         <div className="space-y-4">
+          {/* AI Analysis panel */}
+          <Panel
+            title="AI Analysis"
+            description={
+              analysis?.status === "done"
+                ? `Score: ${analysis.score}/100`
+                : "Job intelligence from AI"
+            }
+          >
+            {/* No analysis yet */}
+            {!analysis && !isProcessing && (
+              <div className="flex flex-col items-center gap-3 p-5 text-center">
+                <div className="text-3xl">🔍</div>
+                <p className="text-xs text-muted-foreground">
+                  Run AI analysis to get a match score, pros & cons, and skills gap.
+                </p>
+                {analysisError && (
+                  <p className="text-xs text-destructive">{analysisError}</p>
+                )}
+                <Button
+                  className="w-full"
+                  onClick={() => handleRunAnalysis()}
+                  disabled={isProcessing}
+                >
+                  Run AI Analysis
+                </Button>
+              </div>
+            )}
+
+            {/* Processing */}
+            {isProcessing && (
+              <div>
+                <div className="flex items-center gap-2 px-4 pt-4 text-xs text-muted-foreground">
+                  <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-border border-t-foreground" />
+                  Analysing with AI…
+                </div>
+                <AnalysisSkeleton />
+              </div>
+            )}
+
+            {/* Done */}
+            {analysis?.status === "done" && !isProcessing && (
+              <>
+                <AnalysisInsights analysis={analysis} />
+                <div className="border-t border-border px-4 pb-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-xs"
+                    onClick={() => handleRunAnalysis(true)}
+                  >
+                    Re-run analysis
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {/* Failed */}
+            {analysis?.status === "failed" && !isProcessing && (
+              <div className="flex flex-col items-center gap-3 p-5 text-center">
+                <p className="text-xs text-destructive">
+                  {analysis.summary || "Analysis failed. Please try again."}
+                </p>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => handleRunAnalysis(true)}
+                >
+                  Retry
+                </Button>
+              </div>
+            )}
+          </Panel>
+
           <Panel title="Compensation">
             <div className="p-4">
               <div className="text-2xl font-semibold">{formatSalary(job)}</div>
@@ -212,9 +352,6 @@ function JobDetails() {
             <div className="space-y-2 p-4">
               <Button className="w-full" variant="outline">
                 Save to pipeline
-              </Button>
-              <Button className="w-full" variant="outline">
-                Generate match score
               </Button>
               <Button className="w-full" variant="outline">
                 Export details

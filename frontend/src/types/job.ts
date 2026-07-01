@@ -58,3 +58,20 @@ export interface JobImportData {
   source_type: 'url' | 'description' | 'csv';
   data: string;
 }
+
+export interface JobAnalysis {
+  id: string;
+  job_id: string;
+  score: number;
+  summary: string;
+  pros: string[];
+  cons: string[];
+  skills_gap: string[];
+  key_requirements: string[];
+  seniority: string | null;
+  analysis_version: string | null;
+  status: 'pending' | 'processing' | 'done' | 'failed';
+  created_at: string;
+  updated_at: string | null;
+}
+

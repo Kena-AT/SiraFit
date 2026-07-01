@@ -1,96 +1,183 @@
+"""
+AI service for job analysis.
+Supports Gemini and OpenRouter providers with:
+  - Prompt versioning via PROMPTS registry
+  - Pydantic-validated structured output
+  - Retry logic with exponential backoff
+"""
+
 import json
-import httpx
+import asyncio
 import logging
-from typing import Tuple, Dict, Any
-import google.generativeai as genai
-from app.models.profile import Profile
-from app.models.job import Job
+from typing import Optional
+from pydantic import BaseModel, ValidationError
+
+import httpx
 
 logger = logging.getLogger(__name__)
 
-ANALYSIS_PROMPT = """
-You are an expert technical recruiter and resume screener. 
-Please analyze the following candidate profile against the job description and provide a match score (0-100) and a brief reason.
-Output MUST be valid JSON in this exact format, with no markdown formatting or extra text:
-{"score": 85, "reason": "Candidate has strong React experience but lacks Python."}
-"""
+# ---------------------------------------------------------------------------
+# Prompt versioning registry
+# ---------------------------------------------------------------------------
 
-def serialize_profile(profile: Profile) -> str:
-    if not profile:
-        return "{}"
-    return json.dumps({
-        "headline": profile.headline,
-        "summary": profile.summary,
-        "skills": [s.name for s in getattr(profile, "skills", [])] if profile.skills else [],
-        "experiences": [
-            {"title": e.title, "company": e.company, "description": e.description}
-            for e in getattr(profile, "experiences", [])
-        ] if profile.experiences else []
-    })
+CURRENT_PROMPT_VERSION = "v1"
 
-def serialize_job(job: Job) -> str:
-    if not job:
-        return "{}"
-    return json.dumps({
-        "title": job.title,
-        "company": job.company,
-        "description": job.description,
-        "requirements": getattr(job, "requirements", []),
-        "tags": getattr(job, "tags", [])
-    })
+PROMPTS: dict[str, str] = {
+    "v1": """You are an expert technical recruiter. Analyze the job description and candidate profile below.
+Return ONLY a valid JSON object with this exact structure (no markdown, no extra text):
+{
+  "score": 0-100,
+  "summary": "2-3 sentence summary of the role and fit",
+  "pros": ["strength 1", "strength 2"],
+  "cons": ["weakness 1", "weakness 2"],
+  "skills_gap": ["missing skill 1", "missing skill 2"],
+  "key_requirements": ["requirement 1", "requirement 2"],
+  "seniority": "Junior|Mid|Senior|Staff|Lead|Director"
+}
 
-async def analyze_job_match_gemini(profile: Profile, job: Job, api_key: str, model: str) -> Tuple[int, str]:
-    try:
+Rules:
+- score: integer 0-100 representing candidate match quality
+- pros/cons/skills_gap/key_requirements: arrays of short strings (max 6 items each)
+- seniority: one of the exact values listed above
+- Do NOT include any text before or after the JSON object""",
+}
+
+
+# ---------------------------------------------------------------------------
+# Structured output schema (validated with Pydantic)
+# ---------------------------------------------------------------------------
+
+class AnalysisOutput(BaseModel):
+    score: int
+    summary: str
+    pros: list[str]
+    cons: list[str]
+    skills_gap: list[str]
+    key_requirements: list[str] = []
+    seniority: str = "Mid"
+
+    def model_post_init(self, __context):
+        # Clamp score to 0-100
+        self.score = max(0, min(100, self.score))
+        # Limit list lengths to 6 items
+        self.pros = self.pros[:6]
+        self.cons = self.cons[:6]
+        self.skills_gap = self.skills_gap[:6]
+        self.key_requirements = self.key_requirements[:6]
+
+
+def _parse_and_validate(text: str) -> AnalysisOutput:
+    """Parse AI text output and validate against AnalysisOutput schema."""
+    clean = text.strip()
+    # Strip markdown code fences if present
+    if clean.startswith("```"):
+        clean = clean.split("```")[-2] if "```" in clean[3:] else clean[3:]
+        if clean.lower().startswith("json"):
+            clean = clean[4:]
+        clean = clean.strip()
+    data = json.loads(clean)
+    return AnalysisOutput.model_validate(data)
+
+
+# ---------------------------------------------------------------------------
+# Retry helper
+# ---------------------------------------------------------------------------
+
+async def _with_retry(fn, max_attempts: int = 3):
+    """Call async fn up to max_attempts times with exponential backoff."""
+    last_exc = None
+    for attempt in range(max_attempts):
+        try:
+            return await fn()
+        except (json.JSONDecodeError, ValidationError, KeyError) as e:
+            last_exc = e
+            logger.warning(f"AI parse/validation error attempt {attempt + 1}: {e}")
+            if attempt < max_attempts - 1:
+                await asyncio.sleep(2 ** attempt)  # 1s, 2s, 4s
+        except Exception as e:
+            last_exc = e
+            logger.warning(f"AI call error attempt {attempt + 1}: {e}")
+            if attempt < max_attempts - 1:
+                await asyncio.sleep(2 ** attempt)
+    raise last_exc
+
+
+# ---------------------------------------------------------------------------
+# Provider implementations
+# ---------------------------------------------------------------------------
+
+async def analyze_job_gemini(
+    prompt_context: str,
+    api_key: str,
+    model: str = "gemini-1.5-flash",
+    prompt_version: str = CURRENT_PROMPT_VERSION,
+) -> AnalysisOutput:
+    """Call Google Gemini and return a validated AnalysisOutput."""
+    import google.generativeai as genai
+
+    system_prompt = PROMPTS.get(prompt_version, PROMPTS[CURRENT_PROMPT_VERSION])
+    full_prompt = f"{system_prompt}\n\n{prompt_context}"
+
+    model_name = "models/gemini-1.5-pro" if "pro" in model.lower() else "models/gemini-1.5-flash"
+
+    async def _call():
         genai.configure(api_key=api_key)
-        model_name = "models/gemini-1.5-pro" if "pro" in model.lower() else "models/gemini-1.5-flash"
-        
-        prompt = f"{ANALYSIS_PROMPT}\n\nCandidate Profile:\n{serialize_profile(profile)}\n\nJob Description:\n{serialize_job(job)}"
-        
         gen_model = genai.GenerativeModel(model_name)
-        response = gen_model.generate_content(prompt)
-        
-        return _parse_ai_response(response.text)
-    except Exception as e:
-        logger.error(f"Gemini API error: {e}")
-        return 0, f"Gemini API error: {str(e)}"
+        response = gen_model.generate_content(full_prompt)
+        return _parse_and_validate(response.text)
 
-async def analyze_job_match_openrouter(profile: Profile, job: Job, api_key: str, model: str) -> Tuple[int, str]:
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "HTTP-Referer": "https://sirafit.com", 
-        "Content-Type": "application/json"
-    }
-    
-    prompt = f"{ANALYSIS_PROMPT}\n\nCandidate Profile:\n{serialize_profile(profile)}\n\nJob Description:\n{serialize_job(job)}"
-    
+    return await _with_retry(_call)
+
+
+async def analyze_job_openrouter(
+    prompt_context: str,
+    api_key: str,
+    model: str = "openai/gpt-4o-mini",
+    prompt_version: str = CURRENT_PROMPT_VERSION,
+) -> AnalysisOutput:
+    """Call OpenRouter and return a validated AnalysisOutput."""
+    system_prompt = PROMPTS.get(prompt_version, PROMPTS[CURRENT_PROMPT_VERSION])
+
     payload = {
         "model": model,
         "messages": [
-            {"role": "user", "content": prompt}
-        ]
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt_context},
+        ],
     }
-    
-    try:
-        async with httpx.AsyncClient() as client:
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "HTTP-Referer": "https://sirafit.com",
+        "Content-Type": "application/json",
+    }
+
+    async def _call():
+        async with httpx.AsyncClient(timeout=45.0) as client:
             response = await client.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers=headers,
                 json=payload,
-                timeout=30.0
             )
             response.raise_for_status()
             data = response.json()
-            
-        response_text = data["choices"][0]["message"]["content"]
-        return _parse_ai_response(response_text)
-    except Exception as e:
-        logger.error(f"OpenRouter API error: {e}")
-        return 0, f"OpenRouter API error: {str(e)}"
+        text = data["choices"][0]["message"]["content"]
+        return _parse_and_validate(text)
 
-def _parse_ai_response(text: str) -> Tuple[int, str]:
-    try:
-        clean_text = text.replace("```json", "").replace("```", "").strip()
-        result = json.loads(clean_text)
-        return int(result.get("score", 0)), result.get("reason", "No reason provided.")
-    except Exception as e:
-        return 0, f"Failed to parse AI response: {str(e)}"
+    return await _with_retry(_call)
+
+
+# ---------------------------------------------------------------------------
+# Fallback: simple keyword scorer returning AnalysisOutput shape
+# ---------------------------------------------------------------------------
+
+def keyword_fallback(job_title: str, job_description: str) -> AnalysisOutput:
+    """Produce a minimal AnalysisOutput when AI is unavailable."""
+    return AnalysisOutput(
+        score=0,
+        summary=f"AI analysis unavailable. {job_title} at this company could not be analyzed automatically.",
+        pros=["Job description imported successfully"],
+        cons=["AI integration not configured — configure an API key in Settings → AI"],
+        skills_gap=[],
+        key_requirements=[],
+        seniority="Mid",
+    )

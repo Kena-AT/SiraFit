@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     # AI Integration
     GEMINI_API_KEY: str | None = None
     OPENROUTER_API_KEY: str | None = None
+
+    # Data encryption for user-stored API keys (fall back to SECRET_KEY if not set)
+    DATA_ENCRYPTION_KEY: str | None = None
     class Config:
         env_file = str(Path(__file__).resolve().parent.parent.parent.parent / ".env")
         case_sensitive = True

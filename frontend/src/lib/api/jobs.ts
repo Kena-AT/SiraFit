@@ -88,3 +88,28 @@ export const getJob = async (jobId: string) => {
   }
   return response.json();
 };
+
+export const triggerAnalysis = async (jobId: string, forceRefresh = false) => {
+  const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/analyze`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAIHeaders() },
+    credentials: 'include',
+    body: JSON.stringify({ force_refresh: forceRefresh }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ detail: 'Failed to trigger analysis' }));
+    throw new Error(err.detail || 'Failed to trigger analysis');
+  }
+  return response.json();
+};
+
+export const getJobAnalysis = async (jobId: string) => {
+  const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/analysis`, {
+    credentials: 'include',
+    headers: { ...getAIHeaders() },
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error('Failed to fetch analysis');
+  return response.json();
+};
+

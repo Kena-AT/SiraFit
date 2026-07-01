@@ -34,6 +34,13 @@ class UserPreference(Base):
     theme = Column(String(50), default="light")
     notifications_enabled = Column(Boolean, default=True)
 
+    # Encrypted AI API keys (AES-128-CBC via Fernet)
+    encrypted_gemini_key = Column(String(500), nullable=True)
+    encrypted_openrouter_key = Column(String(500), nullable=True)
+    # Provider and model preferences (plain text, no sensitive data)
+    ai_provider = Column(String(50), nullable=True, default="gemini")
+    ai_model = Column(String(255), nullable=True, default="gemini-1.5-flash")
+
     user = relationship("User", back_populates="preferences")
 
 class RefreshToken(Base):

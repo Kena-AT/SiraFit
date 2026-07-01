@@ -54,16 +54,26 @@ class JobAnalysis(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     job_id = Column(UUID(as_uuid=True), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, unique=True)
-    
-    score = Column(Integer, nullable=False) # AI match score 0-100
-    summary = Column(Text, nullable=False)
-    pros = Column(JSON, nullable=False)
-    cons = Column(JSON, nullable=False)
-    skills_gap = Column(JSON, nullable=False)
-    
+
+    # Core analysis fields
+    score = Column(Integer, nullable=False, default=0)
+    summary = Column(Text, nullable=False, default="")
+    pros = Column(JSON, nullable=False, default=list)
+    cons = Column(JSON, nullable=False, default=list)
+    skills_gap = Column(JSON, nullable=False, default=list)
+    key_requirements = Column(JSON, nullable=True)   # List[str]
+    seniority = Column(String(50), nullable=True)    # e.g. "Senior", "Junior", "Mid"
+
+    # Versioning & async state
+    analysis_version = Column(String(20), nullable=True, default="v1")
+    status = Column(String(20), nullable=False, default="pending")  # pending | processing | done | failed
+
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
     job = relationship("Job", backref="analysis")
+
+
 
 
 class JobImport(Base):
