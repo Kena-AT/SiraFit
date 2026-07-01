@@ -19,6 +19,34 @@ logger = structlog.get_logger("app")
 from app.core.database import Base, engine
 Base.metadata.create_all(bind=engine)
 
+# Automatically add missing columns to existing tables (dev helper)
+# This avoids breaking existing databases when models grow new fields.
+import sqlalchemy as sa
+from sqlalchemy import inspect
+
+def _ensure_columns():
+    """Add any model columns missing from existing tables (safe for dev)."""
+    try:
+        inspector = inspect(engine)
+        for table_name, table in Base.metadata.tables.items():
+            existing = {c["name"] for c in inspector.get_columns(table_name)}
+            for col in table.columns:
+                if col.name not in existing:
+                    col_type = col.type.compile(engine.dialect)
+                    nullable = "NULL" if col.nullable else "NOT NULL"
+                    default = ""
+                    if col.default is not None:
+                        default = f" DEFAULT {col.default.arg!r}"
+                    ddl = f"ALTER TABLE {table_name} ADD COLUMN {col.name} {col_type} {nullable}{default}"
+                    with engine.connect() as conn:
+                        conn.execute(sa.text(ddl))
+                        conn.commit()
+                    logger.info("migration", table=table_name, column=col.name, ddl=ddl)
+    except Exception:
+        logger.warning("column_migration_skipped", exc_info=True)
+
+_ensure_columns()
+
 
 class RateLimitHeaderMiddleware(BaseHTTPMiddleware):
     """Middleware to add rate limit headers to all responses."""

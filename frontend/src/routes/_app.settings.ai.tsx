@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { Panel, AgentDot, Tag } from "@/components/sirafit/bits";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Panel, AgentDot } from "@/components/sirafit/bits";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,8 @@ export const Route = createFileRoute("/_app/settings/ai")({
   component: AISettings,
 });
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 const MODELS = [
   { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro", provider: "gemini" },
   { id: "gemini-1.5-flash", label: "Gemini 1.5 Flash", provider: "gemini" },
@@ -18,57 +21,111 @@ const MODELS = [
 ];
 
 function AISettings() {
-  const [apiKey, setApiKey] = useState("");
+  const queryClient = useQueryClient();
+  const [geminiKey, setGeminiKey] = useState("");
+  const [openrouterKey, setOpenrouterKey] = useState("");
   const [provider, setProvider] = useState("gemini");
   const [activeModel, setActiveModel] = useState("gemini-1.5-pro");
-  const [saved, setSaved] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const { data: config, isLoading } = useQuery({
+    queryKey: ["ai-config"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE_URL}/api/v1/users/me/ai-config`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to fetch AI config");
+      return res.json();
+    },
+  });
 
   useEffect(() => {
-    setApiKey(localStorage.getItem("ai_api_key") || "");
-    setProvider(localStorage.getItem("ai_provider") || "gemini");
-    setActiveModel(localStorage.getItem("ai_model") || "gemini-1.5-pro");
-  }, []);
+    if (config) {
+      setProvider(config.provider || "gemini");
+      setActiveModel(config.model || "gemini-1.5-pro");
+    }
+  }, [config]);
+
+  const { mutate: saveConfig, isPending } = useMutation({
+    mutationFn: async (body: object) => {
+      const res = await fetch(`${API_BASE_URL}/api/v1/users/me/ai-config`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: "Save failed" }));
+        throw new Error(err.detail || "Failed to save AI configuration");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setMessage("Settings saved securely.");
+      setGeminiKey("");
+      setOpenrouterKey("");
+      queryClient.invalidateQueries({ queryKey: ["ai-config"] });
+      setTimeout(() => setMessage(""), 3000);
+    },
+    onError: (err: Error) => {
+      setMessage(`Error: ${err.message}`);
+    },
+  });
 
   const handleSave = () => {
-    localStorage.setItem("ai_api_key", apiKey);
-    localStorage.setItem("ai_provider", provider);
-    localStorage.setItem("ai_model", activeModel);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    const body: Record<string, string | undefined> = {
+      provider,
+      model: activeModel,
+    };
+    if (geminiKey) body.gemini_key = geminiKey;
+    if (openrouterKey) body.openrouter_key = openrouterKey;
+    saveConfig(body);
   };
 
-  const handleModelSelect = (modelId: string, modelProvider: string) => {
-    setActiveModel(modelId);
-    setProvider(modelProvider);
+  const handleClear = () => {
+    setGeminiKey("");
+    setOpenrouterKey("");
+    saveConfig({ gemini_key: "", openrouter_key: "", provider, model: activeModel });
   };
+
+  if (isLoading) {
+    return <div className="p-4 text-sm text-muted-foreground">Loading configuration...</div>;
+  }
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <Panel title="AI API Configuration" description="Stored locally in your browser. Used to analyze jobs.">
+      <Panel title="AI API Configuration" description="Stored encrypted on the server. Used to analyze jobs. Your key is never exposed to the client.">
         <div className="space-y-4 p-4">
           <div className="space-y-1.5">
-            <Label>API Key</Label>
-            <Input 
-              type="password" 
-              value={apiKey} 
-              onChange={(e) => setApiKey(e.target.value)} 
-              placeholder="Enter Gemini or OpenRouter API key" 
+            <Label>Gemini API Key {config?.has_gemini_key ? <span className="text-[color:var(--success)]">(set)</span> : <span className="text-muted-foreground">(not set)</span>}</Label>
+            <Input
+              type="password"
+              value={geminiKey}
+              onChange={(e) => setGeminiKey(e.target.value)}
+              placeholder={config?.has_gemini_key ? "Enter new key to replace existing one" : "Enter Gemini API key"}
             />
-            <p className="text-[11px] text-muted-foreground mt-1">
-              Provides fallback if backend `.env` is not set.
-            </p>
           </div>
-          
+
+          <div className="space-y-1.5">
+            <Label>OpenRouter API Key {config?.has_openrouter_key ? <span className="text-[color:var(--success)]">(set)</span> : <span className="text-muted-foreground">(not set)</span>}</Label>
+            <Input
+              type="password"
+              value={openrouterKey}
+              onChange={(e) => setOpenrouterKey(e.target.value)}
+              placeholder={config?.has_openrouter_key ? "Enter new key to replace existing one" : "Enter OpenRouter API key"}
+            />
+          </div>
+
           <div className="space-y-2">
             <Label>Available Models</Label>
             <div className="flex flex-wrap gap-2">
               {MODELS.map((m) => (
-                <button 
+                <button
                   key={m.id}
-                  onClick={() => handleModelSelect(m.id, m.provider)}
+                  onClick={() => { setActiveModel(m.id); setProvider(m.provider); }}
                   className={`px-2.5 py-1 text-xs font-medium rounded-md ring-1 ${
-                    activeModel === m.id 
-                      ? "bg-foreground text-background ring-foreground" 
+                    activeModel === m.id
+                      ? "bg-foreground text-background ring-foreground"
                       : "bg-card text-foreground ring-border hover:bg-muted"
                   }`}
                 >
@@ -77,10 +134,17 @@ function AISettings() {
               ))}
             </div>
           </div>
-          
+
           <div className="flex items-center gap-3">
-            <Button onClick={handleSave}>Save Settings</Button>
-            {saved && <span className="text-xs text-[color:var(--success)] font-medium">Saved!</span>}
+            <Button onClick={handleSave} disabled={isPending}>
+              {isPending ? "Saving..." : "Save Settings"}
+            </Button>
+            {(config?.has_gemini_key || config?.has_openrouter_key) && (
+              <Button variant="outline" onClick={handleClear} disabled={isPending}>
+                Clear Keys
+              </Button>
+            )}
+            {message && <span className={`text-xs font-medium ${message.startsWith("Error") ? "text-red-500" : "text-[color:var(--success)]"}`}>{message}</span>}
           </div>
         </div>
       </Panel>

@@ -153,6 +153,7 @@ async def trigger_analysis(
         api_key=x_ai_api_key,
         provider=x_ai_provider,
         model=x_ai_model,
+        user_id=str(current_user.id),
     )
 
     return stub

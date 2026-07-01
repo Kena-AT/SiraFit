@@ -9,6 +9,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.models.job import Job, JobAnalysis
+from app.models.user import UserPreference
 from app.services.ai import (
     analyze_job_gemini,
     analyze_job_openrouter,
@@ -16,6 +17,7 @@ from app.services.ai import (
     CURRENT_PROMPT_VERSION,
     AnalysisOutput,
 )
+from app.core.security import decrypt_value
 
 logger = logging.getLogger(__name__)
 
@@ -52,14 +54,21 @@ async def run_job_analysis(
     api_key: Optional[str] = None,
     provider: Optional[str] = None,
     model: Optional[str] = None,
+    user_id: Optional[str] = None,
 ) -> JobAnalysis:
     """
     Orchestrate AI analysis for a job.
 
     1. Finds or creates a JobAnalysis row (sets status=processing)
-    2. Calls the correct AI provider
-    3. Saves results (status=done) or marks failed
-    4. Returns the updated JobAnalysis row
+    2. Looks up user-stored encrypted API key (if user_id provided)
+    3. Calls the correct AI provider
+    4. Saves results (status=done) or marks failed
+    5. Returns the updated JobAnalysis row
+
+    Key resolution order (first match wins):
+      1. api_key parameter (passed via header — client override)
+      2. User-stored encrypted key (from UserPreference)
+      3. Server environment variable (settings.GEMINI_API_KEY / OPENROUTER_API_KEY)
     """
     # Fetch or create the analysis record
     analysis = db.query(JobAnalysis).filter(JobAnalysis.job_id == job.id).first()
@@ -90,7 +99,25 @@ async def run_job_analysis(
         actual_provider = (provider or "").lower()
         actual_model = model or ""
 
-        # Resolve API key from server env if not passed from client
+        # Resolve API key from user-stored encrypted key or server env
+        if not api_key:
+            # Try user-stored encrypted key first
+            if user_id:
+                try:
+                    user_uuid = __import__("uuid").UUID(user_id) if isinstance(user_id, str) else user_id
+                    prefs = db.query(UserPreference).filter(UserPreference.user_id == user_uuid).first()
+                    if prefs:
+                        if actual_provider == "openrouter":
+                            user_key = decrypt_value(prefs.encrypted_openrouter_key) if prefs.encrypted_openrouter_key else None
+                        else:
+                            user_key = decrypt_value(prefs.encrypted_gemini_key) if prefs.encrypted_gemini_key else None
+                        if user_key:
+                            api_key = user_key
+                            logger.info(f"Using user-stored API key for job {job.id}")
+                except Exception:
+                    logger.warning(f"Failed to decrypt user API key for user {user_id}", exc_info=True)
+
+        # Fall back to server env
         if not api_key:
             from app.core.config import settings
             if actual_provider == "openrouter":
