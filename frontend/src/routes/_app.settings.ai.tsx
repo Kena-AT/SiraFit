@@ -5,13 +5,12 @@ import { Panel, AgentDot } from "@/components/sirafit/bits";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { apiFetch } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_app/settings/ai")({
   head: () => ({ meta: [{ title: "AI & agent settings · SiraFit" }] }),
   component: AISettings,
 });
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const MODELS = [
   { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro", provider: "gemini" },
@@ -31,12 +30,11 @@ function AISettings() {
   const { data: config, isLoading } = useQuery({
     queryKey: ["ai-config"],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE_URL}/api/v1/users/me/ai-config`, {
-        credentials: "include",
-      });
+      const res = await apiFetch("/api/v1/users/me/ai-config");
       if (!res.ok) throw new Error("Failed to fetch AI config");
       return res.json();
     },
+    retry: false,
   });
 
   useEffect(() => {
@@ -48,10 +46,9 @@ function AISettings() {
 
   const { mutate: saveConfig, isPending } = useMutation({
     mutationFn: async (body: object) => {
-      const res = await fetch(`${API_BASE_URL}/api/v1/users/me/ai-config`, {
+      const res = await apiFetch("/api/v1/users/me/ai-config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify(body),
       });
       if (!res.ok) {

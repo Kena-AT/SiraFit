@@ -1,12 +1,10 @@
 import type { JobImportData, ImportResult, JobImportRecord } from "@/types/job";
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import { apiFetch } from "./client";
 
 export const importJobs = async (data: JobImportData): Promise<ImportResult> => {
-  const response = await fetch(`${API_BASE_URL}/api/v1/jobs/import`, {
+  const response = await apiFetch('/api/v1/jobs/import', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getAIHeaders() },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
   if (!response.ok) {
@@ -17,23 +15,15 @@ export const importJobs = async (data: JobImportData): Promise<ImportResult> => 
 };
 
 export const getImportHistory = async (skip = 0, limit = 50): Promise<JobImportRecord[]> => {
-  const response = await fetch(`${API_BASE_URL}/api/v1/jobs/import/history?skip=${skip}&limit=${limit}`, {
-    credentials: 'include',
-    headers: { ...getAIHeaders() },
-  });
+  const response = await apiFetch(`/api/v1/jobs/import/history?skip=${skip}&limit=${limit}`);
   if (!response.ok) {
     throw new Error('Failed to fetch import history');
   }
   return response.json();
 };
 
-import { getAIHeaders } from "./headers";
-
 export const getImportDetail = async (importId: string): Promise<ImportResult> => {
-  const response = await fetch(`${API_BASE_URL}/api/v1/jobs/import/${importId}`, {
-    credentials: 'include',
-    headers: { ...getAIHeaders() }
-  });
+  const response = await apiFetch(`/api/v1/jobs/import/${importId}`);
   if (!response.ok) {
     throw new Error('Failed to fetch import details');
   }
@@ -63,26 +53,15 @@ export const getJobs = async (params: JobSearchParams = {}) => {
     }
   });
   
-  const response = await fetch(`${API_BASE_URL}/api/v1/jobs?${queryParams.toString()}`, {
-    credentials: 'include',
-    headers: { ...getAIHeaders() }
-  });
-  
+  const response = await apiFetch(`/api/v1/jobs?${queryParams.toString()}`);
   if (!response.ok) {
-    if (response.status === 401) {
-      window.location.href = '/login';
-      throw new Error('Session expired. Please log in again.');
-    }
     throw new Error('Failed to fetch jobs');
   }
   return response.json();
 };
 
 export const getJob = async (jobId: string) => {
-  const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}`, {
-    credentials: 'include',
-    headers: { ...getAIHeaders() }
-  });
+  const response = await apiFetch(`/api/v1/jobs/${jobId}`);
   if (!response.ok) {
     throw new Error('Failed to fetch job');
   }
@@ -90,10 +69,9 @@ export const getJob = async (jobId: string) => {
 };
 
 export const triggerAnalysis = async (jobId: string, forceRefresh = false) => {
-  const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/analyze`, {
+  const response = await apiFetch(`/api/v1/jobs/${jobId}/analyze`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getAIHeaders() },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ force_refresh: forceRefresh }),
   });
   if (!response.ok) {
@@ -104,10 +82,7 @@ export const triggerAnalysis = async (jobId: string, forceRefresh = false) => {
 };
 
 export const getJobAnalysis = async (jobId: string) => {
-  const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/analysis`, {
-    credentials: 'include',
-    headers: { ...getAIHeaders() },
-  });
+  const response = await apiFetch(`/api/v1/jobs/${jobId}/analysis`);
   if (response.status === 404) return null;
   if (!response.ok) throw new Error('Failed to fetch analysis');
   return response.json();

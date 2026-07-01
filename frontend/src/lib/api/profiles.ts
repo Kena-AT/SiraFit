@@ -1,32 +1,22 @@
 import { Profile } from '@/types/profile';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import { apiFetch } from './client';
 
 export async function getProfile(): Promise<Profile> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/profiles/me`, {
-    credentials: 'include',
-  });
-
+  const response = await apiFetch('/api/v1/profiles/me');
   if (!response.ok) {
     throw new Error('Failed to fetch profile');
   }
-
   return response.json();
 }
 
 export async function updateProfile(profile: Profile): Promise<Profile> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/profiles/me`, {
+  const response = await apiFetch('/api/v1/profiles/me', {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(profile),
   });
-
   if (!response.ok) {
     throw new Error('Failed to update profile');
   }
-
   return response.json();
 }
