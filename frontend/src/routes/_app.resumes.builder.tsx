@@ -1,94 +1,237 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, ScoreMeter, Tag } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { generateResume, getResumeVersions } from "@/lib/api/resumes";
+import { getJobs } from "@/lib/api/jobs";
+import type { Job } from "@/types/job";
+import type { ResumeVersion } from "@/types/resume";
 
 export const Route = createFileRoute("/_app/resumes/builder")({
   head: () => ({ meta: [{ title: "Resume builder · SiraFit" }] }),
   component: Builder,
 });
 
+const TEMPLATES = [
+  { value: "minimal", label: "Minimal" },
+  { value: "technical", label: "Technical" },
+  { value: "modern", label: "Modern" },
+  { value: "corporate", label: "Corporate" },
+  { value: "compact", label: "Compact" },
+];
+
 function Builder() {
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [template, setTemplate] = useState("minimal");
+  const [generating, setGenerating] = useState(false);
+  const [versions, setVersions] = useState<ResumeVersion[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getJobs({ limit: 200 }).then((res) => setJobs(res.jobs)).catch(console.error);
+  }, []);
+
+  const handleGenerate = async () => {
+    if (!selectedJob) return;
+    setGenerating(true);
+    setError(null);
+    try {
+      // For demo, we use the first resume. In production, you'd select which resume to generate for.
+      const version = await generateResume("resume-id-placeholder", {
+        job_id: selectedJob.id,
+        template,
+      });
+      setVersions((prev) => [version, ...prev]);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   return (
     <PageBody className="max-w-none">
-      <PageHeader eyebrow="Assets · Builder" title="Tailored resume: Stripe — Infra Engineer" description="Structured input → AI tailoring → schema validation → ATS-ready PDF." actions={<><Button variant="outline">Re-validate</Button><Button>Generate v2.2</Button></>} />
+      <PageHeader
+        eyebrow="Assets · Builder"
+        title="Tailored Resume Builder"
+        description="Select a job and template, then generate a tailored resume."
+        actions={
+          <>
+            <Button variant="outline" disabled={generating}>
+              Re-validate
+            </Button>
+            <Button onClick={handleGenerate} disabled={!selectedJob || generating}>
+              {generating ? "Generating..." : "Generate Version"}
+            </Button>
+          </>
+        }
+      />
+
+      {error && (
+        <div className="mb-4 rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-12">
-        <Panel title="Structure" className="lg:col-span-3" bodyClassName="p-4 space-y-4">
-          {["Header","Summary","Experience","Projects","Skills","Education"].map((s, i) => (
-            <div key={s} className="flex items-center justify-between text-sm">
-              <span className={i === 2 ? "font-semibold" : "text-muted-foreground"}>{s}</span>
-              <Tag>{i === 2 ? "edit" : "ok"}</Tag>
-            </div>
-          ))}
-        </Panel>
-
-        <Panel title="Generation settings" className="lg:col-span-4" bodyClassName="p-4 space-y-4">
-          <div>
-            <div className="text-[10px] font-semibold uppercase text-muted-foreground">Tailoring priorities</div>
-            <div className="mt-2 space-y-2">
-              {[["Distributed systems",95],["Kubernetes",90],["PostgreSQL",80],["Go",75]].map(([s,v]) => (
-                <div key={s as string}>
-                  <div className="mb-1 flex items-center justify-between text-[12px]"><span>{s}</span><span className="font-mono">{v}</span></div>
-                  <ScoreMeter value={v as number} />
-                </div>
-              ))}
-            </div>
+        {/* Job Selection */}
+        <Panel title="Target Job" className="lg:col-span-3" bodyClassName="p-4 space-y-4">
+          <div className="text-sm text-muted-foreground">Select the job to tailor for:</div>
+          <div className="space-y-2">
+            {jobs.length === 0 ? (
+              <div className="text-xs text-muted-foreground">No jobs imported. <Link to="/jobs/import" className="text-[color:var(--brand)] underline">Import jobs first.</Link></div>
+            ) : (
+              jobs.map((job) => (
+                <button
+                  key={job.id}
+                  onClick={() => setSelectedJob(job)}
+                  className={`w-full rounded-md border p-3 text-left text-sm transition-colors hover:bg-muted/40 ${
+                    selectedJob?.id === job.id
+                      ? "border-[color:var(--brand)] bg-[color:var(--brand)]/5"
+                      : "border-border"
+                  }`}
+                >
+                  <div className="font-medium">{job.company}</div>
+                  <div className="text-xs text-muted-foreground">{job.title}</div>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {(job.tags || []).slice(0, 3).map((t) => (
+                      <Tag key={t}>{t}</Tag>
+                    ))}
+                  </div>
+                </button>
+              ))
+            )}
           </div>
+        </Panel>
+
+        {/* Template & Settings */}
+        <Panel title="Template & Settings" className="lg:col-span-4" bodyClassName="p-4 space-y-4">
           <div>
-            <div className="text-[10px] font-semibold uppercase text-muted-foreground">Template</div>
-            <div className="mt-2 flex flex-wrap gap-1.5">{["Minimal","Technical","Modern","Corporate","Compact"].map((t) => (<Tag key={t}>{t}{t === "Technical" ? " ·" : ""}</Tag>))}</div>
+            <label className="text-[10px] font-semibold uppercase text-muted-foreground">
+              Template
+            </label>
+            <Select value={template} onValueChange={setTemplate}>
+              <SelectTrigger className="mt-2">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TEMPLATES.map((t) => (
+                  <SelectItem CollectionslectionItem key={t.value} value={t.value}>
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <div className="rounded bg-muted/40 p-3 text-[11px] text-muted-foreground">Schema validation enforced. AI repair attempts capped at 1.</div>
+
+          <div>
+            <div className="text-[10px] font-semibold uppercase text-muted-foreground">
+              Generation Log
+            </div>
+            <ul className="mt-2 divide-y divide-border font-mono text-[11px]">
+              {versions.length === 0 ? (
+                <li className="py-2 text-muted-foreground">No generations yet.</li>
+              ) : (
+                versions.map((v) => (
+                  <li key={v.id} className="flex gap-3 py-2">
+                    <span className="text-muted-foreground">
+                      {new Date(v.created_at).toLocaleTimeString()}
+                    </span>
+                    <span>
+                      {v.status === "processing"
+                        ? "Generating..."
+                        : v.status === "completed"
+                        ? `v${v.version_number} · Score: ${v.score ?? "N/A"}`
+                        : `Failed: ${v.tailoring_notes || ""}`}
+                    </span>
+                  </li>
+                ))
+              )}
+            </ul>
+          </div>
         </Panel>
 
-        <Panel title="Live preview" className="lg:col-span-5" bodyClassName="p-6 bg-muted/30 flex justify-center">
-          <ResumePreview />
+        {/* Preview */}
+        <Panel title="Preview" className="lg:col-span-5" bodyClassName="p-6 bg-muted/30">
+          {generating ? (
+            <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
+              <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-border border-t-foreground" />
+              Tailoring resume with AI蚌...
+            </div>
+          ) : versions.length > 0 && versions[0].status === "completed" ? (
+            <ResumePreview data={JSON.parse(versions[0].content)} />
+          ) : (
+            <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
+              Select a job and generate to see preview.
+            </div>
+          )}
         </Panel>
-      </div>
-
-      <Panel title="Generation log">
-        <ul className="divide-y divide-border font-mono text-[11px]">
-          {[["09:14","Generation complete: v2.1 · 1242 tokens"],["09:13","Schema valid · 0 repair attempts"],["09:13","Prompt built: 4 sections, 2 priorities"],["09:12","Pulled master profile rev 87"]].map((r) => (
-            <li key={r[1]} className="flex gap-3 px-4 py-2"><span className="text-muted-foreground">{r[0]}</span><span>{r[1]}</span></li>
-          ))}
-        </ul>
-      </Panel>
-
-      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-        <span>Resume rv-12 · linked to job j-001 (Stripe)</span>
-        <Link to="/resumes/$id" params={{ id: "rv-12" }} className="text-[color:var(--brand)] hover:underline">Open preview →</Link>
       </div>
     </PageBody>
   );
 }
 
-function ResumePreview() {
+function ResumePreview({ data }: { data: any }) {
+  if (!data) return null;
   return (
     <div className="w-full max-w-md space-y-4 rounded-sm bg-card p-8 shadow-2xl ring-1 ring-border">
-      <header className="border-b border-border pb-3">
-        <h3 className="text-lg font-semibold tracking-tight">{profile.name}</h3>
-        <p className="text-[11px] text-muted-foreground">{profile.email} · {profile.location} · {profile.github}</p>
+      <header className="border-b border-border pb-4">
+        <h2 className="text-lg font-semibold tracking-tight">{data.name}</h2>
+        <p className="text-xs text-muted-foreground">
+          {data.email} · {data.phone} · {data.location}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {data.linkedin} · {data.github}
+        </p>
       </header>
-      <section>
-        <h4 className="font-mono text-[10px] font-semibold uppercase tracking-widest">Experience</h4>
-        {profile.experience.map((e) => (
-          <div key={e.company} className="mt-2 space-y-1">
-            <div className="flex items-baseline justify-between text-[12px]"><span className="font-semibold">{e.role} · {e.company}</span><span className="text-muted-foreground">{e.period}</span></div>
-            <ul className="list-disc pl-4 text-[11px] leading-relaxed text-foreground/90">{e.bullets.map((b) => (<li key={b}>{b}</li>))}</ul>
-          </div>
-        ))}
-      </section>
-      <section>
-        <h4 className="font-mono text-[10px] font-semibold uppercase tracking-widest">Skills</h4>
-        <p className="mt-1 text-[11px] text-foreground/90">{profile.skills.join(" · ")}</p>
-      </section>
-      <section>
-        <h4 className="font-mono text-[10px] font-semibold uppercase tracking-widest">Education</h4>
-        {profile.education.map((e) => (
-          <div key={e.school} className="flex items-baseline justify-between text-[11px]"><span>{e.degree} · {e.school}</span><span className="text-muted-foreground">{e.period}</span></div>
-        ))}
-      </section>
+      {data.summary && (
+        <section>
+          <h3 className="font-mono text-[10px] font-semibold uppercase tracking-widest">Summary</h3>
+          <p className="mt-1 text-[13px]">{data.summary}</p>
+        </section>
+      )}
+      {data.experience?.length > 0 && (
+        <section>
+          <h3 className="font-mono text-[10px] font-semibold uppercase tracking-widest">Experience</h3>
+          {data.experience.map((exp: any) => (
+            <div key={exp.title + exp.company} className="mt-2 space-y-1">
+              <div className="flex items-baseline justify-between text-sm">
+                <span className="font-semibold">
+                  {exp.title} · {exp.company}
+                </span>
+                <span className="text-muted-foreground text-xs">{exp.period}</span>
+              </div>
+              <ul className="list-disc space-y-0.5 pl-5 text-[12px] leading-relaxed">
+                {exp.bullets?.map((b: string) => (
+                  <li key={b}>{b}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </section>
+      )}
+      {data.skills?.length > 0 && (
+        <section>
+          <h3 className="font-mono text-[10px] font-semibold uppercase tracking-widest">Skills</h3>
+          <p className="mt-1 text-[12px]">{data.skills.join(" · ")}</p>
+        </section>
+      )}
+      {data.education?.length > 0 && (
+        <section>
+          <h3 className="font-mono text-[10px] font-semibold uppercase tracking-widest">Education</h3>
+          {data.education.map((edu: any) => (
+            <div key={edu.institution} className="flex items-baseline justify-between text-[12px]">
+              <span>
+                {edu.degree} · {edu.institution}
+              </span>
+              <span className="text-muted-foreground">{edu.period}</span>
+            </div>
+          ))}
+        </section>
+      )}
     </div>
   );
 }

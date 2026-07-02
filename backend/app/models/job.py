@@ -130,3 +130,23 @@ class AuditLog(Base):
     created_at = Column(DateTime, default=_utcnow)
 
     user = relationship("User", back_populates="audit_logs")
+
+
+class ResumeVersion(Base):
+    __tablename__ = "resume_versions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    resume_id = Column(UUID(as_uuid=True), ForeignKey("resumes.id", ondelete="CASCADE"), nullable=False)
+    version_number = Column(Integer, nullable=False)
+    content = Column(Text, nullable=False)  # Full generated resume content (JSON)
+    template = Column(String(100), nullable=True)  # "minimal", "technical", "modern", "corporate", "compact"
+    job_id = Column(UUID(as_uuid=True), ForeignKey("jobs.id", ondelete="SET NULL"), nullable=True)
+    tailoring_notes = Column(Text, nullable=True)
+    score = Column(Integer, nullable=True)  # ATS readiness score
+    status = Column(String(20), nullable=False, default="pending")  # pending, processing, completed, failed
+
+    created_at = Column(DateTime, default=_utcnow)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+    resume = relationship("Resume", backref="versions")
+    job = relationship("Job")
