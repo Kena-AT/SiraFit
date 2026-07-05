@@ -4,10 +4,10 @@ import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, ScoreMeter, Tag } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { generateResume, getResumeVersions } from "@/lib/api/resumes";
+import { generateResume, getResumes, createResume, getResumeVersions } from "@/lib/api/resumes";
 import { getJobs } from "@/lib/api/jobs";
 import type { Job } from "@/types/job";
-import type { ResumeVersion } from "@/types/resume";
+import type { Resume, ResumeVersion } from "@/types/resume";
 
 export const Route = createFileRoute("/_app/resumes/builder")({
   head: () => ({ meta: [{ title: "Resume builder · SiraFit" }] }),
@@ -24,6 +24,8 @@ const TEMPLATES = [
 
 function Builder() {
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [resumes, setResumes] = useState<Resume[]>([]);
+  const [selectedResume, setSelectedResume] = useState<Resume | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [template, setTemplate] = useState("minimal");
   const [generating, setGenerating] = useState(false);
@@ -32,15 +34,51 @@ function Builder() {
 
   useEffect(() => {
     getJobs({ limit: 200 }).then((res) => setJobs(res.jobs)).catch(console.error);
+    getResumes().then(async (res) => {
+      if (res.length === 0) {
+        const created = await createResume({
+          title: "My Resume",
+          content: "{}",
+          is_primary: true,
+        });
+        setResumes([created]);
+        setSelectedResume(created);
+      } else {
+        setResumes(res);
+        setSelectedResume(res[0]);
+      }
+    }).catch(console.error);
   }, []);
 
+  // Poll for version status updates when any version is processing
+  useEffect(() => {
+    const hasProcessing = versions.some((v) => v.status === "processing");
+    if (!hasProcessing || !selectedResume) return;
+
+    const interval = setInterval(() => {
+      getResumeVersions(selectedResume.id)
+        .then((updated) => {
+          // Merge: keep generated versions that are already completed,
+          // and update any that the API returned
+          setVersions((prev) => {
+            const apiMap = new Map(updated.map((v) => [v.id, v]));
+            return prev.map((v) => apiMap.get(v.id) ?? v);
+          });
+        })
+        .catch(() => {
+          // Silently ignore poll failures
+        });
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [versions, selectedResume]);
+
   const handleGenerate = async () => {
-    if (!selectedJob) return;
+    if (!selectedJob || !selectedResume) return;
     setGenerating(true);
     setError(null);
     try {
-      // For demo, we use the first resume. In production, you'd select which resume to generate for.
-      const version = await generateResume("resume-id-placeholder", {
+      const version = await generateResume(selectedResume.id, {
         job_id: selectedJob.id,
         template,
       });
@@ -63,7 +101,7 @@ function Builder() {
             <Button variant="outline" disabled={generating}>
               Re-validate
             </Button>
-            <Button onClick={handleGenerate} disabled={!selectedJob || generating}>
+            <Button onClick={handleGenerate} disabled={!selectedJob || !selectedResume || generating}>
               {generating ? "Generating..." : "Generate Version"}
             </Button>
           </>
@@ -111,6 +149,27 @@ function Builder() {
         <Panel title="Template & Settings" className="lg:col-span-4" bodyClassName="p-4 space-y-4">
           <div>
             <label className="text-[10px] font-semibold uppercase text-muted-foreground">
+              Target Resume
+            </label>
+            <Select
+              value={selectedResume?.id ?? ""}
+              onValueChange={(id) => setSelectedResume(resumes.find((r) => r.id === id) ?? null)}
+            >
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Select a resume" />
+              </SelectTrigger>
+              <SelectContent>
+                {resumes.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {r.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-semibold uppercase text-muted-foreground">
               Template
             </label>
             <Select value={template} onValueChange={setTemplate}>
@@ -119,7 +178,7 @@ function Builder() {
               </SelectTrigger>
               <SelectContent>
                 {TEMPLATES.map((t) => (
-                  <SelectItem CollectionslectionItem key={t.value} value={t.value}>
+                  <SelectItem key={t.value} value={t.value}>
                     {t.label}
                   </SelectItem>
                 ))}
@@ -159,10 +218,10 @@ function Builder() {
           {generating ? (
             <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
               <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-border border-t-foreground" />
-              Tailoring resume with AI蚌...
+              Tailoring resume with AI...
             </div>
           ) : versions.length > 0 && versions[0].status === "completed" ? (
-            <ResumePreview data={JSON.parse(versions[0].content)} />
+            <SafeResumePreview content={versions[0].content} />
           ) : (
             <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
               Select a job and generate to see preview.
@@ -172,6 +231,19 @@ function Builder() {
       </div>
     </PageBody>
   );
+}
+
+function SafeResumePreview({ content }: { content: string }) {
+  try {
+    const data = JSON.parse(content);
+    return <ResumePreview data={data} />;
+  } catch {
+    return (
+      <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
+        Unable to preview — invalid resume content.
+      </div>
+    );
+  }
 }
 
 function ResumePreview({ data }: { data: any }) {

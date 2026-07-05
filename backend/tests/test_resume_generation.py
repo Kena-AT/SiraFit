@@ -219,15 +219,43 @@ class TestRenderResumeHtml:
             "linkedin": None,
             "github": None,
             "website": None,
-            "summary": "Test",
+            "summary": "Test <b>summary</b>",
             "experience": [],
             "projects": [],
             "skills": [],
             "education": [],
         }
         html = render_resume_html(data, "minimal")
-        # The raw script tag should not be in the output
-        assert "<script>" not in html or "<script>" in html  # Template currently doesn't escape, but should
+        # Raw script tag should be escaped
+        assert "&lt;script&gt;" in html
+        assert "<script>" not in html
+        # Summary content should also be escaped
+        assert "&lt;b&gt;summary&lt;/b&gt;" in html
+        assert "<b>summary</b>" not in html
+
+    def test_modern_template(self, sample_resume_data):
+        """Test that modern template produces valid HTML with gradient header."""
+        html = render_resume_html(sample_resume_data, "modern")
+        assert "<html>" in html
+        assert "John Doe" in html
+        assert "linear-gradient" in html
+        assert "</html>" in html
+
+    def test_corporate_template(self, sample_resume_data):
+        """Test that corporate template produces valid HTML with serif font."""
+        html = render_resume_html(sample_resume_data, "corporate")
+        assert "<html>" in html
+        assert "Times New Roman" in html
+        assert "Professional Summary" in html
+        assert "</html>" in html
+
+    def test_compact_template(self, sample_resume_data):
+        """Test that compact template produces valid HTML with dense layout."""
+        html = render_resume_html(sample_resume_data, "compact")
+        assert "<html>" in html
+        assert "John Doe" in html
+        assert "font-size:12px" in html or "font-size:11px" in html
+        assert "</html>" in html
 
 
 # ---------------------------------------------------------------------------

@@ -123,3 +123,14 @@ export const generateResume = async (
   }
   return response.json();
 };
+
+// --- Export ---
+
+export const getExportUrl = (
+  resumeId: string,
+  versionId: string,
+  format: "html" | "docx" = "html"
+): string => {
+  const params = new URLSearchParams({ format });
+  return `/api/v1/resumes/${resumeId}/versions/${versionId}/export?${params.toString()}`;
+};

@@ -1,5 +1,5 @@
 from typing import List, Any, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 import uuid
@@ -221,7 +221,6 @@ async def create_resume_version(
 @router.post("/{resume_id}/generate", response_model=ResumeVersionResponse)
 async def generate_resume(
     resume_id: uuid.UUID,
-    background_tasks: BackgroundTasks,
     job_id: uuid.UUID = Query(..., description="Target job ID"),
     template: str = Query("minimal", description="Template name"),
     db: Session = Depends(get_db),
@@ -230,9 +229,12 @@ async def generate_resume(
     """
     Generate a tailored resume version for a specific job.
 
-    Returns immediately with the created version (status=processing).
-    Generation happens in the background.
+    Enqueues the generation onto the Celery `resume_generation` queue and
+    returns immediately with the created version (status=processing). Falls
+    back to synchronous execution when Celery/Redis is unavailable.
     """
+    from app.worker.tasks import enqueue_resume_generation
+
     resume = db.query(Resume).filter(
         Resume.id == resume_id,
         Resume.user_id == current_user.id
@@ -267,71 +269,77 @@ async def generate_resume(
         status="processing",
     )
     db.add(version)
+
+    log = AuditLog(
+        user_id=current_user.id,
+        action="resume_generation_requested",
+        entity_type="resume_version",
+        details={"resume_id": str(resume_id), "job_id": str(job_id), "template": template},
+    )
+    db.add(log)
     db.commit()
     db.refresh(version)
 
-    # Trigger background generation
-    background_tasks.add_task(
-        _generate_resume_background,
-        db=db,
+    # Enqueue background generation (synchronous fallback handled inside)
+    enqueue_resume_generation(
         version_id=version.id,
         user_id=str(current_user.id),
-        profile=profile,
-        job=job,
+        profile_id=profile.id,
+        job_id=job.id,
         template=template,
     )
 
     return version
 
 
-async def _generate_resume_background(
-    db: Session,
-    version_id: uuid.UUID,
-    user_id: str,
-    profile: Profile,
-    job: Job,
-    template: str,
-):
-    """Background task for resume generation."""
-    from app.services.resume_generation import generate_tailored_resume
+# ---------------------------------------------------------------------------
+# Resume Export
+# ---------------------------------------------------------------------------
 
-    try:
-        # Note: We need to create a new DB session for the background task
-        # since the original session may be closed
-        result = await generate_tailored_resume(
-            db=db,
-            user_id=user_id,
-            profile=profile,
-            job=job,
-            template=template,
+@router.get("/{resume_id}/versions/{version_id}/export")
+def export_resume_version(
+    resume_id: uuid.UUID,
+    version_id: uuid.UUID,
+    format: str = Query("html", description="Export format: html, docx"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Export a resume version in the requested format.
+
+    Supported formats:
+    - `html` — standalone HTML file rendered via the template engine
+    - `docx` — Microsoft Word document
+    """
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    version = db.query(ResumeVersion).filter(
+        ResumeVersion.id == version_id,
+        ResumeVersion.resume_id == resume_id,
+    ).first()
+    if not version:
+        raise HTTPException(status_code=404, detail="Version not found")
+
+    from app.services.resume_export import export_resume_html, export_resume_docx
+    from fastapi.responses import StreamingResponse, HTMLResponse
+
+    if format == "docx":
+        buf = export_resume_docx(version)
+        filename = f"resume-{resume_id}-v{version.version_number}.docx"
+        return StreamingResponse(
+            buf,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
 
-        version = db.query(ResumeVersion).filter(ResumeVersion.id == version_id).first()
-        if version:
-            version.content = json.dumps(result["resume_data"])
-            version.score = result["ats_score"]
-            version.status = "completed" if result["is_valid"] else "failed"
-            db.commit()
-
-            # Add audit log
-            log = AuditLog(
-                user_id=user_id,
-                action="generated_resume",
-                entity_type="resume_version",
-                details={
-                    "version_id": str(version_id),
-                    "job_id": str(job.id),
-                    "template": template,
-                    "ats_score": result["ats_score"],
-                    "valid": result["is_valid"],
-                }
-            )
-            db.add(log)
-            db.commit()
-
-    except Exception as e:
-        version = db.query(ResumeVersion).filter(ResumeVersion.id == version_id).first()
-        if version:
-            version.status = "failed"
-            version.tailoring_notes = f"Generation failed: {str(e)[:500]}"
-            db.commit()
+    # Default: HTML
+    html = export_resume_html(version)
+    filename = f"resume-{resume_id}-v{version.version_number}.html"
+    return HTMLResponse(
+        content=html,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

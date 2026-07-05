@@ -83,7 +83,7 @@ services:
     restart: unless-stopped
     networks:
       - sirafit-network
-    command: celery -A app.services.email.celery_app beat --schedule-file /tmp/celery-beat.schedule
+    command: celery -A app.worker.celery_app beat --schedule-file /tmp/celery-beat.schedule
 
 volumes:
   postgres_data:

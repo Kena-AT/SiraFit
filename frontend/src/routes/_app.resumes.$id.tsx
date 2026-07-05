@@ -4,6 +4,7 @@ import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, ScorePill, Tag } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
 import { getResume, getResumeVersions } from "@/lib/api/resumes";
+import { getExportUrl } from "@/lib/api/resumes";
 import type { Resume, ResumeVersion } from "@/types/resume";
 
 export const Route = createFileRoute("/_app/resumes/$id")({
@@ -114,8 +115,25 @@ function ResumePreviewPage() {
         description={`${versions.length} version${versions.length !== 1 ? 's' : ''} · Last updated ${new Date(resume.updated_at).toLocaleDateString()}`}
         actions={
           <>
-            <Button variant="outline">Download DOCX</Button>
-            <Button>Export PDF</Button>
+            <Button
+              variant="outline"
+              disabled={!selectedVersion}
+              onClick={() => {
+                if (!selectedVersion) return;
+                window.open(getExportUrl(id, selectedVersion.id, "docx"), "_blank");
+              }}
+            >
+              Download DOCX
+            </Button>
+            <Button
+              disabled={!selectedVersion}
+              onClick={() => {
+                if (!selectedVersion) return;
+                window.open(getExportUrl(id, selectedVersion.id, "html"), "_blank");
+              }}
+            >
+              Export HTML
+            </Button>
           </>
         }
       />
@@ -137,20 +155,20 @@ function ResumePreviewPage() {
           <Panel title="ATS Readiness">
             <div className="space-y-3 p-4 text-sm">
               <div className="flex items-center justify-between">
-                <span>Keyword coverage</span>
-                {selectedVersion?.score ? (
+                <span>Overall score</span>
+                {selectedVersion?.score !== null && selectedVersion?.score !== undefined ? (
                   <ScorePill value={selectedVersion.score} />
                 ) : (
                   <span className="text-muted-foreground">—</span>
                 )}
               </div>
               <div className="flex items-center justify-between">
-                <span>Parsable structure</span>
-                <ScorePill value={98} />
+                <span>Status</span>
+                <Tag>{selectedVersion?.status || "unknown"}</Tag>
               </div>
               <div className="flex items-center justify-between">
-                <span>Section ordering</span>
-                <ScorePill value={90} />
+                <span>Template</span>
+                <span className="text-muted-foreground">{selectedVersion?.template || "default"}</span>
               </div>
             </div>
           </Panel>

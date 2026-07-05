@@ -353,7 +353,9 @@ def validate_resume_json(resume_data: dict, job: Job) -> tuple[bool, list[str]]:
 
     if resume_data.get("experience"):
         for i, exp in enumerate(resume_data["experience"]):
-            if not exp.get("bullets"):
+            if "bullets" not in exp:
+                issues.append(f"Experience {i+1} missing bullets field")
+            elif exp.get("bullets") is None:
                 issues.append(f"Experience {i+1} missing bullets")
             elif len(exp["bullets"]) > 5:
                 issues.append(f"Experience {i+1} has more than 5 bullets")
@@ -373,6 +375,16 @@ def validate_resume_json(resume_data: dict, job: Job) -> tuple[bool, list[str]]:
 # ---------------------------------------------------------------------------
 # Template Engine
 # ---------------------------------------------------------------------------
+
+import html as _html
+
+
+def _esc(value) -> str:
+    """Escape HTML special characters in a value."""
+    if value is None:
+        return ""
+    return _html.escape(str(value), quote=True)
+
 
 TEMPLATES = {
     "minimal": {
@@ -405,19 +417,29 @@ def render_resume_html(resume_data: dict, template: str = "minimal") -> str:
     """
     template_name = template if template in TEMPLATES else "minimal"
 
-    # Minimal template HTML
     if template_name == "minimal":
-        html = _render_minimal_template(resume_data)
-    elif template_name == "technical":
-        html = _render_technical_template(resume_data)
-    else:
-        html = _render_minimal_template(resume_data)  # Fallback
-
-    return html
+        return _render_minimal_template(resume_data)
+    if template_name == "technical":
+        return _render_technical_template(resume_data)
+    if template_name == "modern":
+        return _render_modern_template(resume_data)
+    if template_name == "corporate":
+        return _render_corporate_template(resume_data)
+    if template_name == "compact":
+        return _render_compact_template(resume_data)
+    return _render_minimal_template(resume_data)
 
 
 def _render_minimal_template(resume_data: dict) -> str:
     """Render the minimal template."""
+    name = _esc(resume_data.get("name", ""))
+    email = _esc(resume_data.get("email", ""))
+    phone = _esc(resume_data.get("phone", ""))
+    location = _esc(resume_data.get("location", ""))
+    linkedin = _esc(resume_data.get("linkedin", ""))
+    github = _esc(resume_data.get("github", ""))
+    website = _esc(resume_data.get("website", ""))
+
     lines = []
     lines.append("<!DOCTYPE html>")
     lines.append("<html><head><meta charset='utf-8'><style>")
@@ -434,56 +456,69 @@ def _render_minimal_template(resume_data: dict) -> str:
     lines.append("</style></head><body>")
 
     # Header
-    lines.append(f"<h1>{resume_data.get('name', '')}</h1>")
+    lines.append(f"<h1>{name}</h1>")
     contact_parts = []
-    if resume_data.get('email'):
-        contact_parts.append(resume_data['email'])
-    if resume_data.get('phone'):
-        contact_parts.append(resume_data['phone'])
-    if resume_data.get('location'):
-        contact_parts.append(resume_data['location'])
-    if resume_data.get('linkedin'):
-        contact_parts.append(resume_data['linkedin'])
-    if resume_data.get('github'):
-        contact_parts.append(resume_data['github'])
+    if email:
+        contact_parts.append(email)
+    if phone:
+        contact_parts.append(phone)
+    if location:
+        contact_parts.append(location)
+    if linkedin:
+        contact_parts.append(linkedin)
+    if github:
+        contact_parts.append(github)
+    if website:
+        contact_parts.append(website)
     lines.append(f"<div class='contact'>{' · '.join(contact_parts)}</div>")
 
     # Summary
-    if resume_data.get('summary'):
+    if resume_data.get("summary"):
         lines.append("<h2>Summary</h2>")
-        lines.append(f"<p>{resume_data['summary']}</p>")
+        lines.append(f"<p>{_esc(resume_data['summary'])}</p>")
 
     # Experience
-    if resume_data.get('experience'):
+    if resume_data.get("experience"):
         lines.append("<h2>Experience</h2>")
-        for exp in resume_data['experience']:
+        for exp in resume_data["experience"]:
+            title = _esc(exp.get("title", ""))
+            company = _esc(exp.get("company", ""))
+            period = _esc(exp.get("period", ""))
+            loc = _esc(exp.get("location", ""))
             lines.append("<div class='exp-item'>")
-            lines.append(f"<div class='exp-header'><span>{exp.get('title', '')} — {exp.get('company', '')}</span><span>{exp.get('period', '')}</span></div>")
-            if exp.get('location'):
-                lines.append(f"<div class='exp-meta'>{exp['location']}</div>")
-            if exp.get('bullets'):
+            lines.append(f"<div class='exp-header'><span>{title} — {company}</span><span>{period}</span></div>")
+            if loc:
+                lines.append(f"<div class='exp-meta'>{loc}</div>")
+            if exp.get("bullets"):
                 lines.append("<ul>")
-                for bullet in exp['bullets']:
-                    lines.append(f"<li>{bullet}</li>")
+                for bullet in exp["bullets"]:
+                    lines.append(f"<li>{_esc(bullet)}</li>")
                 lines.append("</ul>")
             lines.append("</div>")
 
     # Projects
-    if resume_data.get('projects'):
+    if resume_data.get("projects"):
         lines.append("<h2>Projects</h2>")
-        for proj in resume_data['projects']:
-            lines.append(f"<p><strong>{proj.get('name', '')}</strong> — {proj.get('description', '')}</p>")
+        for proj in resume_data["projects"]:
+            pname = _esc(proj.get("name", ""))
+            pdesc = _esc(proj.get("description", ""))
+            lines.append(f"<p><strong>{pname}</strong> — {pdesc}</p>")
 
     # Skills
-    if resume_data.get('skills'):
+    if resume_data.get("skills"):
         lines.append("<h2>Skills</h2>")
-        lines.append(f"<p class='skills'>{' · '.join(resume_data['skills'])}</p>")
+        escaped_skills = [_esc(s) for s in resume_data["skills"]]
+        lines.append(f"<p class='skills'>{' · '.join(escaped_skills)}</p>")
 
     # Education
-    if resume_data.get('education'):
+    if resume_data.get("education"):
         lines.append("<h2>Education</h2>")
-        for edu in resume_data['education']:
-            lines.append(f"<p><strong>{edu.get('institution', '')}</strong> — {edu.get('degree', '')}, {edu.get('field_of_study', '')} ({edu.get('period', '')})</p>")
+        for edu in resume_data["education"]:
+            inst = _esc(edu.get("institution", ""))
+            deg = _esc(edu.get("degree", ""))
+            field = _esc(edu.get("field_of_study", ""))
+            period = _esc(edu.get("period", ""))
+            lines.append(f"<p><strong>{inst}</strong> — {deg}, {field} ({period})</p>")
 
     lines.append("</body></html>")
     return "\n".join(lines)
@@ -491,13 +526,20 @@ def _render_minimal_template(resume_data: dict) -> str:
 
 def _render_technical_template(resume_data: dict) -> str:
     """Render the technical template (skills and projects forward)."""
+    name = _esc(resume_data.get("name", ""))
+    email = _esc(resume_data.get("email", ""))
+    phone = _esc(resume_data.get("phone", ""))
+    location = _esc(resume_data.get("location", ""))
+    linkedin = _esc(resume_data.get("linkedin", ""))
+    github = _esc(resume_data.get("github", ""))
+
     lines = []
     lines.append("<!DOCTYPE html>")
     lines.append("<html><head><meta charset='utf-8'><style>")
     lines.append("body{font-family:'Segoe UI',Arial,sans-serif;max-width:800px;margin:0 auto;padding:40px;line-height:1.6}")
     lines.append("h1{font-size:26px;margin-bottom:4px;color:#1a1a1a}")
     lines.append(".contact{font-size:13px;color:#555;margin-bottom:24px}")
- lines.append("h2{font-size:15px;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid #2563eb;padding-bottom:6px;margin-top:24px;margin-bottom:12px;color:#1e40af}")
+    lines.append("h2{font-size:15px;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid #2563eb;padding-bottom:6px;margin-top:24px;margin-bottom:12px;color:#1e40af}")
     lines.append(".exp-item{margin-bottom:18px}")
     lines.append(".exp-header{display:flex;justify-content:space-between;font-weight:600}")
     lines.append(".exp-meta{color:#666;font-size:13px}")
@@ -508,63 +550,343 @@ def _render_technical_template(resume_data: dict) -> str:
     lines.append("</style></head><body>")
 
     # Header
-    lines.append(f"<h1>{resume_data.get('name', '')}</h1>")
+    lines.append(f"<h1>{name}</h1>")
     contact_parts = []
-    if resume_data.get('email'):
-        contact_parts.append(resume_data['email'])
-    if resume_data.get('phone'):
-        contact_parts.append(resume_data['phone'])
-    if resume_data.get('location'):
-        contact_parts.append(resume_data['location'])
-    if resume_data.get('linkedin'):
-        contact_parts.append(resume_data['linkedin'])
-    if resume_data.get('github'):
-        contact_parts.append(resume_data['github'])
+    if email:
+        contact_parts.append(email)
+    if phone:
+        contact_parts.append(phone)
+    if location:
+        contact_parts.append(location)
+    if linkedin:
+        contact_parts.append(linkedin)
+    if github:
+        contact_parts.append(github)
     lines.append(f"<div class='contact'>{' · '.join(contact_parts)}</div>")
 
     # Summary
-    if resume_data.get('summary'):
+    if resume_data.get("summary"):
         lines.append("<h2>Summary</h2>")
-        lines.append(f"<p>{resume_data['summary']}</p>")
+        lines.append(f"<p>{_esc(resume_data['summary'])}</p>")
 
     # Skills (forward for technical roles)
-    if resume_data.get('skills'):
+    if resume_data.get("skills"):
         lines.append("<h2>Technical Skills</h2>")
         lines.append("<div class='skills'>")
-        for skill in resume_data['skills']:
-            lines.append(f"<span class='skill-tag'>{skill}</span>")
+        for skill in resume_data["skills"]:
+            lines.append(f"<span class='skill-tag'>{_esc(skill)}</span>")
         lines.append("</div>")
 
     # Projects
-    if resume_data.get('projects'):
+    if resume_data.get("projects"):
         lines.append("<h2>Projects</h2>")
-        for proj in resume_data['projects']:
-            lines.append(f"<p><strong>{proj.get('name', '')}</strong></p>
-            lines.append(f"<p>{proj.get('description', '')}</p>")
-            if proj.get('url'):
-                lines.append(f"<p><a href='{proj['url']}'>{proj['url']}</a></p>")
+        for proj in resume_data["projects"]:
+            pname = _esc(proj.get("name", ""))
+            pdesc = _esc(proj.get("description", ""))
+            purl = _esc(proj.get("url", "") or "")
+            lines.append(f"<p><strong>{pname}</strong></p>")
+            lines.append(f"<p>{pdesc}</p>")
+            if purl:
+                lines.append(f"<p><a href='{purl}'>{purl}</a></p>")
 
     # Experience
-    if resume_data.get('experience'):
+    if resume_data.get("experience"):
         lines.append("<h2>Experience</h2>")
-        for exp in resume_data['experience']:
+        for exp in resume_data["experience"]:
+            title = _esc(exp.get("title", ""))
+            company = _esc(exp.get("company", ""))
+            period = _esc(exp.get("period", ""))
+            loc = _esc(exp.get("location", ""))
             lines.append("<div class='exp-item'>")
-            lines.append(f"<div class='exp-header'><span>{exp.get('title', '')} — {exp.get('company', '')}</span><span>{exp.get('period', '')}</span></div>")
-            if exp.get('location'):
-                lines.append(f"<div class='exp-meta'>{exp['location']}</div>")
-            if exp.get('bullets'):
+            lines.append(f"<div class='exp-header'><span>{title} — {company}</span><span>{period}</span></div>")
+            if loc:
+                lines.append(f"<div class='exp-meta'>{loc}</div>")
+            if exp.get("bullets"):
                 lines.append("<ul>")
-                for bullet in exp['bullets']:
-                    lines.append(f"<li>{bullet}</li>")
+                for bullet in exp["bullets"]:
+                    lines.append(f"<li>{_esc(bullet)}</li>")
                 lines.append("</ul>")
             lines.append("</div>")
 
     # Education
-    if resume_data.get('education'):
+    if resume_data.get("education"):
         lines.append("<h2>Education</h2>")
-        for edu in resume_data['education']:
-            lines.append(f"<p><strong>{edu.get('institution', '')}</strong> — {edu.get('degree', '')}, {edu.get('field_of_study', '')} ({edu.get('period', '')})</p>")
+        for edu in resume_data["education"]:
+            inst = _esc(edu.get("institution", ""))
+            deg = _esc(edu.get("degree", ""))
+            field = _esc(edu.get("field_of_study", ""))
+            period = _esc(edu.get("period", ""))
+            lines.append(f"<p><strong>{inst}</strong> — {deg}, {field} ({period})</p>")
 
+    lines.append("</body></html>")
+    return "\n".join(lines)
+
+def _render_modern_template(resume_data: dict) -> str:
+    """Render the modern template: balanced layout with subtle styling and a sidebar accent."""
+    name = _esc(resume_data.get("name", ""))
+    email = _esc(resume_data.get("email", ""))
+    phone = _esc(resume_data.get("phone", ""))
+    location = _esc(resume_data.get("location", ""))
+    linkedin = _esc(resume_data.get("linkedin", ""))
+    github = _esc(resume_data.get("github", ""))
+    website = _esc(resume_data.get("website", ""))
+
+    contact = " · ".join([c for c in [email, phone, location] if c])
+    links = " · ".join([l for l in [linkedin, github, website] if l])
+
+    lines = [
+        "<!DOCTYPE html>",
+        "<html><head><meta charset='utf-8'><style>",
+        "body{font-family:'Segoe UI',Arial,sans-serif;max-width:840px;margin:0 auto;padding:0;line-height:1.6;color:#1f2937}",
+        ".header{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:36px 40px}",
+        ".header h1{font-size:28px;margin:0 0 6px 0;letter-spacing:-0.5px}",
+        ".header .contact{font-size:13px;opacity:.9}",
+        ".header .links{font-size:12px;opacity:.85;margin-top:4px}",
+        ".body{padding:28px 40px}",
+        "h2{font-size:14px;text-transform:uppercase;letter-spacing:1.5px;color:#6366f1;border-bottom:1px solid #e5e7eb;padding-bottom:6px;margin:24px 0 12px}",
+        ".exp-item{margin-bottom:16px}",
+        ".exp-header{display:flex;justify-content:space-between;font-weight:600;font-size:15px}",
+        ".exp-meta{color:#6b7280;font-size:12px}",
+        "ul{margin:6px 0;padding-left:20px}",
+        "li{margin:3px 0;font-size:13px}",
+        ".skills-grid{display:flex;flex-wrap:wrap;gap:6px}",
+        ".skill{background:#eef2ff;color:#4338ca;padding:4px 10px;border-radius:999px;font-size:12px}",
+        ".project{margin-bottom:10px}",
+        ".project a{color:#6366f1;text-decoration:none}",
+        ".edu{display:flex;justify-content:space-between;font-size:13px}",
+        "</style></head><body>",
+        f"<div class='header'><h1>{name}</h1>",
+        f"<div class='contact'>{contact}</div>",
+        f"<div class='links'>{links}</div></div>",
+        "<div class='body'>",
+    ]
+
+    if resume_data.get("summary"):
+        lines.append(f"<h2>About</h2><p>{_esc(resume_data['summary'])}</p>")
+
+    if resume_data.get("experience"):
+        lines.append("<h2>Experience</h2>")
+        for exp in resume_data["experience"]:
+            title = _esc(exp.get("title", ""))
+            company = _esc(exp.get("company", ""))
+            period = _esc(exp.get("period", ""))
+            loc = _esc(exp.get("location", ""))
+            lines.append("<div class='exp-item'>")
+            lines.append(f"<div class='exp-header'><span>{title} · {company}</span><span>{period}</span></div>")
+            if loc:
+                lines.append(f"<div class='exp-meta'>{loc}</div>")
+            if exp.get("bullets"):
+                lines.append("<ul>")
+                for b in exp["bullets"]:
+                    lines.append(f"<li>{_esc(b)}</li>")
+                lines.append("</ul>")
+            lines.append("</div>")
+
+    if resume_data.get("skills"):
+        lines.append("<h2>Skills</h2><div class='skills-grid'>")
+        for s in resume_data["skills"]:
+            lines.append(f"<span class='skill'>{_esc(s)}</span>")
+        lines.append("</div>")
+
+    if resume_data.get("projects"):
+        lines.append("<h2>Projects</h2>")
+        for p in resume_data["projects"]:
+            pname = _esc(p.get("name", ""))
+            pdesc = _esc(p.get("description", ""))
+            purl = _esc(p.get("url", "") or "")
+            lines.append(f"<div class='project'><strong>{pname}</strong> — {pdesc}")
+            if purl:
+                lines.append(f" <a href='{purl}'>{purl}</a>")
+            lines.append("</div>")
+
+    if resume_data.get("education"):
+        lines.append("<h2>Education</h2>")
+        for edu in resume_data["education"]:
+            inst = _esc(edu.get("institution", ""))
+            deg = _esc(edu.get("degree", ""))
+            field = _esc(edu.get("field_of_study", ""))
+            period = _esc(edu.get("period", ""))
+            lines.append(f"<div class='edu'><span><strong>{inst}</strong> — {deg}, {field}</span><span>{period}</span></div>")
+
+    lines.append("</div></body></html>")
+    return "\n".join(lines)
+
+
+def _render_corporate_template(resume_data: dict) -> str:
+    """Render the corporate template: traditional layout for conservative industries."""
+    name = _esc(resume_data.get("name", ""))
+    email = _esc(resume_data.get("email", ""))
+    phone = _esc(resume_data.get("phone", ""))
+    location = _esc(resume_data.get("location", ""))
+    linkedin = _esc(resume_data.get("linkedin", ""))
+    github = _esc(resume_data.get("github", ""))
+    website = _esc(resume_data.get("website", ""))
+
+    contact = " | ".join([c for c in [email, phone, location] if c])
+    links = " | ".join([l for l in [linkedin, github, website] if l])
+
+    lines = [
+        "<!DOCTYPE html>",
+        "<html><head><meta charset='utf-8'><style>",
+        "body{font-family:'Times New Roman',Georgia,serif;max-width:800px;margin:0 auto;padding:40px;line-height:1.5;color:#000}",
+        ".name{text-align:center;font-size:26px;font-variant:small-caps;letter-spacing:2px;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:4px}",
+        ".contact{text-align:center;font-size:12px;color:#333;margin-bottom:6px}",
+        ".links{text-align:center;font-size:11px;color:#555;margin-bottom:24px}",
+        "h2{font-size:14px;font-variant:small-caps;letter-spacing:2px;border-bottom:1px solid #000;padding-bottom:3px;margin:22px 0 10px}",
+        ".exp-item{margin-bottom:14px}",
+        ".exp-header{font-weight:bold;font-size:14px}",
+        ".exp-sub{font-style:italic;font-size:12px;color:#444;margin:1px 0 4px}",
+        "ul{margin:4px 0;padding-left:22px}",
+        "li{margin:2px 0;font-size:13px;text-align:justify}",
+        ".skills{font-size:13px}",
+        ".project{margin-bottom:8px}",
+        ".edu-item{margin-bottom:6px;font-size:13px}",
+        "</style></head><body>",
+        f"<div class='name'>{name}</div>",
+        f"<div class='contact'>{contact}</div>",
+        f"<div class='links'>{links}</div>",
+    ]
+
+    if resume_data.get("summary"):
+        lines.append(f"<h2>Professional Summary</h2><p style='font-size:13px;text-align:justify'>{_esc(resume_data['summary'])}</p>")
+
+    if resume_data.get("experience"):
+        lines.append("<h2>Professional Experience</h2>")
+        for exp in resume_data["experience"]:
+            title = _esc(exp.get("title", ""))
+            company = _esc(exp.get("company", ""))
+            period = _esc(exp.get("period", ""))
+            loc = _esc(exp.get("location", ""))
+            lines.append("<div class='exp-item'>")
+            lines.append(f"<div class='exp-header'>{title}, {company}</div>")
+            sub = period
+            if loc:
+                sub = f"{loc} — {period}"
+            lines.append(f"<div class='exp-sub'>{sub}</div>")
+            if exp.get("bullets"):
+                lines.append("<ul>")
+                for b in exp["bullets"]:
+                    lines.append(f"<li>{_esc(b)}</li>")
+                lines.append("</ul>")
+            lines.append("</div>")
+
+    if resume_data.get("education"):
+        lines.append("<h2>Education</h2>")
+        for edu in resume_data["education"]:
+            inst = _esc(edu.get("institution", ""))
+            deg = _esc(edu.get("degree", ""))
+            field = _esc(edu.get("field_of_study", ""))
+            period = _esc(edu.get("period", ""))
+            line = f"<div class='edu-item'><strong>{inst}</strong>"
+            if deg:
+                line += f" — {deg}"
+            if field:
+                line += f", {field}"
+            line += f" ({period})</div>"
+            lines.append(line)
+
+    if resume_data.get("skills"):
+        lines.append("<h2>Technical Skills</h2>")
+        lines.append(f"<p class='skills'>{_esc(', '.join(resume_data['skills']))}</p>")
+
+    if resume_data.get("projects"):
+        lines.append("<h2>Selected Projects</h2>")
+        for p in resume_data["projects"]:
+            pname = _esc(p.get("name", ""))
+            pdesc = _esc(p.get("description", ""))
+            purl = _esc(p.get("url", "") or "")
+            line = f"<div class='project'><strong>{pname}.</strong> {pdesc}"
+            if purl:
+                line += f" <em>{purl}</em>"
+            line += "</div>"
+            lines.append(line)
+
+    lines.append("</body></html>")
+    return "\n".join(lines)
+
+
+def _render_compact_template(resume_data: dict) -> str:
+    """Render the compact template: maximizes content density in minimal space."""
+    name = _esc(resume_data.get("name", ""))
+    email = _esc(resume_data.get("email", ""))
+    phone = _esc(resume_data.get("phone", ""))
+    location = _esc(resume_data.get("location", ""))
+    linkedin = _esc(resume_data.get("linkedin", ""))
+    github = _esc(resume_data.get("github", ""))
+    website = _esc(resume_data.get("website", ""))
+
+    contact = " · ".join([c for c in [email, phone, location, linkedin, github, website] if c])
+
+    lines = [
+        "<!DOCTYPE html>",
+        "<html><head><meta charset='utf-8'><style>",
+        "body{font-family:Arial,sans-serif;max-width:780px;margin:0 auto;padding:24px;line-height:1.35;color:#111;font-size:12px}",
+        ".header{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1.5px solid #111;padding-bottom:6px;margin-bottom:10px}",
+        ".header h1{font-size:20px;margin:0;letter-spacing:-0.3px}",
+        ".header .contact{font-size:10px;color:#555;text-align:right;max-width:50%}",
+        "h2{font-size:11px;text-transform:uppercase;letter-spacing:1px;border-bottom:0.5px solid #ccc;margin:14px 0 6px;padding-bottom:2px}",
+        ".exp-item{margin-bottom:8px}",
+        ".exp-line{display:flex;justify-content:space-between;font-weight:600;font-size:12px}",
+        ".exp-meta{color:#666;font-size:10px}",
+        "ul{margin:2px 0;padding-left:16px}",
+        "li{margin:0;font-size:11px}",
+        ".skills{font-size:11px}",
+        ".project{font-size:11px;margin-bottom:4px}",
+        ".edu-line{display:flex;justify-content:space-between;font-size:11px}",
+        "</style></head><body>",
+        f"<div class='header'><h1>{name}</h1><div class='contact'>{contact}</div></div>",
+    ]
+
+    if resume_data.get("summary"):
+        lines.append(f"<h2>Summary</h2><p style='font-size:11px;margin:2px 0'>{_esc(resume_data['summary'])}</p>")
+
+    if resume_data.get("experience"):
+        lines.append("<h2>Experience</h2>")
+        for exp in resume_data["experience"]:
+            title = _esc(exp.get("title", ""))
+            company = _esc(exp.get("company", ""))
+            period = _esc(exp.get("period", ""))
+            loc = _esc(exp.get("location", ""))
+            lines.append("<div class='exp-item'>")
+            lines.append(f"<div class='exp-line'><span>{title} · {company}</span><span>{period}</span></div>")
+            if loc:
+                lines.append(f"<div class='exp-meta'>{loc}</div>")
+            if exp.get("bullets"):
+                lines.append("<ul>")
+                for b in exp["bullets"]:
+                    lines.append(f"<li>{_esc(b)}</li>")
+                lines.append("</ul>")
+            lines.append("</div>")
+
+    if resume_data.get("skills"):
+        lines.append("<h2>Skills</h2>")
+        lines.append(f"<p class='skills'>{_esc(' · '.join(resume_data['skills']))}</p>")
+
+    if resume_data.get("projects"):
+        lines.append("<h2>Projects</h2>")
+        for p in resume_data["projects"]:
+            pname = _esc(p.get("name", ""))
+            pdesc = _esc(p.get("description", ""))
+            purl = _esc(p.get("url", "") or "")
+            line = f"<div class='project'><strong>{pname}</strong> — {pdesc}"
+            if purl:
+                line += f" <span style='color:#666'>({purl})</span>"
+            line += "</div>"
+            lines.append(line)
+
+    if resume_data.get("education"):
+        lines.append("<h2>Education</h2>")
+        for edu in resume_data["education"]:
+            inst = _esc(edu.get("institution", ""))
+            deg = _esc(edu.get("degree", ""))
+            field = _esc(edu.get("field_of_study", ""))
+            period = _esc(edu.get("period", ""))
+            left = inst
+            if deg:
+                left += f" — {deg}"
+            if field:
+                left += f", {field}"
+            lines.append(f"<div class='edu-line'><span>{left}</span><span>{period}</span></div>")
     lines.append("</body></html>")
     return "\n".join(lines)
 
