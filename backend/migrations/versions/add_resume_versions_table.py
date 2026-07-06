@@ -25,7 +25,7 @@ def upgrade():
         sa.Column('content', sa.Text(), nullable=False),
         sa.Column('template', sa.String(100), nullable=True),  # "minimal", "technical", "modern", "corporate", "compact"
         sa.Column('job_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('jobs.id', ondelete='SET NULL'), nullable=True),
-        sa.Column(' tailoring_notes', sa.Text(), nullable=True),
+        sa.Column('tailoring_notes', sa.Text(), nullable=True),
         sa.Column('score', sa.Integer(), nullable=True),  # ATS readiness score
         sa.Column('status', sa.String(20), nullable=False, server_default='pending'),  # pending, processing, completed, failed
         sa.Column('created_at', sa.DateTime(), nullable=True),
