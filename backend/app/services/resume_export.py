@@ -1,4 +1,4 @@
-"""Resume export services: HTML and DOCX download generation."""
+"""Resume export services: HTML, DOCX, and PDF download generation."""
 
 import json
 import io
@@ -6,13 +6,23 @@ from typing import Optional
 
 from app.models.job import ResumeVersion
 from app.services.resume_generation import render_resume_html
+from app.services.pdf_rendering import render_html_to_pdf_bytes
 
 
 def export_resume_html(version: ResumeVersion) -> str:
     """Render a ResumeVersion's content as a standalone HTML string."""
-    data = json.loads(version.content) if version.content else {}
+    try:
+        data = json.loads(version.content) if version.content else {}
+    except (json.JSONDecodeError, ValueError):
+        data = {}
     template = version.template or "minimal"
     return render_resume_html(data, template)
+
+
+def export_resume_pdf(version: ResumeVersion) -> io.BytesIO:
+    """Render a ResumeVersion as a PDF byte stream."""
+    html = export_resume_html(version)
+    return render_html_to_pdf_bytes(html)
 
 
 def export_resume_docx(version: ResumeVersion) -> io.BytesIO:

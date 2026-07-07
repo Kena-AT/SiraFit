@@ -32,6 +32,7 @@ from app.core.database import Base, get_db
 import app.models.user  # noqa: F401
 import app.models.job   # noqa: F401
 import app.models.profile  # noqa: F401
+import app.models.cover_letter  # noqa: F401
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 

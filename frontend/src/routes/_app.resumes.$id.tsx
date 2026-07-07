@@ -126,6 +126,16 @@ function ResumePreviewPage() {
               Download DOCX
             </Button>
             <Button
+              variant="outline"
+              disabled={!selectedVersion}
+              onClick={() => {
+                if (!selectedVersion) return;
+                window.open(getExportUrl(id, selectedVersion.id, "pdf"), "_blank");
+              }}
+            >
+              Download PDF
+            </Button>
+            <Button
               disabled={!selectedVersion}
               onClick={() => {
                 if (!selectedVersion) return;

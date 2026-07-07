@@ -129,8 +129,10 @@ export const generateResume = async (
 export const getExportUrl = (
   resumeId: string,
   versionId: string,
-  format: "html" | "docx" = "html"
+  format: "html" | "docx" | "pdf" = "html"
 ): string => {
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
   const params = new URLSearchParams({ format });
-  return `/api/v1/resumes/${resumeId}/versions/${versionId}/export?${params.toString()}`;
+  // Use absolute URL so window.open() works cross-origin
+  return `${API_BASE_URL}/api/v1/resumes/${resumeId}/versions/${versionId}/export?${params.toString()}`;
 };

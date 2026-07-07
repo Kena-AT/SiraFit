@@ -300,7 +300,8 @@ async def generate_resume(
 def export_resume_version(
     resume_id: uuid.UUID,
     version_id: uuid.UUID,
-    format: str = Query("html", description="Export format: html, docx"),
+    format: str = Query("html", description="Export format: html, docx, pdf"),
+    async_export: bool = Query(False, description="If true, queue PDF rendering on a worker and return 202"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -309,6 +310,7 @@ def export_resume_version(
     Supported formats:
     - `html` — standalone HTML file rendered via the template engine
     - `docx` — Microsoft Word document
+    - `pdf`  — PDF rendered via the HTML template engine + xhtml2pdf
     """
     resume = db.query(Resume).filter(
         Resume.id == resume_id,
@@ -324,7 +326,7 @@ def export_resume_version(
     if not version:
         raise HTTPException(status_code=404, detail="Version not found")
 
-    from app.services.resume_export import export_resume_html, export_resume_docx
+    from app.services.resume_export import export_resume_html, export_resume_docx, export_resume_pdf
     from fastapi.responses import StreamingResponse, HTMLResponse
 
     if format == "docx":
@@ -334,6 +336,18 @@ def export_resume_version(
             buf,
             media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    if format == "pdf":
+        buf = export_resume_pdf(version)
+        filename = f"resume-{resume_id}-v{version.version_number}.pdf"
+        return StreamingResponse(
+            buf,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Length": str(buf.getbuffer().nbytes),
+            },
         )
 
     # Default: HTML

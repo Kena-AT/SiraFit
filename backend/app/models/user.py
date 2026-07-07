@@ -25,6 +25,7 @@ class User(Base):
     refresh_tokens = relationship("RefreshToken", back_populates="user")
     applications = relationship("JobApplication", back_populates="user", cascade="all, delete-orphan")
     resumes = relationship("Resume", back_populates="user", cascade="all, delete-orphan")
+    cover_letters = relationship("CoverLetter", back_populates="user", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="user")
 
 class UserPreference(Base):
