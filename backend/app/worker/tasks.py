@@ -1,27 +1,59 @@
 """
-Celery tasks for asynchronous resume generation.
+Celery tasks for asynchronous resume generation and PDF rendering.
 
-The main entry point is `enqueue_resume_generation`, which dispatches work to the
-Celery queue when Celery + Redis are available, and otherwise runs the work
-synchronously inside the request lifecycle (useful for tests and local dev).
+Two queues are used:
+  - ``resume_generation`` — AI resume tailoring (slow, I/O-bound)
+  - ``pdf_rendering``     — HTML → PDF conversion (CPU-bound but offloads
+                            heavy work from the request thread)
 
-The task itself reuses the existing `app.services.resume_generation` service so
-all validation, ATS scoring, and template rendering logic is shared between the
-foreground and background paths.
+Every enqueue helper falls back to synchronous execution when the Celery
+broker (Redis) is unreachable, so the API keeps working in environments
+without Redis (tests, local dev). The fallback is logged at WARNING level
+so it is visible in production.
 """
 from __future__ import annotations
 
 import json
 import logging
+import os
+import tempfile
 import uuid
 from typing import Any
 
 from app.core.database import SessionLocal
+from app.models.cover_letter import CoverLetter
 from app.models.job import ResumeVersion, Job, AuditLog
 from app.models.profile import Profile
 
 logger = logging.getLogger(__name__)
 
+
+# ---------------------------------------------------------------------------
+# Storage helper for rendered PDFs
+# ---------------------------------------------------------------------------
+
+def _pdf_storage_dir() -> str:
+    """Return (creating if needed) the directory used to store rendered PDFs.
+
+    Uses the OS temp dir so it works in any deployment without extra config.
+    The path is deterministic per-process so workers and the API agree.
+    """
+    base = os.path.join(tempfile.gettempdir(), "sirafit_pdfs")
+    os.makedirs(base, exist_ok=True)
+    return base
+
+
+def _save_pdf_bytes(pdf_bytes: bytes, name: str) -> str:
+    """Persist ``pdf_bytes`` to disk under ``name`` and return the full path."""
+    path = os.path.join(_pdf_storage_dir(), f"{name}.pdf")
+    with open(path, "wb") as fh:
+        fh.write(pdf_bytes)
+    return path
+
+
+# ---------------------------------------------------------------------------
+# Resume generation
+# ---------------------------------------------------------------------------
 
 def _run_generation(
     version_id: uuid.UUID,
@@ -112,13 +144,7 @@ def enqueue_resume_generation(
     job_id: uuid.UUID,
     template: str = "minimal",
 ) -> None:
-    """
-    Dispatch resume generation to the Celery queue.
-
-    Falls back to synchronous execution when the broker is unreachable so the
-    API keeps working in environments without Redis (tests, local dev). The
-    fallback is logged at warning level so it is visible in production.
-    """
+    """Dispatch resume generation to the Celery queue (sync fallback)."""
     try:
         from app.worker.celery_app import celery_app
 
@@ -143,7 +169,138 @@ def enqueue_resume_generation(
 
 
 # ---------------------------------------------------------------------------
-# Celery task definition
+# PDF rendering — resume
+# ---------------------------------------------------------------------------
+
+def _run_resume_pdf_render(version_id: uuid.UUID) -> None:
+    """Render a ResumeVersion to PDF and persist the path on the row."""
+    from app.services.resume_export import export_resume_pdf
+
+    db = SessionLocal()
+    try:
+        version = db.query(ResumeVersion).filter(ResumeVersion.id == version_id).first()
+        if not version:
+            logger.error("resume_pdf_version_not_found", extra={"version_id": str(version_id)})
+            return
+
+        version.status = "processing"
+        db.commit()
+
+        buf = export_resume_pdf(version)
+        path = _save_pdf_bytes(buf.getvalue(), f"resume-{version_id}")
+
+        version.status = "completed"
+        # ResumeVersion has no pdf_url column; we surface the path via the
+        # owning Resume row so the download endpoint can find it.
+        if version.resume:
+            version.resume.pdf_url = path
+        db.commit()
+
+        log = AuditLog(
+            user_id=version.resume.user_id if version.resume else None,
+            action="rendered_resume_pdf",
+            entity_type="resume_version",
+            details={"version_id": str(version_id), "path": path},
+        )
+        db.add(log)
+        db.commit()
+    except Exception:  # pragma: no cover - defensive
+        logger.exception("resume_pdf_render_failed", extra={"version_id": str(version_id)})
+        db.rollback()
+        version = db.query(ResumeVersion).filter(ResumeVersion.id == version_id).first()
+        if version:
+            version.status = "failed"
+            db.commit()
+    finally:
+        db.close()
+
+
+def enqueue_resume_pdf_render(version_id: uuid.UUID) -> None:
+    """Dispatch resume PDF rendering to the ``pdf_rendering`` queue (sync fallback)."""
+    try:
+        from app.worker.celery_app import celery_app
+
+        celery_app.send_task(
+            "app.worker.tasks.render_resume_pdf_task",
+            kwargs={"version_id": str(version_id)},
+            queue="pdf_rendering",
+        )
+        logger.info("resume_pdf_enqueued", extra={"version_id": str(version_id)})
+    except Exception as exc:
+        logger.warning(
+            "resume_pdf_celery_unavailable_running_sync",
+            extra={"error": str(exc)},
+        )
+        _run_resume_pdf_render(version_id)
+
+
+# ---------------------------------------------------------------------------
+# PDF rendering — cover letter
+# ---------------------------------------------------------------------------
+
+def _run_cover_letter_pdf_render(letter_id: uuid.UUID) -> None:
+    """Render a CoverLetter to PDF and persist the path on the row."""
+    from app.services.cover_letter_generation import render_cover_letter_html
+    from app.services.pdf_rendering import render_html_to_pdf
+
+    db = SessionLocal()
+    try:
+        letter = db.query(CoverLetter).filter(CoverLetter.id == letter_id).first()
+        if not letter:
+            logger.error("cover_letter_pdf_not_found", extra={"letter_id": str(letter_id)})
+            return
+
+        letter.status = "processing"
+        db.commit()
+
+        html = render_cover_letter_html(letter.body, template=letter.template or "classic")
+        pdf_bytes = render_html_to_pdf(html)
+        path = _save_pdf_bytes(pdf_bytes, f"cover-letter-{letter_id}")
+
+        letter.pdf_url = path
+        letter.status = "completed"
+        db.commit()
+
+        log = AuditLog(
+            user_id=letter.user_id,
+            action="rendered_cover_letter_pdf",
+            entity_type="cover_letter",
+            details={"letter_id": str(letter_id), "path": path},
+        )
+        db.add(log)
+        db.commit()
+    except Exception:  # pragma: no cover - defensive
+        logger.exception("cover_letter_pdf_render_failed", extra={"letter_id": str(letter_id)})
+        db.rollback()
+        letter = db.query(CoverLetter).filter(CoverLetter.id == letter_id).first()
+        if letter:
+            letter.status = "failed"
+            db.commit()
+    finally:
+        db.close()
+
+
+def enqueue_cover_letter_pdf_render(letter_id: uuid.UUID) -> None:
+    """Dispatch cover letter PDF rendering to the ``pdf_rendering`` queue (sync fallback)."""
+    try:
+        from app.worker.celery_app import celery_app
+
+        celery_app.send_task(
+            "app.worker.tasks.render_cover_letter_pdf_task",
+            kwargs={"letter_id": str(letter_id)},
+            queue="pdf_rendering",
+        )
+        logger.info("cover_letter_pdf_enqueued", extra={"letter_id": str(letter_id)})
+    except Exception as exc:
+        logger.warning(
+            "cover_letter_pdf_celery_unavailable_running_sync",
+            extra={"error": str(exc)},
+        )
+        _run_cover_letter_pdf_render(letter_id)
+
+
+# ---------------------------------------------------------------------------
+# Celery task definitions
 # ---------------------------------------------------------------------------
 
 try:
@@ -174,8 +331,39 @@ try:
         )
         return {"version_id": version_id, "status": "dispatched"}
 
+    @celery_app.task(
+        name="app.worker.tasks.render_resume_pdf_task",
+        bind=True,
+        max_retries=2,
+        default_retry_delay=5,
+        acks_late=True,
+    )
+    def render_resume_pdf_task(self, version_id: str) -> dict[str, Any]:
+        """Celery task wrapper around `_run_resume_pdf_render`."""
+        _run_resume_pdf_render(uuid.UUID(version_id))
+        return {"version_id": version_id, "status": "rendered"}
+
+    @celery_app.task(
+        name="app.worker.tasks.render_cover_letter_pdf_task",
+        bind=True,
+        max_retries=2,
+        default_retry_delay=5,
+        acks_late=True,
+    )
+    def render_cover_letter_pdf_task(self, letter_id: str) -> dict[str, Any]:
+        """Celery task wrapper around `_run_cover_letter_pdf_render`."""
+        _run_cover_letter_pdf_render(uuid.UUID(letter_id))
+        return {"letter_id": letter_id, "status": "rendered"}
+
 except Exception as exc:  # pragma: no cover - import-time broker failure
     logger.warning("celery_task_registration_skipped", extra={"error": str(exc)})
 
 
-__all__ = ["enqueue_resume_generation", "generate_resume_task"]
+__all__ = [
+    "enqueue_resume_generation",
+    "enqueue_resume_pdf_render",
+    "enqueue_cover_letter_pdf_render",
+    "generate_resume_task",
+    "render_resume_pdf_task",
+    "render_cover_letter_pdf_task",
+]

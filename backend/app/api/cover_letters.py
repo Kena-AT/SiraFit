@@ -126,11 +126,16 @@ def delete_cover_letter(
 def export_cover_letter(
     letter_id: uuid.UUID,
     format: str = Query("pdf", description="Export format: pdf, html"),
+    async_export: bool = Query(False, description="If true, queue PDF rendering on a worker and return 202"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Any:
-    """Export a cover letter as PDF or HTML."""
-    from fastapi.responses import StreamingResponse, HTMLResponse
+    """Export a cover letter as PDF or HTML.
+
+    When ``async_export=True`` and ``format=pdf``, the PDF is rendered on the
+    Celery ``pdf_rendering`` queue and a 202 with a polling URL is returned.
+    """
+    from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse
     from app.services.cover_letter_generation import render_cover_letter_html
     from app.services.pdf_rendering import render_html_to_pdf_bytes
 
@@ -141,6 +146,25 @@ def export_cover_letter(
     if not letter:
         raise HTTPException(status_code=404, detail="Cover letter not found")
 
+    # Asynchronous PDF rendering path
+    if async_export and format == "pdf":
+        from app.worker.tasks import enqueue_cover_letter_pdf_render
+
+        letter.status = "processing"
+        db.commit()
+
+        enqueue_cover_letter_pdf_render(letter.id)
+
+        return JSONResponse(
+            status_code=status.HTTP_202_ACCEPTED,
+            content={
+                "status": "processing",
+                "letter_id": str(letter_id),
+                "message": "PDF rendering queued. Poll the cover letter to check status.",
+                "poll_url": f"/api/v1/cover-letters/{letter_id}",
+            },
+        )
+
     html = render_cover_letter_html(letter.body, template=letter.template or "classic")
 
     if format == "html":
@@ -150,7 +174,7 @@ def export_cover_letter(
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
 
-    # Default: PDF
+    # Default: PDF (synchronous)
     buf = render_html_to_pdf_bytes(html)
     filename = f"cover-letter-{letter_id}.pdf"
     return StreamingResponse(

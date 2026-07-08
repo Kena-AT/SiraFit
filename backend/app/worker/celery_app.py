@@ -54,6 +54,8 @@ celery_app.conf.update(
     task_default_queue="sirafit",
     task_routes={
         "app.worker.tasks.generate_resume_task": {"queue": "resume_generation"},
+        "app.worker.tasks.render_cover_letter_pdf_task": {"queue": "pdf_rendering"},
+        "app.worker.tasks.render_resume_pdf_task": {"queue": "pdf_rendering"},
     },
 )
 

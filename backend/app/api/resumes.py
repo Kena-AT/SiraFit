@@ -1,9 +1,7 @@
-from typing import List, Any, Optional
+from typing import List, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 import uuid
-import json
 
 from app.core.database import get_db
 from app.api.users import get_current_user
@@ -12,7 +10,7 @@ from app.models.job import Resume, ResumeVersion, Job, AuditLog
 from app.models.profile import Profile
 from app.schemas.resume import (
     ResumeCreate, ResumeResponse, ResumeUpdate,
-    ResumeVersionCreate, ResumeVersionResponse, ResumeVersionListResponse,
+    ResumeVersionCreate, ResumeVersionResponse,
 )
 
 router = APIRouter()
@@ -311,6 +309,9 @@ def export_resume_version(
     - `html` — standalone HTML file rendered via the template engine
     - `docx` — Microsoft Word document
     - `pdf`  — PDF rendered via the HTML template engine + xhtml2pdf
+
+    When ``async_export=True`` and ``format=pdf``, the PDF is rendered on the
+    Celery ``pdf_rendering`` queue and a 202 with a polling URL is returned.
     """
     resume = db.query(Resume).filter(
         Resume.id == resume_id,
@@ -327,7 +328,26 @@ def export_resume_version(
         raise HTTPException(status_code=404, detail="Version not found")
 
     from app.services.resume_export import export_resume_html, export_resume_docx, export_resume_pdf
-    from fastapi.responses import StreamingResponse, HTMLResponse
+    from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse
+
+    # Asynchronous PDF rendering path
+    if async_export and format == "pdf":
+        from app.worker.tasks import enqueue_resume_pdf_render
+
+        version.status = "processing"
+        db.commit()
+
+        enqueue_resume_pdf_render(version.id)
+
+        return JSONResponse(
+            status_code=status.HTTP_202_ACCEPTED,
+            content={
+                "status": "processing",
+                "version_id": str(version_id),
+                "message": "PDF rendering queued. Poll the version to check status.",
+                "poll_url": f"/api/v1/resumes/{resume_id}/versions/{version_id}",
+            },
+        )
 
     if format == "docx":
         buf = export_resume_docx(version)

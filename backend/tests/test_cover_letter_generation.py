@@ -235,6 +235,16 @@ class TestRenderCoverLetterHtml:
         html = render_cover_letter_html("Test", "compact")
         assert "12px" in html or "font-size:12px" in html
 
+    def test_compact_template_has_valid_css(self):
+        """Regression: compact template margin must not contain corrupted chars."""
+        from app.services.cover_letter_generation import render_cover_letter_html
+
+        html = render_cover_letter_html("Test body", "compact")
+        # The compact paragraph margin should be a valid CSS value
+        assert "margin:0.4em 0" in html
+        # No mojibake / non-ASCII junk in the inline style
+        assert "惆怅" not in html
+
 
 class TestEscapeHelper:
     """Tests for the _esc helper function."""

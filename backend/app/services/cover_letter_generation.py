@@ -5,11 +5,10 @@ Orchestrates AI-powered cover letter writing from a candidate's profile
 and a target job.  Returns structured text + rendered HTML.
 """
 
-import json
 import logging
 import asyncio
+import html as _html_lib
 from typing import Optional
-from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.profile import Profile
@@ -31,7 +30,8 @@ concise, and personalized cover letter. The letter should:
 2. Connect 2–3 specific experiences or skills from the profile to the job requirements
 3. Use concrete metrics and outcomes where possible
 4. Stay under 300 words (concise is key)
-5. Match the tone specified by the user (matching = mirror the job's tone, conversational = warm and friendly, formal = traditional)
+5. Match the tone specified by the user
+   (matching = mirror the job's tone, conversational = warm and friendly, formal = traditional)
 6. Close with a confident call to action
 
 ## CANDIDATE PROFILE
@@ -44,7 +44,7 @@ concise, and personalized cover letter. The letter should:
 {tone}
 
 ## INSTRUCTIONS
-- Write ONLY the cover letter body (no headers,(CSS]-no meta text)
+- Write ONLY the cover letter body (no headers, no CSS, no meta text)
 - Use a professional greeting like "Dear Hiring Manager," or "Dear [Team] Team,""
 - Sign off with the candidate's name
 - Keep to 3–4 short paragraphs
@@ -187,9 +187,17 @@ async def generate_cover_letter(
             actual_provider = "gemini" if not actual_provider else actual_provider
 
     if actual_key and actual_provider == "gemini":
-        body = await _with_retry(lambda: _generate_with_gemini(prompt, actual_key, actual_model or "gemini-1.5-flash"))
+        body = await _with_retry(
+            lambda: _generate_with_gemini(
+                prompt, actual_key, actual_model or "gemini-1.5-flash"
+            ),
+        )
     elif actual_key and actual_provider == "openrouter":
-        body = await _with_retry(lambda: _generate_with_openrouter(prompt, actual_key, actual_model or "openai/gpt-4o-mini"))
+        body = await _with_retry(
+            lambda: _generate_with_openrouter(
+                prompt, actual_key, actual_model or "openai/gpt-4o-mini"
+            ),
+        )
     else:
         raise ValueError("No AI API key configured for cover letter generation")
 
@@ -253,14 +261,12 @@ def _render_compact(body: str) -> str:
     html_paragraphs = ""
     for p in paragraphs:
         if p.strip():
-            html_paragraphs += f'<p style="margin:0.4惆怅7em 0;font-size:12px;color:#111">{_esc(p)}</p>'
+            html_paragraphs += f'<p style="margin:0.4em 0;font-size:12px;color:#111">{_esc(p)}</p>'
     return f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8"><style>
 body{{font-family:Arial,sans-serif;max-width:640px;margin:20px auto;line-height:1.35;color:#111;font-size:12px}}
 </style></head><body>{html_paragraphs}</body></html>"""
 
-
-import html as _html_lib
 
 def _esc(value: str) -> str:
     if not value:

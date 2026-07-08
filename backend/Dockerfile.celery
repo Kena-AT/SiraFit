@@ -24,4 +24,4 @@ USER appuser
 
 # Celery commands can be run via docker-compose or manually
 # Default command can be overridden in docker-compose.yml
-CMD ["celery", "-A", "app.worker.celery_app", "worker", "--loglevel=info", "-Q", "resume_generation,sirafit"]
+CMD ["celery", "-A", "app.worker.celery_app", "worker", "--loglevel=info", "-Q", "resume_generation,pdf_rendering,sirafit"]
