@@ -2,14 +2,17 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, StatusPill, Tag } from "@/components/sirafit/bits";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { 
-  getApplication, 
-  getApplicationNotes, 
-  createApplicationNote, 
+import {
+  getApplication,
+  getApplicationNotes,
+  createApplicationNote,
+  updateApplicationNote,
+  deleteApplicationNote,
   getApplicationContacts,
-  createApplicationContact 
+  createApplicationContact,
 } from "@/lib/api/applications";
 import { useState } from "react";
+import type { ApplicationNote } from "@/lib/api/applications";
 
 export const Route = createFileRoute("/_app/applications/$id")({
   head: () => ({ meta: [{ title: "Application · SiraFit" }] }),
@@ -38,6 +41,8 @@ function AppDetails() {
   });
 
   const [newNote, setNewNote] = useState("");
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editBody, setEditBody] = useState("");
 
   const addNoteMutation = useMutation({
     mutationFn: (body: string) => createApplicationNote(id, body),
@@ -47,10 +52,47 @@ function AppDetails() {
     },
   });
 
+  const updateNoteMutation = useMutation({
+    mutationFn: (vars: { noteId: string; body: string; pinned: boolean }) =>
+      updateApplicationNote(vars.noteId, vars.body, vars.pinned),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["application-notes", id] });
+      setEditingNoteId(null);
+      setEditBody("");
+    },
+  });
+
+  const deleteNoteMutation = useMutation({
+    mutationFn: (noteId: string) => deleteApplicationNote(noteId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["application-notes", id] });
+    },
+  });
+
   const handleAddNote = () => {
     if (newNote.trim()) {
       addNoteMutation.mutate(newNote);
     }
+  };
+
+  const startEdit = (note: ApplicationNote) => {
+    setEditingNoteId(note.id);
+    setEditBody(note.body);
+  };
+
+  const cancelEdit = () => {
+    setEditingNoteId(null);
+    setEditBody("");
+  };
+
+  const saveEdit = (note: ApplicationNote) => {
+    if (editBody.trim()) {
+      updateNoteMutation.mutate({ noteId: note.id, body: editBody, pinned: note.pinned });
+    }
+  };
+
+  const togglePin = (note: ApplicationNote) => {
+    updateNoteMutation.mutate({ noteId: note.id, body: note.body, pinned: !note.pinned });
   };
 
   if (isLoading || !application) {
@@ -106,22 +148,80 @@ function AppDetails() {
           <Panel title="Notes">
             <div className="space-y-3 p-5">
               {notes.map((note: any) => (
-                <div key={note.id} className="rounded bg-muted/40 p-3 text-sm">
-                  <div className="font-mono text-[10px] text-muted-foreground">
-                    {note.author || "Me"} · {new Date(note.created_at).toLocaleDateString()}
+                <div key={note.id} className="rounded bg-muted/40 p-3 text-sm ring-1 ring-transparent">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="font-mono text-[10px] text-muted-foreground">
+                      {note.author || "Me"} · {new Date(note.created_at).toLocaleDateString()}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => togglePin(note)}
+                        title={note.pinned ? "Unpin note" : "Pin note"}
+                        className="rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-border hover:bg-muted"
+                      >
+                        {note.pinned ? "★ Pinned" : "☆ Pin"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => startEdit(note)}
+                        title="Edit note"
+                        className="rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-border hover:bg-muted"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteNoteMutation.mutate(note.id)}
+                        title="Delete note"
+                        disabled={deleteNoteMutation.isPending}
+                        className="rounded px-1.5 py-0.5 text-[10px] font-medium text-destructive ring-1 ring-destructive/30 hover:bg-destructive/10 disabled:opacity-50"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
-                  <div className="mt-1 whitespace-pre-wrap">{note.body}</div>
+                  {editingNoteId === note.id ? (
+                    <div className="mt-2 space-y-2">
+                      <textarea
+                        className="w-full rounded-md border border-input bg-background p-2 text-sm"
+                        rows={3}
+                        value={editBody}
+                        onChange={(e) => setEditBody(e.target.value)}
+                        autoFocus
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => saveEdit(note)}
+                          disabled={!editBody.trim() || updateNoteMutation.isPending}
+                          className="rounded-md bg-foreground px-3 py-1 text-xs font-medium text-background disabled:opacity-50"
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={cancelEdit}
+                          className="rounded-md px-3 py-1 text-xs font-medium ring-1 ring-border hover:bg-muted"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-1 whitespace-pre-wrap">{note.body}</div>
+                  )}
                 </div>
               ))}
-              <textarea 
-                className="w-full rounded-md border border-input bg-background p-2 text-sm" 
-                rows={3} 
-                placeholder="Add a note..."
+              <textarea
+                className="w-full rounded-md border border-input bg-background p-2 text-sm"
+                rows={3}
+                placeholder="Add a note... (Enter to save, Shift+Enter for newline)"
                 value={newNote}
                 onChange={(e) => setNewNote(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleAddNote())}
               />
-              <button 
+              <button
                 onClick={handleAddNote}
                 disabled={!newNote.trim() || addNoteMutation.isPending}
                 className="rounded-md bg-foreground px-3 py-1 text-sm font-medium text-background disabled:opacity-50"

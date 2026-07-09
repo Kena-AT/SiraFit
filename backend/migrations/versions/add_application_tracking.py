@@ -124,8 +124,14 @@ def upgrade():
     op.create_index("ix_application_contacts_user_app", "application_contacts", ["user_id", "application_id"])
 
     # ---------------------------------------------------------------------
-    # Indexes on existing job_applications to speed up Kanban / list queries
+    # Changes to existing job_applications table
     # ---------------------------------------------------------------------
+    # Rename notes -> general_notes to avoid name conflict with ApplicationNote relationship
+    op.alter_column("job_applications", "notes", new_column_name="general_notes")
+    # Update default status to "saved" (Sprint 9 status machine start state)
+    op.alter_column("job_applications", "status", server_default="saved")
+
+    # Indexes to speed up Kanban / list queries
     op.create_index("ix_job_applications_user_status", "job_applications", ["user_id", "status"])
     op.create_index("ix_job_applications_user_job", "job_applications", ["user_id", "job_id"], unique=True)
 

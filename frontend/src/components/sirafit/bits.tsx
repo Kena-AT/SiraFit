@@ -51,6 +51,15 @@ const statusMap: Record<string, string> = {
   muted: "bg-muted text-muted-foreground ring-border",
   completed: "bg-[color:var(--success)]/10 text-[color:var(--success)] ring-[color:var(--success)]/20",
   failed: "bg-destructive/10 text-destructive ring-destructive/20",
+  // Sprint 9 application tracker statuses (snake_case from the status machine)
+  preparing: "bg-[color:var(--info)]/10 text-[color:var(--info)] ring-[color:var(--info)]/20",
+  screening: "bg-[color:var(--warning)]/10 text-[color:var(--warning)] ring-[color:var(--warning)]/20",
+  interview: "bg-[color:var(--brand)]/15 text-[color:var(--brand)] ring-[color:var(--brand)]/30",
+  final_round: "bg-[color:var(--info)]/15 text-[color:var(--info)] ring-[color:var(--info)]/30",
+  offer: "bg-[color:var(--success)]/15 text-[color:var(--success)] ring-[color:var(--success)]/30",
+  rejected: "bg-destructive/10 text-destructive ring-destructive/20",
+  withdrawn: "bg-muted text-muted-foreground ring-border",
+  archived: "bg-muted text-muted-foreground ring-border",
 };
 
 export function StatusPill({ status, className }: { status: string; className?: string }) {

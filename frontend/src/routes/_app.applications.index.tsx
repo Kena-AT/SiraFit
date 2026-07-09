@@ -121,9 +121,9 @@ function Board() {
                         {app.score && <ScorePill value={app.score} />}
                       </div>
                       <div className="text-[11px] text-muted-foreground">{app.job?.title || "Unknown"}</div>
-                      {app.notes ? (
+                      {app.general_notes ? (
                         <div className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-foreground/80">
-                          {app.notes}
+                          {app.general_notes}
                         </div>
                       ) : null}
                       <div className="flex items-center justify-between text-[10px] text-muted-foreground">

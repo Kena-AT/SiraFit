@@ -226,7 +226,7 @@ class ApplicationNote(Base):
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
-    application = relationship("JobApplication", backref="notes")
+    application = relationship("JobApplication", backref="note_items")
     user = relationship("User")
 
 

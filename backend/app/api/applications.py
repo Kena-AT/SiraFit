@@ -129,6 +129,40 @@ def update_application(
     return application
 
 
+# --- Sprint 9: Timeline Events ---
+# NOTE: /timeline is registered BEFORE /{app_id} so the static path wins route
+# matching. FastAPI matches routes in registration order, and "timeline" would
+# otherwise be captured as the {app_id} UUID parameter (422 validation error).
+
+@router.get("/timeline", response_model=List[ApplicationEventResponse])
+def user_timeline(
+    *,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    limit: int = 100,
+) -> Any:
+    """Get all events across applications (global timeline page)."""
+    return get_all_events_for_user(db, current_user.id, limit)
+
+
+@router.get("/{app_id}", response_model=JobApplicationResponse)
+def get_application(
+    *,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    app_id: uuid.UUID,
+) -> Any:
+    """Get a single application."""
+    application = (
+        db.query(JobApplication)
+        .filter(JobApplication.id == app_id, JobApplication.user_id == current_user.id)
+        .first()
+    )
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    return application
+
+
 # --- Sprint 9: Status Transitions ---
 
 @router.post("/{app_id}/status", response_model=JobApplicationResponse)
@@ -146,7 +180,7 @@ def transition_status(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-# --- Sprint 9: Timeline Events ---
+# --- Sprint 9: Timeline Events (per-application) ---
 
 @router.get("/{app_id}/events", response_model=List[ApplicationEventResponse])
 def list_application_events(
@@ -157,17 +191,6 @@ def list_application_events(
 ) -> Any:
     """Get timeline events for an application."""
     return get_events_for_application(db, app_id, current_user.id)
-
-
-@router.get("/timeline", response_model=List[ApplicationEventResponse])
-def user_timeline(
-    *,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    limit: int = 100,
-) -> Any:
-    """Get all events across applications (global timeline page)."""
-    return get_all_events_for_user(db, current_user.id, limit)
 
 
 # --- Sprint 9: Notes ---

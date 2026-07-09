@@ -95,7 +95,7 @@ export interface JobApplication {
   job_id: string;
   status: string;
   stage: number;
-  notes: string | null;
+  general_notes: string | null;
   score: number | null;
   score_reason: string | null;
   created_at: string;

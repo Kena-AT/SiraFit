@@ -77,9 +77,9 @@ class ImportResultResponse(BaseModel):
 
 # --- Job Application ---
 class JobApplicationBase(BaseModel):
-    status: Optional[str] = "applied"
+    status: Optional[str] = "saved"
     stage: Optional[int] = 0
-    notes: Optional[str] = None
+    general_notes: Optional[str] = None
 
 class JobApplicationCreate(JobApplicationBase):
     job_id: uuid.UUID

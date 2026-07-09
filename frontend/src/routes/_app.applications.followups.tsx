@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageBody } from "@/components/sirafit/shell";
-import { PageHeader, Panel } from "@/components/sirafit/shell";
+import { PageHeader, Panel } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
 
 // Mock follow-ups data (derived from upcoming interviews and deadlines)
