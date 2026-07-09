@@ -144,3 +144,83 @@ class RankedJobListResponse(BaseModel):
 class AnalysisRequest(BaseModel):
     force_refresh: bool = False
 
+
+# --- Sprint 9 Application Tracking ---
+
+class ApplicationEventResponse(BaseModel):
+    """Timeline event for an application."""
+    id: uuid.UUID
+    application_id: uuid.UUID
+    event_type: str
+    title: str
+    description: Optional[str] = None
+    event_metadata: Optional[dict] = None
+    occurred_at: datetime
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ApplicationNoteBase(BaseModel):
+    body: str
+    author: Optional[str] = None
+    pinned: bool = False
+
+
+class ApplicationNoteCreate(ApplicationNoteBase):
+    pass
+
+
+class ApplicationNoteUpdate(BaseModel):
+    body: Optional[str] = None
+    author: Optional[str] = None
+    pinned: Optional[bool] = None
+
+
+class ApplicationNoteResponse(ApplicationNoteBase):
+    id: uuid.UUID
+    application_id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ApplicationContactBase(BaseModel):
+    name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    role: str = "recruiter"
+    company: Optional[str] = None
+    linkedin: Optional[str] = None
+    notes: Optional[str] = None
+    is_primary: bool = False
+
+
+class ApplicationContactCreate(ApplicationContactBase):
+    pass
+
+
+class ApplicationContactUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    role: Optional[str] = None
+    company: Optional[str] = None
+    linkedin: Optional[str] = None
+    notes: Optional[str] = None
+    is_primary: Optional[bool] = None
+
+
+class ApplicationContactResponse(ApplicationContactBase):
+    id: uuid.UUID
+    application_id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class StatusTransitionRequest(BaseModel):
+    to_status: str
+

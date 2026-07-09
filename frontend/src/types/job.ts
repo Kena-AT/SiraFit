@@ -86,3 +86,66 @@ export interface JobMatchScore {
   updated_at: string | null;
 }
 
+
+// --- Sprint 9 Application Types ---
+
+export interface JobApplication {
+  id: string;
+  user_id: string;
+  job_id: string;
+  status: string;
+  stage: number;
+  notes: string | null;
+  score: number | null;
+  score_reason: string | null;
+  created_at: string;
+  updated_at: string;
+  job?: {
+    id: string;
+    title: string;
+    company: string;
+    location?: string;
+    salary_min?: number;
+    salary_max?: number;
+    tags?: string[];
+  };
+  events?: ApplicationEvent[];
+  resumes?: any[];
+}
+
+export interface ApplicationEvent {
+  id: string;
+  application_id: string;
+  event_type: string;
+  title: string;
+  description: string | null;
+  event_metadata: Record<string, unknown> | null;
+  occurred_at: string;
+  created_at: string;
+}
+
+export interface ApplicationNote {
+  id: string;
+  application_id: string;
+  body: string;
+  author: string | null;
+  pinned: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ApplicationContact {
+  id: string;
+  application_id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  role: string;
+  company: string | null;
+  linkedin: string | null;
+  notes: string | null;
+  is_primary: boolean;
+  created_at: string;
+  updated_at: string;
+}
+

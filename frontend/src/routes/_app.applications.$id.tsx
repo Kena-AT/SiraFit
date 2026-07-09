@@ -1,6 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, StatusPill, Tag } from "@/components/sirafit/bits";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { 
+  getApplication, 
+  getApplicationNotes, 
+  createApplicationNote, 
+  getApplicationContacts,
+  createApplicationContact 
+} from "@/lib/api/applications";
+import { useState } from "react";
 
 export const Route = createFileRoute("/_app/applications/$id")({
   head: () => ({ meta: [{ title: "Application · SiraFit" }] }),
@@ -9,16 +18,67 @@ export const Route = createFileRoute("/_app/applications/$id")({
 
 function AppDetails() {
   const { id } = Route.useParams();
+  const queryClient = useQueryClient();
+  
+  const { data: application, isLoading } = useQuery({
+    queryKey: ["application", id],
+    queryFn: () => getApplication(id),
+  });
+
+  const { data: notes = [] } = useQuery({
+    queryKey: ["application-notes", id],
+    queryFn: () => getApplicationNotes(id),
+    enabled: !!application,
+  });
+
+  const { data: contacts = [] } = useQuery({
+    queryKey: ["application-contacts", id],
+    queryFn: () => getApplicationContacts(id),
+    enabled: !!application,
+  });
+
+  const [newNote, setNewNote] = useState("");
+
+  const addNoteMutation = useMutation({
+    mutationFn: (body: string) => createApplicationNote(id, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["application-notes", id] });
+      setNewNote("");
+    },
+  });
+
+  const handleAddNote = () => {
+    if (newNote.trim()) {
+      addNoteMutation.mutate(newNote);
+    }
+  };
+
+  if (isLoading || !application) {
+    return (
+      <PageBody>
+        <PageHeader eyebrow={`Application · ${id}`} title="Loading..." />
+        <div className="grid place-items-center py-20">Loading application...</div>
+      </PageBody>
+    );
+  }
+
+  const events = application.events || [];
+
   return (
     <PageBody>
       <PageHeader
-        eyebrow={`Application · ${id}`}
-        title="Linear — Junior Fullstack Developer"
-        description="Remote · Applied 4 days ago · Recruiter: Sarah Chen"
+        eyebrow={`Application · ${id.substring(0, 8)}`}
+        title={application.job?.title || "Unknown position"}
+        description={`${application.job?.company || "Unknown company"} · Applied ${new Date(application.created_at).toLocaleDateString()}`}
         actions={
           <>
-            <StatusPill status="Interview" />
-            <Link to="/applications" className="rounded-md bg-card px-3 py-1.5 text-sm font-medium ring-1 ring-border hover:bg-muted">Back to board</Link>
+            {application.status && <StatusPill status={application.status} />}
+            <Link 
+              to="/applications" 
+              className="rounded-md bg-card px-3 py-1.5 text-sm font-medium ring-1 ring-border hover:bg-muted"
+            >
+              Back to board
+            </Link>
           </>
         }
       />
@@ -27,45 +87,113 @@ function AppDetails() {
         <div className="space-y-4 lg:col-span-2">
           <Panel title="Status history">
             <ul className="divide-y divide-border">
-              {[["23 Jun · 09:14","Interview","Recruiter call scheduled for Thu 10:00"],["21 Jun · 11:32","Applied","Resume rv-11 + cover letter cl-03 sent"],["20 Jun · 18:00","Preparing","Tailored resume generated"],["19 Jun · 22:14","Saved","Imported from Ashby"]].map((r) => (
-                <li key={r[1] as string + r[0] as string} className="flex items-center gap-4 px-4 py-2.5 text-sm">
-                  <span className="w-40 font-mono text-[11px] text-muted-foreground tabular-nums">{r[0]}</span>
-                  <StatusPill status={r[1] as string} />
-                  <span className="text-foreground/90">{r[2]}</span>
-                </li>
-              ))}
+              {events.length === 0 ? (
+                <li className="px-4 py-3 text-sm text-muted-foreground">No events yet</li>
+              ) : (
+                events.map((event: any) => (
+                  <li key={event.id} className="flex items-center gap-4 px-4 py-2.5 text-sm">
+                    <span className="w-40 font-mono text-[11px] text-muted-foreground tabular-nums">
+                      {new Date(event.occurred_at).toLocaleDateString()}
+                    </span>
+                    <StatusPill status={event.title} />
+                    <span className="text-foreground/90">{event.description}</span>
+                  </li>
+                ))
+              )}
             </ul>
           </Panel>
+
           <Panel title="Notes">
             <div className="space-y-3 p-5">
-              <div className="rounded bg-muted/40 p-3 text-sm"><div className="font-mono text-[10px] text-muted-foreground">22 Jun</div>Prep call notes — focus on distributed systems internship.</div>
-              <textarea className="w-full rounded-md border border-input bg-background p-2 text-sm" rows={3} placeholder="Add a note…" />
+              {notes.map((note: any) => (
+                <div key={note.id} className="rounded bg-muted/40 p-3 text-sm">
+                  <div className="font-mono text-[10px] text-muted-foreground">
+                    {note.author || "Me"} · {new Date(note.created_at).toLocaleDateString()}
+                  </div>
+                  <div className="mt-1 whitespace-pre-wrap">{note.body}</div>
+                </div>
+              ))}
+              <textarea 
+                className="w-full rounded-md border border-input bg-background p-2 text-sm" 
+                rows={3} 
+                placeholder="Add a note..."
+                value={newNote}
+                onChange={(e) => setNewNote(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleAddNote())}
+              />
+              <button 
+                onClick={handleAddNote}
+                disabled={!newNote.trim() || addNoteMutation.isPending}
+                className="rounded-md bg-foreground px-3 py-1 text-sm font-medium text-background disabled:opacity-50"
+              >
+                Add note
+              </button>
             </div>
           </Panel>
+
           <Panel title="Documents">
             <ul className="divide-y divide-border text-sm">
-              <li className="flex items-center justify-between px-4 py-2.5"><span>Resume — rv-11 · Modern template</span><Link to="/resumes/$id" params={{ id: "rv-11" }} className="text-[color:var(--brand)] hover:underline">Preview →</Link></li>
-              <li className="flex items-center justify-between px-4 py-2.5"><span>Cover letter — cl-03 · 194 words</span><Link to="/cover-letters" className="text-[color:var(--brand)] hover:underline">Open →</Link></li>
+              {application.resumes?.map((resume: any) => (
+                <li key={resume.id} className="flex items-center justify-between px-4 py-2.5">
+                  <span>Resume — {resume.title}</span>
+                  <Link 
+                    to="/resumes/$id" 
+                    params={{ id: resume.id }} 
+                    className="text-[color:var(--brand)] hover:underline"
+                  >
+                    Preview →
+                  </Link>
+                </li>
+              ))}
+              {(!application.resumes || application.resumes.length === 0) && (
+                <li className="px-4 py-3 text-muted-foreground">No documents attached</li>
+              )}
             </ul>
           </Panel>
         </div>
+
         <div className="space-y-4">
-          <Panel title="Recruiter">
-            <div className="space-y-2 p-4 text-sm">
-              <div className="font-semibold">Sarah Chen</div>
-              <div className="text-muted-foreground">Tech recruiter, Linear</div>
-              <div className="font-mono text-[11px] text-muted-foreground">sarah@linear.app</div>
-            </div>
-          </Panel>
+          {contacts.length > 0 && (
+            <Panel title="Contacts">
+              {contacts.map((contact: any) => (
+                <div key={contact.id} className="space-y-2 p-4 text-sm">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="font-semibold">{contact.name}</div>
+                      <div className="text-muted-foreground">{contact.role}</div>
+                    </div>
+                    {contact.is_primary && (
+                      <span className="rounded bg-[color:var(--brand)]/10 px-1.5 py-0.5 text-[10px] font-medium text-[color:var(--brand)]">
+                        Primary
+                      </span>
+                    )}
+                  </div>
+                  {contact.email && <div className="font-mono text-[11px] text-muted-foreground">{contact.email}</div>}
+                  {contact.phone && <div className="font-mono text-[11px] text-muted-foreground">{contact.phone}</div>}
+                </div>
+              ))}
+            </Panel>
+          )}
+
           <Panel title="Compensation">
             <div className="space-y-2 p-4 text-sm">
-              <div><span className="text-muted-foreground">Posted range:</span> $130k–$165k</div>
-              <div><span className="text-muted-foreground">Equity:</span> 0.05% – 0.15%</div>
-              <div><span className="text-muted-foreground">Sponsorship:</span> Available</div>
+              {application.job?.salary_min && application.job?.salary_max && (
+                <div>
+                  <span className="text-muted-foreground">Posted range:</span>{" "}
+                  ${application.job.salary_min}–${application.job.salary_max}
+                </div>
+              )}
+              <div><span className="text-muted-foreground">Equity:</span> Not specified</div>
+              <div><span className="text-muted-foreground">Sponsorship:</span> Check listing</div>
             </div>
           </Panel>
+
           <Panel title="Tags">
-            <div className="flex flex-wrap gap-1.5 p-4">{["TypeScript","React","Trpc","Postgres","Junior friendly"].map((t) => (<Tag key={t}>{t}</Tag>))}</div>
+            <div className="flex flex-wrap gap-1.5 p-4">
+              {application.job?.tags?.map((tag: string) => (
+                <Tag key={tag}>{tag}</Tag>
+              ))}
+            </div>
           </Panel>
         </div>
       </div>

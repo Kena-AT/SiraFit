@@ -38,9 +38,9 @@ class JobApplication(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     job_id = Column(UUID(as_uuid=True), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False)
     
-    status = Column(String(50), default="applied")  # applied, screening, interview, offer, rejected, withdrawn
+    status = Column(String(50), default="saved")  # saved, preparing, applied, screening, interview, final_round, offer, rejected, withdrawn, archived
     stage = Column(Integer, default=0)  # Application stage number
-    notes = Column(Text, nullable=True)
+    general_notes = Column(Text, nullable=True)  # General notes (legacy field, use ApplicationNote for rich notes)
     score = Column(Integer, nullable=True)  # AI-generated match score (0-100)
     score_reason = Column(Text, nullable=True)  # AI explanation for score
     
@@ -150,3 +150,122 @@ class ResumeVersion(Base):
 
     resume = relationship("Resume", backref="versions")
     job = relationship("Job")
+
+
+# ---------------------------------------------------------------------------
+# Sprint 9 — Application tracking
+# ---------------------------------------------------------------------------
+
+class ApplicationEvent(Base):
+    """Chronological event in a JobApplication's timeline.
+
+    Mirrors application activity: status transitions, notes (when posted to
+    timeline), emails, interviews, offers, reminders, and arbitrary markers.
+
+    One row per event. The ``application_events`` table is append-only —
+    events are never updated (a correction is itself a new event).
+    """
+
+    __tablename__ = "application_events"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    application_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("job_applications.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Validated on the service layer, not at the DB level.
+    event_type = Column(String(30), nullable=False)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    # Free-form per-event data (e.g. from_status/to_status, email_subject).
+    event_metadata = Column("event_metadata", JSON, nullable=True)
+
+    occurred_at = Column(DateTime, default=_utcnow, nullable=False)
+    created_at = Column(DateTime, default=_utcnow)
+
+    application = relationship("JobApplication", backref="events")
+    user = relationship("User")
+
+
+class ApplicationNote(Base):
+    """Free-form note attached to a JobApplication.
+
+    Notes are user-editable mutable rows (unlike events). The user can
+    pin important notes to surface them first.
+    """
+
+    __tablename__ = "application_notes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    application_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("job_applications.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    body = Column(Text, nullable=False)
+    author = Column(String(100), nullable=True)  # Optional display name
+    pinned = Column(Boolean, default=False, nullable=False)
+
+    created_at = Column(DateTime, default=_utcnow)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+    application = relationship("JobApplication", backref="notes")
+    user = relationship("User")
+
+
+class ApplicationContact(Base):
+    """Recruiter / hiring-manager / HR contact associated with one application.
+
+    One application typically has a small set of contacts (recruiter, hiring
+    manager, referrer). They are surfaced on the application detail page and
+    can be reused across applications when names/emails repeat.
+    """
+
+    __tablename__ = "application_contacts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    application_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("job_applications.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    name = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=True)
+    phone = Column(String(50), nullable=True)
+    # recruiter | hiring_manager | hr | referrer | interviewer | other
+    role = Column(String(50), nullable=False, default="recruiter")
+    company = Column(String(255), nullable=True)
+    linkedin = Column(String(500), nullable=True)
+    notes = Column(Text, nullable=True)
+    is_primary = Column(Boolean, default=False, nullable=False)
+
+    created_at = Column(DateTime, default=_utcnow)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+    application = relationship("JobApplication", backref="contacts")
+    user = relationship("User")
