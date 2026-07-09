@@ -2,12 +2,8 @@
 
 import json
 import os
-import tempfile
 import uuid
-from io import BytesIO
 from unittest.mock import patch, MagicMock
-
-import pytest
 
 from app.worker.tasks import (
     _save_pdf_bytes,
