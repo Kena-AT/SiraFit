@@ -5,6 +5,7 @@ Two queues are used:
   - ``resume_generation`` — AI resume tailoring (slow, I/O-bound)
   - ``pdf_rendering``     — HTML → PDF conversion (CPU-bound but offloads
                             heavy work from the request thread)
+  - ``batch_processing``  — Batch operations (analyze, score, tag, archive)
 
 Every enqueue helper falls back to synchronous execution when the Celery
 broker (Redis) is unreachable, so the API keeps working in environments
@@ -18,12 +19,14 @@ import logging
 import os
 import tempfile
 import uuid
+from datetime import datetime, timezone
 from typing import Any
 
 from app.core.database import SessionLocal
 from app.models.cover_letter import CoverLetter
 from app.models.job import ResumeVersion, Job, AuditLog
 from app.models.profile import Profile
+from app.models.batch import BatchJob
 
 logger = logging.getLogger(__name__)
 
@@ -359,6 +362,35 @@ except Exception as exc:  # pragma: no cover - import-time broker failure
     logger.warning("celery_task_registration_skipped", extra={"error": str(exc)})
 
 
+# ---------------------------------------------------------------------------
+# Batch Processing
+# ---------------------------------------------------------------------------
+
+# Batch job processing is implemented in app/services/batch.py (enqueue_batch_job)
+# and app/services/batch_operations.py (item handlers).
+# This file only registers the Celery task wrapper.
+
+try:
+    from app.worker.celery_app import celery_app
+
+    @celery_app.task(
+        name="app.worker.tasks.process_batch_job",
+        bind=True,
+        max_retries=3,
+        default_retry_delay=30,
+        acks_late=True,
+        time_limit=1800,
+    )
+    def process_batch_job(self, batch_job_id: str) -> dict:
+        """Celery task wrapper - delegates to app.services.batch._run_batch_job."""
+        from app.services.batch import _run_batch_job
+        _run_batch_job(uuid.UUID(batch_job_id))
+        return {"batch_job_id": batch_job_id, "status": "dispatched"}
+
+except Exception as exc:  # pragma: no cover - import-time broker failure
+    logger.warning("celery_task_registration_skipped_batch", extra={"error": str(exc)})
+
+
 __all__ = [
     "enqueue_resume_generation",
     "enqueue_resume_pdf_render",
@@ -366,4 +398,5 @@ __all__ = [
     "generate_resume_task",
     "render_resume_pdf_task",
     "render_cover_letter_pdf_task",
+    "process_batch_job",
 ]

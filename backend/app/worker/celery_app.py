@@ -56,6 +56,7 @@ celery_app.conf.update(
         "app.worker.tasks.generate_resume_task": {"queue": "resume_generation"},
         "app.worker.tasks.render_cover_letter_pdf_task": {"queue": "pdf_rendering"},
         "app.worker.tasks.render_resume_pdf_task": {"queue": "pdf_rendering"},
+        "app.worker.tasks.process_batch_job": {"queue": "batch_processing"},
     },
 )
 

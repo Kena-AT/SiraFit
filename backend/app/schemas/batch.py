@@ -11,6 +11,25 @@ class BatchJobCreate(BaseModel):
     params: Dict[str, Any] = Field(default_factory=dict)
 
 
+class BatchJobCreateResponse(BaseModel):
+    id: uuid.UUID
+    operation_type: str
+    status: str
+    total_items: int
+    processed_items: int
+    succeeded_items: int
+    failed_items: int
+    payload: Dict[str, Any]
+    result_summary: Dict[str, Any]
+    cancel_requested: bool
+    started_at: Optional[datetime]
+    completed_at: Optional[datetime]
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class BatchJobUpdate(BaseModel):
     cancel_requested: Optional[bool] = None
 
@@ -40,3 +59,22 @@ class BatchJobListResponse(BaseModel):
     total: int
     skip: int
     limit: int
+
+
+class BatchRetryResponse(BaseModel):
+    id: uuid.UUID
+    operation_type: str
+    status: str
+    total_items: int
+    processed_items: int
+    succeeded_items: int
+    failed_items: int
+    payload: Dict[str, Any]
+    result_summary: Dict[str, Any]
+    cancel_requested: bool
+    started_at: Optional[datetime]
+    completed_at: Optional[datetime]
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
