@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 # Provide all required env vars BEFORE any app imports
-os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+os.environ.setdefault("DATABASE_URL", "sqlite:///test.db")
 os.environ.setdefault("SECRET_KEY", "test_secret_key_not_for_production_use")
 os.environ.setdefault("ALGORITHM", "HS256")
 os.environ.setdefault("ACCESS_TOKEN_EXPIRE_MINUTES", "15")
@@ -23,6 +23,7 @@ os.environ.setdefault("SMTP_PASSWORD", "dummy")
 os.environ.setdefault("SMTP_FROM", "noreply@sirafit.com")
 os.environ.setdefault("CORS_ORIGINS", "http://localhost:3030")
 os.environ.setdefault("ENVIRONMENT", "testing")
+os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")  # Use localhost for tests; sync fallback when no Redis
 
 # Now import after env is set
 from app.main import app as fastapi_app
@@ -35,12 +36,11 @@ import app.models.profile  # noqa: F401
 import app.models.cover_letter  # noqa: F401
 import app.models.batch  # noqa: F401
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
+SQLALCHEMY_DATABASE_URL = "sqlite:///test.db"
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
     connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

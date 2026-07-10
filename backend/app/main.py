@@ -34,7 +34,7 @@ async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown events."""
     # Startup: create tables if they don't exist (dev convenience).
     # In production, rely on Alembic migrations exclusively.
-    if settings.ENVIRONMENT == "development":
+    if settings.ENVIRONMENT in ("development", "testing"):
         from app.core.database import Base, engine
         Base.metadata.create_all(bind=engine)
 
