@@ -12,6 +12,7 @@ from app.models.job import (
 from app.models.cover_letter import CoverLetter
 from app.models.profile import Profile, Experience, Education, Skill, Project, Certification
 from app.models.score import JobMatchScore
+from app.models.batch import BatchJob
 
 __all__ = [
     "User", "UserPreference", "RefreshToken",
@@ -19,5 +20,6 @@ __all__ = [
     "ApplicationEvent", "ApplicationNote", "ApplicationContact",
     "CoverLetter",
     "Profile", "Experience", "Education", "Skill", "Project", "Certification",
-    "JobMatchScore"
+    "JobMatchScore",
+    "BatchJob",
 ]
