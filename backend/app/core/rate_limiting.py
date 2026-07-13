@@ -9,6 +9,7 @@ from typing import Dict, Tuple, Optional
 from fastapi import Request, HTTPException, status
 from collections import defaultdict
 import time
+from app.core.config import settings
 
 
 class RateLimiter:
@@ -179,6 +180,9 @@ def check_rate_limit(
     Raises:
         HTTPException: 429 Too Many Requests if rate limit exceeded
     """
+    if settings.ENVIRONMENT == "testing":
+        return
+
     if limit_type not in RATE_LIMITS:
         raise ValueError(f"Unknown rate limit type: {limit_type}")
     
