@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageBody } from "@/components/sirafit/shell";
-import { PageHeader, Panel, StatusPill } from "@/components/sirafit/bits";
+import { PageHeader, Panel, StatusPill, EmptyState } from "@/components/sirafit/bits";
 import { Plus, RefreshCw } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getBatchJobs, createBatchJob, cancelBatchJob } from "@/lib/api/batch";
+import { getBatchJobs, createBatchJob, cancelBatchJob, type BatchJobCreateInput, type BatchOperationType } from "@/lib/api/batch";
 import { getJobs } from "@/lib/api/jobs";
 import { BatchCreateModal } from "@/components/sirafit/batch/BatchCreateModal";
 import { useState } from "react";
@@ -46,7 +46,7 @@ function BatchCenter() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["batch-jobs"] }),
   });
 
-  const handleCreate = (input: { operation_type: string; job_ids: string[]; params?: Record<string, unknown> }) => {
+  const handleCreate = (input: { operation_type: BatchOperationType; job_ids: string[]; params?: Record<string, unknown> }) => {
     createMutation.mutate(input);
   };
 
@@ -87,8 +87,8 @@ function BatchCenter() {
         <Panel title="Recent batches">
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <Input placeholder="Filter batches..." className="w-64" />
-            <Select value={filterStatus} onValueChange={setFilterStatus} className="w-40">
-              <SelectTrigger><SelectValue /></SelectTrigger>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All statuses</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
@@ -99,8 +99,8 @@ function BatchCenter() {
                 <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filterOp} onValueChange={setFilterOp} className="w-40">
-              <SelectTrigger><SelectValue /></SelectTrigger>
+            <Select value={filterOp} onValueChange={setFilterOp}>
+              <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All operations</SelectItem>
                 <SelectItem value="analyze">Analyze</SelectItem>
@@ -120,7 +120,7 @@ function BatchCenter() {
                     <Plus className="w-4 h-4 mr-2" /> Create batch job
                   </Button>
                 }
-              )
+              />
             ) : (
               batchJobs.map((batchJob) => (
                 <div

@@ -20,10 +20,7 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  RadioGroup,
-  RadioGroupItem,
-} from "@/components/ui/radio-group";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { Job } from "@/types/job";
 
 interface BatchCreateModalProps {
@@ -45,21 +42,15 @@ export function BatchCreateModal({
 }: BatchCreateModalProps) {
   if (!isOpen) return null;
 
-  const [operation, setOperation] = useState<
-    "analyze" | "score" | "tag" | "archive"
-  >("analyze");
+  const [operation, setOperation] = useState<"analyze" | "score" | "tag" | "archive">("analyze");
   const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState(false);
   const [tags, setTags] = useState("");
   const [tagAction, setTagAction] = useState<"add" | "remove">("add");
-  const [archiveTarget, setArchiveTarget] = useState<"jobs" | "applications">(
-    "jobs"
-  );
+  const [archiveTarget, setArchiveTarget] = useState<"jobs" | "applications">("jobs");
 
   const handleJobToggle = (id: string) => {
-    setSelectedJobIds((prev) =>
-      prev.includes(id) ? prev.filter((j) => j !== id) : [...prev, id]
-    );
+    setSelectedJobIds((prev) => (prev.includes(id) ? prev.filter((j) => j !== id) : [...prev, id]));
   };
 
   const handleSelectAllChange = (checked: boolean) => {
@@ -105,9 +96,7 @@ export function BatchCreateModal({
             <Label className="block mb-2">Operation</Label>
             <Select
               value={operation}
-              onValueChange={(val) =>
-                setOperation(val as "analyze" | "score" | "tag" | "archive")
-              }
+              onValueChange={(val) => setOperation(val as "analyze" | "score" | "tag" | "archive")}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select operation" />
@@ -122,20 +111,13 @@ export function BatchCreateModal({
           </div>
 
           <div>
-            <Label className="block mb-2">
-              Jobs ({selectedJobIds.length} selected)
-            </Label>
+            <Label className="block mb-2">Jobs ({selectedJobIds.length} selected)</Label>
             <div className="max-h-48 overflow-y-auto border border-input rounded-md p-2 space-y-1">
               {filteredJobs.length === 0 ? (
-                <div className="text-sm text-muted-foreground p-2">
-                  No jobs available
-                </div>
+                <div className="text-sm text-muted-foreground p-2">No jobs available</div>
               ) : (
                 filteredJobs.map((job) => (
-                  <label
-                    key={job.id}
-                    className="flex items-center gap-2 cursor-pointer"
-                  >
+                  <label key={job.id} className="flex items-center gap-2 cursor-pointer">
                     <Checkbox
                       checked={selectAll || selectedJobIds.includes(job.id)}
                       onCheckedChange={(checked) => handleJobToggle(job.id)}
@@ -157,7 +139,7 @@ export function BatchCreateModal({
                 onChange={(e) => setTags(e.target.value)}
                 placeholder="remote, senior, python"
               />
-              <RadioGroup value={tagAction} onValueChange={setTagAction}>
+              <RadioGroup value={tagAction} onValueChange={(value: "add" | "remove") => setTagAction(value)}>
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-2">
                     <RadioGroupItem value="add" /> Add
@@ -173,7 +155,7 @@ export function BatchCreateModal({
           {operation === "archive" && (
             <div>
               <Label>Target</Label>
-              <RadioGroup value={archiveTarget} onValueChange={setArchiveTarget}>
+              <RadioGroup value={archiveTarget} onValueChange={(value: "jobs" | "applications") => setArchiveTarget(value)}>
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-2">
                     <RadioGroupItem value="jobs" /> Jobs
@@ -190,11 +172,7 @@ export function BatchCreateModal({
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={selectedJobIds.length === 0}
-              className="ml-auto"
-            >
+            <Button type="submit" disabled={selectedJobIds.length === 0} className="ml-auto">
               Create Batch Job
             </Button>
           </DialogFooter>

@@ -67,7 +67,7 @@ export function BatchDetailView({ batchJob, onRefetch }: BatchDetailViewProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={refetch}
+                onClick={() => refetch()}
                 disabled={cancelMutation.isPending}
               >
                 <RefreshCw className="w-4 h-4 mr-1 animate-spin" /> Refresh
@@ -119,15 +119,11 @@ export function BatchDetailView({ batchJob, onRefetch }: BatchDetailViewProps) {
           <div className="grid grid-cols-4 gap-4 text-sm">
             <div>
               <span className="text-muted-foreground">Started:</span>{" "}
-              {displayJob.started_at
-                ? new Date(displayJob.started_at).toLocaleString()
-                : "—"}
+              {displayJob.started_at ? new Date(displayJob.started_at).toLocaleString() : "—"}
             </div>
             <div>
               <span className="text-muted-foreground">Completed:</span>{" "}
-              {displayJob.completed_at
-                ? new Date(displayJob.completed_at).toLocaleString()
-                : "—"}
+              {displayJob.completed_at ? new Date(displayJob.completed_at).toLocaleString() : "—"}
             </div>
             <div>
               <span className="text-muted-foreground">Status:</span>{" "}
@@ -149,9 +145,7 @@ export function BatchDetailView({ batchJob, onRefetch }: BatchDetailViewProps) {
                 <th className="px-4 py-2 font-mono text-[10px] uppercase">Job ID</th>
                 <th className="px-4 py-2 font-mono text-[10px] uppercase">Status</th>
                 <th className="px-4 py-2 font-mono text-[10px] uppercase">Details</th>
-                <th className="px-4 py-2 font-mono text-[10px] uppercase text-right">
-                  Error
-                </th>
+                <th className="px-4 py-2 font-mono text-[10px] uppercase text-right">Error</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -161,9 +155,7 @@ export function BatchDetailView({ batchJob, onRefetch }: BatchDetailViewProps) {
             </tbody>
           </table>
           {Object.keys(displayJob.result_summary).length === 0 && (
-            <div className="p-8 text-center text-muted-foreground">
-              No items processed yet
-            </div>
+            <div className="p-8 text-center text-muted-foreground">No items processed yet</div>
           )}
         </div>
       </Panel>

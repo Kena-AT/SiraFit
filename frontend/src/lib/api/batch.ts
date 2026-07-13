@@ -1,13 +1,7 @@
 import { apiFetch } from "./client";
 
 export type BatchOperationType = "analyze" | "score" | "tag" | "archive";
-export type BatchStatus =
-  | "pending"
-  | "running"
-  | "completed"
-  | "failed"
-  | "partial"
-  | "cancelled";
+export type BatchStatus = "pending" | "running" | "completed" | "failed" | "partial" | "cancelled";
 
 export interface BatchItemResult {
   status: "success" | "error";
@@ -46,9 +40,10 @@ export interface BatchJobCreateInput {
   params?: Record<string, unknown>;
 }
 
-export const getBatchJobs = async (
-  params?: { status?: string; operation_type?: string },
-): Promise<BatchJobListResponse> => {
+export const getBatchJobs = async (params?: {
+  status?: string;
+  operation_type?: string;
+}): Promise<BatchJobListResponse> => {
   const search = new URLSearchParams();
   if (params?.status) search.set("status", params.status);
   if (params?.operation_type) search.set("operation_type", params.operation_type);
