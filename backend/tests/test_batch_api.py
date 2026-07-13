@@ -77,7 +77,7 @@ def test_batch_job_retry(client, auth_headers, db):
         headers=auth_headers,
     )
     assert response.status_code == 200
-    batch_id = response.json()["id"]
+    batch_id = uuid.UUID(response.json()["id"])  # Convert string back to UUID
 
     # Manually set status to partial (simulate completion)
     batch_job = db.query(BatchJob).filter(BatchJob.id == batch_id).first()
@@ -86,7 +86,7 @@ def test_batch_job_retry(client, auth_headers, db):
     db.commit()
 
     # Try retry
-    response = client.post(f"/api/v1/batch/{batch_id}/retry", headers=auth_headers)
+    response = client.post(f"/api/v1/batch/{str(batch_id)}/retry", headers=auth_headers)
     assert response.status_code in (200, 400)
 
 

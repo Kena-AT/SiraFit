@@ -24,6 +24,11 @@ os.environ.setdefault("SMTP_FROM", "noreply@sirafit.com")
 os.environ.setdefault("CORS_ORIGINS", "http://localhost:3030")
 os.environ.setdefault("ENVIRONMENT", "testing")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")  # Use localhost for tests; sync fallback when no Redis
+# In-process Celery so enqueue helpers fail the broker fast (memory://) and fall back to sync —
+# without this, Celery retries the broker/redis result backend 20× with 1s backoff before the
+# sync fallback fires, turning a <60s suite into ~8 minutes.
+os.environ.setdefault("CELERY_BROKER_URL", "memory://")
+os.environ.setdefault("CELERY_RESULT_BACKEND", "cache+memory://")
 
 # Now import after env is set
 from app.main import app as fastapi_app

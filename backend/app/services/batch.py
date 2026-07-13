@@ -1,6 +1,8 @@
 """
 Batch job service functions.
 """
+import asyncio
+import inspect
 import uuid
 import logging
 from datetime import datetime, timezone
@@ -13,6 +15,22 @@ logger = logging.getLogger(__name__)
 
 def _utcnow():
     return datetime.now(timezone.utc)
+
+
+def _run_item(task_fn, item_id, user_id, params, db):
+    """Run a single item handler, awaiting it if it's a coroutine function.
+
+    Item handlers are a mix of sync (score/tag/archive) and async (analyze,
+    which awaits run_job_analysis). The batch loop is itself synchronous
+    (Celery task + async-fallback), so async handlers are driven to completion
+    here via asyncio.run rather than converting the whole runner to async.
+    """
+    # ponytail: asyncio.run per async item creates a fresh event loop each call —
+    # fine for batch volumes (hundreds of items); revisit a long-lived loop if a
+    # batch ever processes thousands of async items or needs loop reuse.
+    if inspect.iscoroutinefunction(task_fn):
+        return asyncio.run(task_fn(item_id, user_id, params, db))
+    return task_fn(item_id, user_id, params, db)
 
 
 def _run_batch_job(batch_job_id: uuid.UUID) -> dict:
@@ -52,7 +70,8 @@ def _run_batch_job(batch_job_id: uuid.UUID) -> dict:
                 return {"status": "cancelled", "processed": batch_job.processed_items}
 
             try:
-                result = task_fn(
+                result = _run_item(
+                    task_fn,
                     uuid.UUID(item_id),
                     batch_job.user_id,
                     params,

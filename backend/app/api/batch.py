@@ -9,8 +9,7 @@ from app.models.user import User
 from app.models.batch import BatchJob
 from app.models.job import Job
 from app.schemas.batch import (
-    BatchJobCreate, BatchJobUpdate, BatchJobResponse, BatchJobListResponse,
-    BatchRetryResponse
+    BatchJobCreate, BatchJobUpdate, BatchJobResponse, BatchJobListResponse
 )
 from app.services.batch import enqueue_batch_job
 
@@ -104,7 +103,7 @@ def get_batch_job(
     return batch_job
 
 
-@router.post("/{batch_id}/retry", response_model=BatchRetryResponse)
+@router.post("/{batch_id}/retry", response_model=BatchJobResponse)
 def retry_batch_job(
     batch_id: uuid.UUID,
     db: Session = Depends(get_db),

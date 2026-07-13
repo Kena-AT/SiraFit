@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Integer, JSON
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -21,7 +22,14 @@ class BatchJob(Base):
     succeeded_items = Column(Integer, nullable=False, default=0)
     failed_items = Column(Integer, nullable=False, default=0)
     payload = Column("payload", JSON, nullable=False)  # operation-specific params
-    result_summary = Column("result_summary", JSON, nullable=False, default={})  # per-item results/errors
+    # MutableDict so in-place edits (result_summary[id] = {...}) are detected and persisted;
+    # default=dict (callable) avoids the shared mutable-dict-across-rows hazard.
+    result_summary = Column(
+        "result_summary",
+        MutableDict.as_mutable(JSON),
+        nullable=False,
+        default=dict,
+    )  # per-item results/errors
     cancel_requested = Column(Boolean(), nullable=False, default=False)
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
