@@ -87,7 +87,19 @@ def registered_user(client):
         },
     )
     assert response.status_code == 201, response.text
-    return response.json()
+
+    user_data = response.json()
+    db = TestingSessionLocal()
+    try:
+        from app.models.user import User
+        user = db.query(User).filter(User.email == user_data["email"]).first()
+        if user:
+            user.is_verified = True
+            db.commit()
+    finally:
+        db.close()
+
+    return user_data
 
 
 @pytest.fixture(scope="session")

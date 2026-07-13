@@ -65,7 +65,7 @@ def list_jobs(
         query = query.filter(Job.source == source)
     if tags:
         for tag in [t.strip() for t in tags.split(",")]:
-            query = query.filter(Job.tags.contains([tag]))
+            query = query.filter(Job.tags.contains(tag))
     if min_salary is not None:
         query = query.filter(or_(Job.salary_min >= min_salary, Job.salary_max >= min_salary))
     if max_salary is not None:
