@@ -49,6 +49,7 @@ import { Route as AppJobsImportRouteImport } from './routes/_app.jobs.import'
 import { Route as AppJobsHistoryRouteImport } from './routes/_app.jobs.history'
 import { Route as AppJobsJobIdRouteImport } from './routes/_app.jobs.$jobId'
 import { Route as AppCoverLettersBuilderRouteImport } from './routes/_app.cover-letters.builder'
+import { Route as AppBatchIdRouteImport } from './routes/_app.batch.$id'
 import { Route as AppApplicationsTimelineRouteImport } from './routes/_app.applications.timeline'
 import { Route as AppApplicationsFollowupsRouteImport } from './routes/_app.applications.followups'
 import { Route as AppApplicationsIdRouteImport } from './routes/_app.applications.$id'
@@ -256,6 +257,11 @@ const AppCoverLettersBuilderRoute = AppCoverLettersBuilderRouteImport.update({
   path: '/builder',
   getParentRoute: () => AppCoverLettersRoute,
 } as any)
+const AppBatchIdRoute = AppBatchIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppBatchRoute,
+} as any)
 const AppApplicationsTimelineRoute = AppApplicationsTimelineRouteImport.update({
   id: '/timeline',
   path: '/timeline',
@@ -301,7 +307,7 @@ export interface FileRoutesByFullPath {
   '/verify-email': typeof VerifyEmailRoute
   '/analytics': typeof AppAnalyticsRouteWithChildren
   '/applications': typeof AppApplicationsRouteWithChildren
-  '/batch': typeof AppBatchRoute
+  '/batch': typeof AppBatchRouteWithChildren
   '/cover-letters': typeof AppCoverLettersRouteWithChildren
   '/dashboard': typeof AppDashboardRoute
   '/jobs': typeof AppJobsRouteWithChildren
@@ -315,6 +321,7 @@ export interface FileRoutesByFullPath {
   '/applications/$id': typeof AppApplicationsIdRoute
   '/applications/followups': typeof AppApplicationsFollowupsRoute
   '/applications/timeline': typeof AppApplicationsTimelineRoute
+  '/batch/$id': typeof AppBatchIdRoute
   '/cover-letters/builder': typeof AppCoverLettersBuilderRoute
   '/jobs/$jobId': typeof AppJobsJobIdRoute
   '/jobs/history': typeof AppJobsHistoryRoute
@@ -346,7 +353,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/terms': typeof TermsRoute
   '/verify-email': typeof VerifyEmailRoute
-  '/batch': typeof AppBatchRoute
+  '/batch': typeof AppBatchRouteWithChildren
   '/dashboard': typeof AppDashboardRoute
   '/match': typeof AppMatchRoute
   '/notifications': typeof AppNotificationsRoute
@@ -356,6 +363,7 @@ export interface FileRoutesByTo {
   '/applications/$id': typeof AppApplicationsIdRoute
   '/applications/followups': typeof AppApplicationsFollowupsRoute
   '/applications/timeline': typeof AppApplicationsTimelineRoute
+  '/batch/$id': typeof AppBatchIdRoute
   '/cover-letters/builder': typeof AppCoverLettersBuilderRoute
   '/jobs/$jobId': typeof AppJobsJobIdRoute
   '/jobs/history': typeof AppJobsHistoryRoute
@@ -391,7 +399,7 @@ export interface FileRoutesById {
   '/verify-email': typeof VerifyEmailRoute
   '/_app/analytics': typeof AppAnalyticsRouteWithChildren
   '/_app/applications': typeof AppApplicationsRouteWithChildren
-  '/_app/batch': typeof AppBatchRoute
+  '/_app/batch': typeof AppBatchRouteWithChildren
   '/_app/cover-letters': typeof AppCoverLettersRouteWithChildren
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/jobs': typeof AppJobsRouteWithChildren
@@ -405,6 +413,7 @@ export interface FileRoutesById {
   '/_app/applications/$id': typeof AppApplicationsIdRoute
   '/_app/applications/followups': typeof AppApplicationsFollowupsRoute
   '/_app/applications/timeline': typeof AppApplicationsTimelineRoute
+  '/_app/batch/$id': typeof AppBatchIdRoute
   '/_app/cover-letters/builder': typeof AppCoverLettersBuilderRoute
   '/_app/jobs/$jobId': typeof AppJobsJobIdRoute
   '/_app/jobs/history': typeof AppJobsHistoryRoute
@@ -454,6 +463,7 @@ export interface FileRouteTypes {
     | '/applications/$id'
     | '/applications/followups'
     | '/applications/timeline'
+    | '/batch/$id'
     | '/cover-letters/builder'
     | '/jobs/$jobId'
     | '/jobs/history'
@@ -495,6 +505,7 @@ export interface FileRouteTypes {
     | '/applications/$id'
     | '/applications/followups'
     | '/applications/timeline'
+    | '/batch/$id'
     | '/cover-letters/builder'
     | '/jobs/$jobId'
     | '/jobs/history'
@@ -543,6 +554,7 @@ export interface FileRouteTypes {
     | '/_app/applications/$id'
     | '/_app/applications/followups'
     | '/_app/applications/timeline'
+    | '/_app/batch/$id'
     | '/_app/cover-letters/builder'
     | '/_app/jobs/$jobId'
     | '/_app/jobs/history'
@@ -860,6 +872,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCoverLettersBuilderRouteImport
       parentRoute: typeof AppCoverLettersRoute
     }
+    '/_app/batch/$id': {
+      id: '/_app/batch/$id'
+      path: '/$id'
+      fullPath: '/batch/$id'
+      preLoaderRoute: typeof AppBatchIdRouteImport
+      parentRoute: typeof AppBatchRoute
+    }
     '/_app/applications/timeline': {
       id: '/_app/applications/timeline'
       path: '/timeline'
@@ -937,6 +956,18 @@ const AppApplicationsRouteChildren: AppApplicationsRouteChildren = {
 
 const AppApplicationsRouteWithChildren = AppApplicationsRoute._addFileChildren(
   AppApplicationsRouteChildren,
+)
+
+interface AppBatchRouteChildren {
+  AppBatchIdRoute: typeof AppBatchIdRoute
+}
+
+const AppBatchRouteChildren: AppBatchRouteChildren = {
+  AppBatchIdRoute: AppBatchIdRoute,
+}
+
+const AppBatchRouteWithChildren = AppBatchRoute._addFileChildren(
+  AppBatchRouteChildren,
 )
 
 interface AppCoverLettersRouteChildren {
@@ -1025,7 +1056,7 @@ const AppSettingsRouteWithChildren = AppSettingsRoute._addFileChildren(
 interface AppRouteChildren {
   AppAnalyticsRoute: typeof AppAnalyticsRouteWithChildren
   AppApplicationsRoute: typeof AppApplicationsRouteWithChildren
-  AppBatchRoute: typeof AppBatchRoute
+  AppBatchRoute: typeof AppBatchRouteWithChildren
   AppCoverLettersRoute: typeof AppCoverLettersRouteWithChildren
   AppDashboardRoute: typeof AppDashboardRoute
   AppJobsRoute: typeof AppJobsRouteWithChildren
@@ -1039,7 +1070,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAnalyticsRoute: AppAnalyticsRouteWithChildren,
   AppApplicationsRoute: AppApplicationsRouteWithChildren,
-  AppBatchRoute: AppBatchRoute,
+  AppBatchRoute: AppBatchRouteWithChildren,
   AppCoverLettersRoute: AppCoverLettersRouteWithChildren,
   AppDashboardRoute: AppDashboardRoute,
   AppJobsRoute: AppJobsRouteWithChildren,
