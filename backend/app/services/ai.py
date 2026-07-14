@@ -46,6 +46,7 @@ Rules:
 # Structured output schema (validated with Pydantic)
 # ---------------------------------------------------------------------------
 
+
 class AnalysisOutput(BaseModel):
     score: int
     summary: str
@@ -82,6 +83,7 @@ def _parse_and_validate(text: str) -> AnalysisOutput:
 # Retry helper
 # ---------------------------------------------------------------------------
 
+
 async def _with_retry(fn, max_attempts: int = 3):
     """Call async fn up to max_attempts times with exponential backoff."""
     last_exc = None
@@ -92,18 +94,19 @@ async def _with_retry(fn, max_attempts: int = 3):
             last_exc = e
             logger.warning(f"AI parse/validation error attempt {attempt + 1}: {e}")
             if attempt < max_attempts - 1:
-                await asyncio.sleep(2 ** attempt)  # 1s, 2s, 4s
+                await asyncio.sleep(2**attempt)  # 1s, 2s, 4s
         except Exception as e:
             last_exc = e
             logger.warning(f"AI call error attempt {attempt + 1}: {e}")
             if attempt < max_attempts - 1:
-                await asyncio.sleep(2 ** attempt)
+                await asyncio.sleep(2**attempt)
     raise last_exc
 
 
 # ---------------------------------------------------------------------------
 # Provider implementations
 # ---------------------------------------------------------------------------
+
 
 async def analyze_job_gemini(
     prompt_context: str,
@@ -117,7 +120,9 @@ async def analyze_job_gemini(
     system_prompt = PROMPTS.get(prompt_version, PROMPTS[CURRENT_PROMPT_VERSION])
     full_prompt = f"{system_prompt}\n\n{prompt_context}"
 
-    model_name = "models/gemini-1.5-pro" if "pro" in model.lower() else "models/gemini-1.5-flash"
+    model_name = (
+        "models/gemini-1.5-pro" if "pro" in model.lower() else "models/gemini-1.5-flash"
+    )
 
     async def _call():
         genai.configure(api_key=api_key)
@@ -168,6 +173,7 @@ async def analyze_job_openrouter(
 # ---------------------------------------------------------------------------
 # Fallback: simple keyword scorer returning AnalysisOutput shape
 # ---------------------------------------------------------------------------
+
 
 def keyword_fallback(job_title: str, job_description: str) -> AnalysisOutput:
     """Produce a minimal AnalysisOutput when AI is unavailable."""

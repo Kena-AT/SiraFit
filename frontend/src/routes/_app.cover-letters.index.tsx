@@ -52,6 +52,7 @@ function CoverLettersPage() {
         actions={
           <Link
             to="/cover-letters/builder"
+            search={{ edit: undefined }}
             className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background ring-1 ring-foreground hover:bg-foreground/90"
           >
             New letter
@@ -73,6 +74,7 @@ function CoverLettersPage() {
           </p>
           <Link
             to="/cover-letters/builder"
+            search={{ edit: undefined }}
             className="mt-4 inline-block rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background"
           >
             Generate Cover Letter →
@@ -95,7 +97,8 @@ function CoverLettersPage() {
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <Link
-                  to={`/cover-letters/builder?edit=${letter.id}`}
+                  to="/cover-letters/builder"
+                  search={{ edit: letter.id }}
                   className="text-xs font-medium text-[color:var(--brand)] hover:underline"
                 >
                   Open →

@@ -33,6 +33,7 @@ class NotificationListResponse(BaseModel):
 
 # Analytics schemas
 
+
 class MetricsResponse(BaseModel):
     total_applications: int
     interview_rate: float

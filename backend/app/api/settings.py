@@ -20,6 +20,7 @@ router = APIRouter()
 # Schemas
 # ---------------------------------------------------------------------------
 
+
 class AIConfigResponse(BaseModel):
     has_gemini_key: bool = False
     has_openrouter_key: bool = False
@@ -40,13 +41,18 @@ class AIConfigUpdate(BaseModel):
 # Endpoints
 # ---------------------------------------------------------------------------
 
+
 @router.get("/me/ai-config", response_model=AIConfigResponse)
 def get_ai_config(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Get the current user's AI configuration. Actual API keys are NEVER returned."""
-    prefs = db.query(UserPreference).filter(UserPreference.user_id == current_user.id).first()
+    prefs = (
+        db.query(UserPreference)
+        .filter(UserPreference.user_id == current_user.id)
+        .first()
+    )
     if prefs is None:
         return AIConfigResponse()
 
@@ -65,7 +71,11 @@ def save_ai_config(
     db: Session = Depends(get_db),
 ):
     """Save AI configuration. API keys are encrypted before storage."""
-    prefs = db.query(UserPreference).filter(UserPreference.user_id == current_user.id).first()
+    prefs = (
+        db.query(UserPreference)
+        .filter(UserPreference.user_id == current_user.id)
+        .first()
+    )
     if prefs is None:
         prefs = UserPreference(user_id=current_user.id)
         db.add(prefs)
@@ -74,7 +84,10 @@ def save_ai_config(
         if body.gemini_key:
             encrypted = encrypt_value(body.gemini_key)
             if encrypted is None:
-                raise HTTPException(status_code=500, detail="Encryption is not configured. Set DATA_ENCRYPTION_KEY in your environment.")
+                raise HTTPException(
+                    status_code=500,
+                    detail="Encryption is not configured. Set DATA_ENCRYPTION_KEY in your environment.",
+                )
             prefs.encrypted_gemini_key = encrypted
         else:
             prefs.encrypted_gemini_key = None
@@ -83,7 +96,10 @@ def save_ai_config(
         if body.openrouter_key:
             encrypted = encrypt_value(body.openrouter_key)
             if encrypted is None:
-                raise HTTPException(status_code=500, detail="Encryption is not configured. Set DATA_ENCRYPTION_KEY in your environment.")
+                raise HTTPException(
+                    status_code=500,
+                    detail="Encryption is not configured. Set DATA_ENCRYPTION_KEY in your environment.",
+                )
             prefs.encrypted_openrouter_key = encrypted
         else:
             prefs.encrypted_openrouter_key = None
@@ -110,7 +126,11 @@ def delete_ai_config(
     db: Session = Depends(get_db),
 ):
     """Delete the user's AI configuration (clear encrypted keys and reset preferences)."""
-    prefs = db.query(UserPreference).filter(UserPreference.user_id == current_user.id).first()
+    prefs = (
+        db.query(UserPreference)
+        .filter(UserPreference.user_id == current_user.id)
+        .first()
+    )
     if prefs:
         prefs.encrypted_gemini_key = None
         prefs.encrypted_openrouter_key = None

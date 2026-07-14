@@ -17,13 +17,16 @@ logger = structlog.get_logger("app")
 
 class RateLimitHeaderMiddleware(BaseHTTPMiddleware):
     """Middleware to add rate limit headers to all responses."""
+
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
 
         # Add rate limit headers if they were set during request processing
         if hasattr(request.state, "rate_limit_remaining"):
             response.headers["X-RateLimit-Limit"] = str(request.state.rate_limit_limit)
-            response.headers["X-RateLimit-Remaining"] = str(request.state.rate_limit_remaining)
+            response.headers["X-RateLimit-Remaining"] = str(
+                request.state.rate_limit_remaining
+            )
             response.headers["X-RateLimit-Reset"] = str(request.state.rate_limit_reset)
 
         return response
@@ -36,6 +39,7 @@ async def lifespan(app: FastAPI):
     # In production, rely on Alembic migrations exclusively.
     if settings.ENVIRONMENT in ("development", "testing"):
         from app.core.database import Base, engine
+
         Base.metadata.create_all(bind=engine)
 
     logger.info("app_started", event_type="startup")
@@ -75,7 +79,12 @@ app.include_router(api_router, prefix=settings.API_V1_STR, tags=["api"])
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Global exception handler to mask internal errors."""
-    logger.error("unhandled_exception", path=request.url.path, method=request.method, error=str(exc))
+    logger.error(
+        "unhandled_exception",
+        path=request.url.path,
+        method=request.method,
+        error=str(exc),
+    )
     return JSONResponse(
         status_code=500,
         content={"detail": "A system error occurred. Please try again later."},

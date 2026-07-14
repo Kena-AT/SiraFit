@@ -104,22 +104,42 @@ async def run_job_analysis(
             # Try user-stored encrypted key first
             if user_id:
                 try:
-                    user_uuid = __import__("uuid").UUID(user_id) if isinstance(user_id, str) else user_id
-                    prefs = db.query(UserPreference).filter(UserPreference.user_id == user_uuid).first()
+                    user_uuid = (
+                        __import__("uuid").UUID(user_id)
+                        if isinstance(user_id, str)
+                        else user_id
+                    )
+                    prefs = (
+                        db.query(UserPreference)
+                        .filter(UserPreference.user_id == user_uuid)
+                        .first()
+                    )
                     if prefs:
                         if actual_provider == "openrouter":
-                            user_key = decrypt_value(prefs.encrypted_openrouter_key) if prefs.encrypted_openrouter_key else None
+                            user_key = (
+                                decrypt_value(prefs.encrypted_openrouter_key)
+                                if prefs.encrypted_openrouter_key
+                                else None
+                            )
                         else:
-                            user_key = decrypt_value(prefs.encrypted_gemini_key) if prefs.encrypted_gemini_key else None
+                            user_key = (
+                                decrypt_value(prefs.encrypted_gemini_key)
+                                if prefs.encrypted_gemini_key
+                                else None
+                            )
                         if user_key:
                             api_key = user_key
                             logger.info(f"Using user-stored API key for job {job.id}")
                 except Exception:
-                    logger.warning(f"Failed to decrypt user API key for user {user_id}", exc_info=True)
+                    logger.warning(
+                        f"Failed to decrypt user API key for user {user_id}",
+                        exc_info=True,
+                    )
 
         # Fall back to server env
         if not api_key:
             from app.core.config import settings
+
             if actual_provider == "openrouter":
                 api_key = getattr(settings, "OPENROUTER_API_KEY", None)
             else:

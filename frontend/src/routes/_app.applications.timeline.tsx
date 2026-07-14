@@ -6,7 +6,7 @@ import { getUserTimeline } from "@/lib/api/applications";
 
 export const Route = createFileRoute("/_app/applications/timeline")({
   head: () => ({ meta: [{ title: "Application timeline · SiraFit" }] }),
-  component: () => {
+  component: function Component() {
     const { data: events = [], isLoading } = useQuery({
       queryKey: ["application-timeline"],
       queryFn: () => getUserTimeline(100),

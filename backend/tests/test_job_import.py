@@ -10,6 +10,7 @@ class TestImportService:
 
     def test_parse_job_from_url_linkedin(self):
         from app.services.job_import import parse_job_from_url
+
         url = "https://www.linkedin.com/jobs/view/1234567890"
         result = parse_job_from_url(url)
         assert result["source"] == "linkedin"
@@ -18,6 +19,7 @@ class TestImportService:
 
     def test_parse_job_from_url_indeed(self):
         from app.services.job_import import parse_job_from_url
+
         url = "https://www.indeed.com/viewjob?jk=abc123def"
         result = parse_job_from_url(url)
         assert result["source"] == "indeed"
@@ -25,6 +27,7 @@ class TestImportService:
 
     def test_parse_job_from_url_unknown(self):
         from app.services.job_import import parse_job_from_url
+
         url = "https://example.com/jobs/some-position"
         result = parse_job_from_url(url)
         assert result["source"] == "url"
@@ -32,6 +35,7 @@ class TestImportService:
 
     def test_parse_job_from_description_basic(self):
         from app.services.job_import import parse_job_from_description
+
         desc = """Senior Software Engineer
         Company: Acme Corp
         Location: San Francisco, CA
@@ -51,12 +55,14 @@ class TestImportService:
 
     def test_parse_job_from_description_short_fails(self):
         from app.services.job_import import parse_job_from_description
+
         desc = "Short text"
         result = parse_job_from_description(desc)
         assert result["title"] == "Unknown Position"
 
     def test_normalize_job(self):
         from app.services.job_import import normalize_job
+
         raw = {
             "title": "  senior engineer  ",
             "company": "at Acme Corp",
@@ -73,6 +79,7 @@ class TestImportService:
 
     def test_check_duplicate_no_match(self, db, test_user):
         from app.services.job_import import check_duplicate
+
         job_data = {
             "title": "Software Engineer",
             "company": "Test Corp",
@@ -102,6 +109,7 @@ class TestImportService:
 
     def test_detect_platform(self):
         from app.services.job_import import detect_platform
+
         assert detect_platform("https://linkedin.com/jobs/123") == "linkedin"
         assert detect_platform("https://indeed.com/viewjob") == "indeed"
         assert detect_platform("https://glassdoor.com/job") == "glassdoor"
@@ -109,6 +117,7 @@ class TestImportService:
 
     def test_extract_tags_from_text(self):
         from app.services.job_import import extract_tags_from_text
+
         text = "We use Python, React, and PostgreSQL in production."
         tags = extract_tags_from_text(text)
         assert "python" in tags
@@ -130,7 +139,10 @@ class TestImportAPI:
         resp = client.post(
             "/api/v1/jobs/import",
             headers={"Authorization": f"Bearer {auth_tokens['access_token']}"},
-            json={"source_type": "url", "data": "https://www.linkedin.com/jobs/view/123456"},
+            json={
+                "source_type": "url",
+                "data": "https://www.linkedin.com/jobs/view/123456",
+            },
         )
         assert resp.status_code == 200
         data = resp.json()

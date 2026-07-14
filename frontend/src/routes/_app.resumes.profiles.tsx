@@ -64,7 +64,7 @@ function ResumeProfilesPage() {
             <div className="mt-4 flex items-center justify-between">
               <Link
                 to="/resumes/$id/editor"
-                params={{ id: profile.id }}
+                params={{ id: profile.id ?? "" }}
                 className="text-xs font-medium text-[color:var(--brand)] hover:underline"
               >
                 Edit →

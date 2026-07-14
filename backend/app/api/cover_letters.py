@@ -27,6 +27,7 @@ router = APIRouter()
 # CRUD
 # ---------------------------------------------------------------------------
 
+
 @router.get("/", response_model=List[CoverLetterResponse])
 def get_cover_letters(
     db: Session = Depends(get_db),
@@ -41,7 +42,9 @@ def get_cover_letters(
     )
 
 
-@router.post("/", response_model=CoverLetterResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/", response_model=CoverLetterResponse, status_code=status.HTTP_201_CREATED
+)
 def create_cover_letter(
     *,
     db: Session = Depends(get_db),
@@ -49,10 +52,7 @@ def create_cover_letter(
     letter_in: CoverLetterCreate,
 ) -> Any:
     """Create a new cover letter."""
-    letter = CoverLetter(
-        user_id=current_user.id,
-        **letter_in.model_dump()
-    )
+    letter = CoverLetter(user_id=current_user.id, **letter_in.model_dump())
     db.add(letter)
     db.commit()
     db.refresh(letter)
@@ -66,10 +66,14 @@ def get_cover_letter(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """Get a specific cover letter."""
-    letter = db.query(CoverLetter).filter(
-        CoverLetter.id == letter_id,
-        CoverLetter.user_id == current_user.id,
-    ).first()
+    letter = (
+        db.query(CoverLetter)
+        .filter(
+            CoverLetter.id == letter_id,
+            CoverLetter.user_id == current_user.id,
+        )
+        .first()
+    )
     if not letter:
         raise HTTPException(status_code=404, detail="Cover letter not found")
     return letter
@@ -83,10 +87,14 @@ def update_cover_letter(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """Update a cover letter."""
-    letter = db.query(CoverLetter).filter(
-        CoverLetter.id == letter_id,
-        CoverLetter.user_id == current_user.id,
-    ).first()
+    letter = (
+        db.query(CoverLetter)
+        .filter(
+            CoverLetter.id == letter_id,
+            CoverLetter.user_id == current_user.id,
+        )
+        .first()
+    )
     if not letter:
         raise HTTPException(status_code=404, detail="Cover letter not found")
 
@@ -107,10 +115,14 @@ def delete_cover_letter(
     current_user: User = Depends(get_current_user),
 ) -> None:
     """Delete a cover letter."""
-    letter = db.query(CoverLetter).filter(
-        CoverLetter.id == letter_id,
-        CoverLetter.user_id == current_user.id,
-    ).first()
+    letter = (
+        db.query(CoverLetter)
+        .filter(
+            CoverLetter.id == letter_id,
+            CoverLetter.user_id == current_user.id,
+        )
+        .first()
+    )
     if not letter:
         raise HTTPException(status_code=404, detail="Cover letter not found")
 
@@ -122,11 +134,14 @@ def delete_cover_letter(
 # Export
 # ---------------------------------------------------------------------------
 
+
 @router.get("/{letter_id}/export")
 def export_cover_letter(
     letter_id: uuid.UUID,
     format: str = Query("pdf", description="Export format: pdf, html"),
-    async_export: bool = Query(False, description="If true, queue PDF rendering on a worker and return 202"),
+    async_export: bool = Query(
+        False, description="If true, queue PDF rendering on a worker and return 202"
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Any:
@@ -139,10 +154,14 @@ def export_cover_letter(
     from app.services.cover_letter_generation import render_cover_letter_html
     from app.services.pdf_rendering import render_html_to_pdf_bytes
 
-    letter = db.query(CoverLetter).filter(
-        CoverLetter.id == letter_id,
-        CoverLetter.user_id == current_user.id,
-    ).first()
+    letter = (
+        db.query(CoverLetter)
+        .filter(
+            CoverLetter.id == letter_id,
+            CoverLetter.user_id == current_user.id,
+        )
+        .first()
+    )
     if not letter:
         raise HTTPException(status_code=404, detail="Cover letter not found")
 
@@ -191,7 +210,12 @@ def export_cover_letter(
 # Generate
 # ---------------------------------------------------------------------------
 
-@router.post("/generate", response_model=CoverLetterGenerateResponse, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/generate",
+    response_model=CoverLetterGenerateResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 def generate_cover_letter_new(
     letter_in: CoverLetterGenerateRequest,
     db: Session = Depends(get_db),
@@ -208,7 +232,9 @@ def generate_cover_letter_new(
 
     profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
     if not profile:
-        raise HTTPException(status_code=404, detail="Profile required to generate cover letter")
+        raise HTTPException(
+            status_code=404, detail="Profile required to generate cover letter"
+        )
 
     body = asyncio.run(_generate(profile, job, tone=letter_in.tone or "matching"))
 
@@ -246,10 +272,14 @@ def regenerate_cover_letter(
     from app.services.cover_letter_generation import generate_cover_letter as _generate
 
     # Verify ownership of the existing letter
-    letter = db.query(CoverLetter).filter(
-        CoverLetter.id == letter_id,
-        CoverLetter.user_id == current_user.id,
-    ).first()
+    letter = (
+        db.query(CoverLetter)
+        .filter(
+            CoverLetter.id == letter_id,
+            CoverLetter.user_id == current_user.id,
+        )
+        .first()
+    )
     if not letter:
         raise HTTPException(status_code=404, detail="Cover letter not found")
 
@@ -259,7 +289,9 @@ def regenerate_cover_letter(
 
     profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
     if not profile:
-        raise HTTPException(status_code=404, detail="Profile required to generate cover letter")
+        raise HTTPException(
+            status_code=404, detail="Profile required to generate cover letter"
+        )
 
     body = asyncio.run(_generate(profile, job, tone=letter_in.tone or "matching"))
 

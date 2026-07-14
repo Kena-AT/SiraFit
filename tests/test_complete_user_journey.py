@@ -69,23 +69,27 @@ TEST_JOB_URL = "https://www.linkedin.com/jobs/view/1234567890"
 # HELPER FUNCTIONS
 # ═══════════════════════════════════════════════════════════════
 
-def register_user(client: TestClient, email: str, password: str = "TestPass123!", name: str = "Test User"):
+
+def register_user(
+    client: TestClient,
+    email: str,
+    password: str = "TestPass123!",
+    name: str = "Test User",
+):
     """Register a new user."""
-    resp = client.post("/api/v1/auth/register", json={
-        "email": email,
-        "password": password,
-        "full_name": name
-    })
+    resp = client.post(
+        "/api/v1/auth/register",
+        json={"email": email, "password": password, "full_name": name},
+    )
     assert resp.status_code == 201, resp.text
     return resp.json()
 
 
 def login_user(client: TestClient, email: str, password: str = "TestPass123!"):
     """Login and return tokens."""
-    resp = client.post("/api/v1/auth/login", data={
-        "username": email,
-        "password": password
-    })
+    resp = client.post(
+        "/api/v1/auth/login", data={"username": email, "password": password}
+    )
     assert resp.status_code == 200, resp.text
     return resp.json()
 
@@ -105,7 +109,9 @@ def verify_user_email(db, email: str):
     return user
 
 
-def create_job_via_api(client: TestClient, headers: dict, *, url: str = None, description: str = None):
+def create_job_via_api(
+    client: TestClient, headers: dict, *, url: str = None, description: str = None
+):
     """Create a job via import API."""
     if url:
         data = {"source_type": "url", "data": url}
@@ -122,7 +128,9 @@ def create_job_via_api(client: TestClient, headers: dict, *, url: str = None, de
     return data["jobs"][0]
 
 
-def create_application(client: TestClient, headers: dict, job_id: str, status: str = "saved"):
+def create_application(
+    client: TestClient, headers: dict, job_id: str, status: str = "saved"
+):
     """Create a job application."""
     resp = client.post("/api/v1/applications", headers=headers, json={"job_id": job_id})
     assert resp.status_code == 200, resp.text
@@ -133,16 +141,27 @@ def create_application(client: TestClient, headers: dict, job_id: str, status: s
 
 def transition_status(client: TestClient, headers: dict, app_id: str, to_status: str):
     """Transition application status."""
-    resp = client.post(f"/api/v1/applications/{app_id}/status", headers=headers, json={"to_status": to_status})
+    resp = client.post(
+        f"/api/v1/applications/{app_id}/status",
+        headers=headers,
+        json={"to_status": to_status},
+    )
     return resp
 
 
-def add_note(client: TestClient, headers: dict, app_id: str, body: str, author: str = "Tester", pinned: bool = False):
+def add_note(
+    client: TestClient,
+    headers: dict,
+    app_id: str,
+    body: str,
+    author: str = "Tester",
+    pinned: bool = False,
+):
     """Add a note to an application."""
     resp = client.post(
         f"/api/v1/applications/{app_id}/notes",
         headers=headers,
-        json={"body": body, "author": author, "pinned": pinned}
+        json={"body": body, "author": author, "pinned": pinned},
     )
     assert resp.status_code == 200, resp.text
     return resp.json()
@@ -151,20 +170,20 @@ def add_note(client: TestClient, headers: dict, app_id: str, body: str, author: 
 def add_contact(client: TestClient, headers: dict, app_id: str, **kwargs):
     """Add a contact to an application."""
     resp = client.post(
-        f"/api/v1/applications/{app_id}/contacts",
-        headers=headers,
-        json=kwargs
+        f"/api/v1/applications/{app_id}/contacts", headers=headers, json=kwargs
     )
     assert resp.status_code == 200, resp.text
     return resp.json()
 
 
-def set_followup(client: TestClient, headers: dict, app_id: str, follow_up_at: str, note: str = None):
+def set_followup(
+    client: TestClient, headers: dict, app_id: str, follow_up_at: str, note: str = None
+):
     """Set follow-up reminder."""
     resp = client.put(
         f"/api/v1/applications/{app_id}/followup",
         headers=headers,
-        json={"follow_up_at": follow_up_at, "follow_up_note": note}
+        json={"follow_up_at": follow_up_at, "follow_up_note": note},
     )
     return resp
 
@@ -172,6 +191,7 @@ def set_followup(client: TestClient, headers: dict, app_id: str, follow_up_at: s
 # ═══════════════════════════════════════════════════════════════
 # TEST CLASSES
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestCompleteUserJourney:
     """End-to-end user journey tests."""
@@ -204,10 +224,9 @@ class TestCompleteUserJourney:
         assert resp["is_verified"] is False
 
         # Login should fail before verification
-        login_resp = client.post("/api/v1/auth/login", data={
-            "username": email,
-            "password": "TestPass123!"
-        })
+        login_resp = client.post(
+            "/api/v1/auth/login", data={"username": email, "password": "TestPass123!"}
+        )
         assert login_resp.status_code in (400, 401), login_resp.text
         assert "verify" in login_resp.json().get("detail", "").lower()
 
@@ -269,10 +288,18 @@ class TestCompleteUserJourney:
         assert app["status"] == "saved"
 
         # Valid forward transitions
-        valid_transitions = ["applied", "screening", "interview", "final_round", "offer"]
+        valid_transitions = [
+            "applied",
+            "screening",
+            "interview",
+            "final_round",
+            "offer",
+        ]
         for status in valid_transitions:
             resp = transition_status(client, headers, app_id, status)
-            assert resp.status_code == 200, f"Failed to transition to {status}: {resp.text}"
+            assert resp.status_code == 200, (
+                f"Failed to transition to {status}: {resp.text}"
+            )
             assert resp.json()["status"] == status
 
         # Invalid reverse transition should fail
@@ -294,7 +321,9 @@ class TestCompleteUserJourney:
 
         # Create notes
         note1 = add_note(client, headers, app_id, "First conversation with recruiter")
-        note2 = add_note(client, headers, app_id, "Technical interview scheduled", pinned=True)
+        note2 = add_note(
+            client, headers, app_id, "Technical interview scheduled", pinned=True
+        )
         note3 = add_note(client, headers, app_id, "Follow up by Friday")
 
         # List notes - pinned should come first
@@ -310,7 +339,7 @@ class TestCompleteUserJourney:
         resp = client.put(
             f"/api/v1/applications/notes/{note_id}",
             headers=headers,
-            json={"body": "Updated: First conversation with recruiter", "pinned": True}
+            json={"body": "Updated: First conversation with recruiter", "pinned": True},
         )
         assert resp.status_code == 200
         assert resp.json()["body"] == "Updated: First conversation with recruiter"
@@ -334,14 +363,22 @@ class TestCompleteUserJourney:
 
         # Create contacts
         contact1 = add_contact(
-            client, headers, app_id,
-            name="Sarah Chen", email="sarah@techcorp.com",
-            role="recruiter", is_primary=True
+            client,
+            headers,
+            app_id,
+            name="Sarah Chen",
+            email="sarah@techcorp.com",
+            role="recruiter",
+            is_primary=True,
         )
         contact2 = add_contact(
-            client, headers, app_id,
-            name="Mike Johnson", email="mike@techcorp.com",
-            role="hiring_manager", is_primary=False
+            client,
+            headers,
+            app_id,
+            name="Mike Johnson",
+            email="mike@techcorp.com",
+            role="hiring_manager",
+            is_primary=False,
         )
 
         # List contacts - primary first
@@ -356,13 +393,15 @@ class TestCompleteUserJourney:
         resp = client.put(
             f"/api/v1/applications/contacts/{contact1['id']}",
             headers=headers,
-            json={"phone": "+1-555-0123", "company": "TechCorp Inc"}
+            json={"phone": "+1-555-0123", "company": "TechCorp Inc"},
         )
         assert resp.status_code == 200
         assert resp.json()["phone"] == "+1-555-0123"
 
         # Delete contact
-        resp = client.delete(f"/api/v1/applications/contacts/{contact1['id']}", headers=headers)
+        resp = client.delete(
+            f"/api/v1/applications/contacts/{contact1['id']}", headers=headers
+        )
         assert resp.status_code == 204
 
         # Verify
@@ -413,10 +452,11 @@ class TestCompleteUserJourney:
         transition_status(client, headers, app_id, "applied")
 
         # Check audit log
-        log = db.query(AuditLog).filter_by(
-            user_id=user_id,
-            action="application_status_change"
-        ).first()
+        log = (
+            db.query(AuditLog)
+            .filter_by(user_id=user_id, action="application_status_change")
+            .first()
+        )
 
         assert log is not None
         assert log.details["to_status"] == "applied"
@@ -432,7 +472,9 @@ class TestCompleteUserJourney:
 
         # Set follow-up
         future_date = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
-        resp = set_followup(client, headers, app_id, future_date, "Send thank you email")
+        resp = set_followup(
+            client, headers, app_id, future_date, "Send thank you email"
+        )
         assert resp.status_code == 200
 
         # Get follow-ups
@@ -459,7 +501,11 @@ class TestCompleteUserJourney:
             resp = client.post(
                 "/api/v1/notifications",
                 headers=headers,
-                json={"title": f"Notification {i}", "body": f"Body {i}", "kind": "alert"}
+                json={
+                    "title": f"Notification {i}",
+                    "body": f"Body {i}",
+                    "kind": "alert",
+                },
             )
             assert resp.status_code == 200
 
@@ -502,8 +548,11 @@ class TestCompleteUserJourney:
 
         # Create
         notif = create_notification(
-            db=db, user_id=user_id,
-            title="Service Test", body="Testing service layer", kind="system_event"
+            db=db,
+            user_id=user_id,
+            title="Service Test",
+            body="Testing service layer",
+            kind="system_event",
         )
         assert notif.id is not None
         assert notif.status == "unread"
@@ -586,15 +635,19 @@ class TestCompleteUserJourney:
         assert resp.status_code == 200
 
         # Create resume (profile-based)
-        resp = client.post("/api/v1/resumes", headers=headers, json={
-            "profile_data": {
-                "headline": "Senior Software Engineer",
-                "summary": "Experienced engineer...",
-                "skills": ["Python", "React", "AWS"],
-                "experience": [],
-                "education": []
-            }
-        })
+        resp = client.post(
+            "/api/v1/resumes",
+            headers=headers,
+            json={
+                "profile_data": {
+                    "headline": "Senior Software Engineer",
+                    "summary": "Experienced engineer...",
+                    "skills": ["Python", "React", "AWS"],
+                    "experience": [],
+                    "education": [],
+                }
+            },
+        )
         assert resp.status_code == 200
         resume = resp.json()
         assert resume["id"] is not None
@@ -604,7 +657,9 @@ class TestCompleteUserJourney:
         assert resp.status_code == 200
 
         # Export PDF (if endpoint exists)
-        resp = client.get(f"/api/v1/resumes/{resume['id']}/export?format=pdf", headers=headers)
+        resp = client.get(
+            f"/api/v1/resumes/{resume['id']}/export?format=pdf", headers=headers
+        )
         # May return 404 if not implemented yet
         # assert resp.status_code in (200, 404)
 
@@ -618,11 +673,11 @@ class TestCompleteUserJourney:
         app_id = app["id"]
 
         # Create cover letter for application
-        resp = client.post("/api/v1/cover-letters", headers=headers, json={
-            "application_id": app_id,
-            "tone": "professional",
-            "length": "medium"
-        })
+        resp = client.post(
+            "/api/v1/cover-letters",
+            headers=headers,
+            json={"application_id": app_id, "tone": "professional", "length": "medium"},
+        )
         assert resp.status_code == 200
         cover_letter = resp.json()
         assert cover_letter["id"] is not None
@@ -639,15 +694,22 @@ class TestCompleteUserJourney:
         headers = test_user["headers"]
 
         # Create batch import job
-        resp = client.post("/api/v1/batch", headers=headers, json={
-            "name": "Test Batch",
-            "description": "Batch import test",
-            "operation": "import",
-            "items": [
-                {"source_type": "description", "data": TEST_JOB_DESCRIPTION},
-                {"source_type": "url", "data": "https://linkedin.com/jobs/view/999"},
-            ]
-        })
+        resp = client.post(
+            "/api/v1/batch",
+            headers=headers,
+            json={
+                "name": "Test Batch",
+                "description": "Batch import test",
+                "operation": "import",
+                "items": [
+                    {"source_type": "description", "data": TEST_JOB_DESCRIPTION},
+                    {
+                        "source_type": "url",
+                        "data": "https://linkedin.com/jobs/view/999",
+                    },
+                ],
+            },
+        )
         assert resp.status_code == 200
         batch = resp.json()
         assert batch["id"] is not None
@@ -689,7 +751,9 @@ class TestCompleteUserJourney:
         assert resp.json() == []
 
         # User 2 tries to access user 1's application contacts
-        resp = client.get(f"/api/v1/applications/{app_id}/contacts", headers=other_headers)
+        resp = client.get(
+            f"/api/v1/applications/{app_id}/contacts", headers=other_headers
+        )
         assert resp.status_code == 200
         assert resp.json() == []
 
@@ -699,11 +763,14 @@ class TestCompleteUserJourney:
 
         # Make many rapid requests
         for i in range(15):
-            resp = client.post("/api/v1/auth/register", json={
-                "email": f"{email.split('@')[0]}+{i}@{email.split('@')[1]}",
-                "password": "TestPass123!",
-                "full_name": "Rate Limit Test"
-            })
+            resp = client.post(
+                "/api/v1/auth/register",
+                json={
+                    "email": f"{email.split('@')[0]}+{i}@{email.split('@')[1]}",
+                    "password": "TestPass123!",
+                    "full_name": "Rate Limit Test",
+                },
+            )
             # Some may be rate limited
             if resp.status_code == 429:
                 assert "detail" in resp.json()
@@ -714,9 +781,10 @@ class TestCompleteUserJourney:
         tokens = test_user["tokens"]
 
         # Refresh token
-        resp = client.post("/api/v1/auth/refresh-token", json={
-            "refresh_token": tokens["refresh_token"]
-        })
+        resp = client.post(
+            "/api/v1/auth/refresh-token",
+            json={"refresh_token": tokens["refresh_token"]},
+        )
         assert resp.status_code == 200
         new_tokens = resp.json()
         assert "access_token" in new_tokens
@@ -730,9 +798,9 @@ class TestCompleteUserJourney:
         assert resp.status_code == 200
 
         # Logout
-        resp = client.post("/api/v1/auth/logout", json={
-            "refresh_token": new_tokens["refresh_token"]
-        })
+        resp = client.post(
+            "/api/v1/auth/logout", json={"refresh_token": new_tokens["refresh_token"]}
+        )
         assert resp.status_code == 200
 
     def test_19_forgot_reset_password(self, client, db):
@@ -747,15 +815,17 @@ class TestCompleteUserJourney:
         assert "reset link" in resp.json()["message"].lower()
 
         # Request for non-existent email (should not reveal user existence)
-        resp = client.post("/api/v1/auth/forgot-password", json={"email": "nonexistent@test.com"})
+        resp = client.post(
+            "/api/v1/auth/forgot-password", json={"email": "nonexistent@test.com"}
+        )
         assert resp.status_code == 200
         assert "reset link" in resp.json()["message"].lower()
 
         # Invalid reset token
-        resp = client.post("/api/v1/auth/reset-password", json={
-            "token": "invalid.token.here",
-            "new_password": "NewPass123!"
-        })
+        resp = client.post(
+            "/api/v1/auth/reset-password",
+            json={"token": "invalid.token.here", "new_password": "NewPass123!"},
+        )
         assert resp.status_code == 400
 
     def test_20_full_application_workflow(self, client, test_user):
@@ -777,13 +847,19 @@ class TestCompleteUserJourney:
         assert resp.json()["status"] == "applied"
 
         # 4. Add note about application
-        add_note(client, headers, app_id, "Applied via LinkedIn Easy Apply", pinned=True)
+        add_note(
+            client, headers, app_id, "Applied via LinkedIn Easy Apply", pinned=True
+        )
 
         # 5. Add recruiter contact
         add_contact(
-            client, headers, app_id,
-            name="Sarah Chen", email="sarah@techcorp.com",
-            role="recruiter", is_primary=True
+            client,
+            headers,
+            app_id,
+            name="Sarah Chen",
+            email="sarah@techcorp.com",
+            role="recruiter",
+            is_primary=True,
         )
 
         # 6. Set follow-up for 1 week
@@ -855,10 +931,11 @@ class TestAPIErrorHandling:
     def test_invalid_job_import(self, client, test_user):
         """Test importing invalid/empty job description."""
         headers = test_user["headers"]
-        resp = client.post("/api/v1/jobs/import", headers=headers, json={
-            "source_type": "description",
-            "data": "Too short"
-        })
+        resp = client.post(
+            "/api/v1/jobs/import",
+            headers=headers,
+            json={"source_type": "description", "data": "Too short"},
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["import_record"]["status"] == "failed"
@@ -870,10 +947,11 @@ class TestAPIErrorHandling:
 
         # Import same description twice
         for _ in range(2):
-            resp = client.post("/api/v1/jobs/import", headers=headers, json={
-                "source_type": "description",
-                "data": TEST_JOB_DESCRIPTION
-            })
+            resp = client.post(
+                "/api/v1/jobs/import",
+                headers=headers,
+                json={"source_type": "description", "data": TEST_JOB_DESCRIPTION},
+            )
             assert resp.status_code == 200
             data = resp.json()
             # Second import should be marked as duplicate
@@ -886,7 +964,9 @@ class TestAPIErrorHandling:
 
         # Create many notifications
         for i in range(25):
-            create_notification(db, user_id, f"Notification {i}", f"Body {i}", "system_event")
+            create_notification(
+                db, user_id, f"Notification {i}", f"Body {i}", "system_event"
+            )
 
         # Test pagination
         resp = client.get("/api/v1/notifications?limit=10&skip=0", headers=headers)

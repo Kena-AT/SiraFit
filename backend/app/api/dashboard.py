@@ -11,29 +11,42 @@ from app.schemas.dashboard import DashboardStats
 
 router = APIRouter()
 
+
 @router.get("/stats", response_model=DashboardStats)
 def get_dashboard_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """Retrieve dashboard statistics for the current user."""
-    
+
     # 1. Count active applications
-    active_apps = db.query(func.count(JobApplication.id)).filter(
-        JobApplication.user_id == current_user.id,
-        JobApplication.status.notin_(["rejected", "withdrawn"])
-    ).scalar() or 0
+    active_apps = (
+        db.query(func.count(JobApplication.id))
+        .filter(
+            JobApplication.user_id == current_user.id,
+            JobApplication.status.notin_(["rejected", "withdrawn"]),
+        )
+        .scalar()
+        or 0
+    )
 
     # 2. Count resumes generated
-    resumes_generated = db.query(func.count(Resume.id)).filter(
-        Resume.user_id == current_user.id
-    ).scalar() or 0
+    resumes_generated = (
+        db.query(func.count(Resume.id))
+        .filter(Resume.user_id == current_user.id)
+        .scalar()
+        or 0
+    )
 
     # 3. Count jobs scored (applications with a score)
-    jobs_scored = db.query(func.count(JobApplication.id)).filter(
-        JobApplication.user_id == current_user.id,
-        JobApplication.score.isnot(None)
-    ).scalar() or 0
+    jobs_scored = (
+        db.query(func.count(JobApplication.id))
+        .filter(
+            JobApplication.user_id == current_user.id, JobApplication.score.isnot(None)
+        )
+        .scalar()
+        or 0
+    )
 
     # 4. Recent activity
     recent_activity = (
@@ -48,5 +61,5 @@ def get_dashboard_stats(
         active_applications=active_apps,
         resumes_generated=resumes_generated,
         jobs_scored=jobs_scored,
-        recent_activity=recent_activity
+        recent_activity=recent_activity,
     )

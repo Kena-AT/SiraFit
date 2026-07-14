@@ -104,7 +104,7 @@ function BatchCenter() {
         <Panel title="Recent batches">
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <Input placeholder="Filter batches..." className="w-64" />
-            <Select value={filterStatus} onChange={setFilterStatus}>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
               <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
@@ -118,7 +118,7 @@ function BatchCenter() {
                 <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filterOp} onChange={setFilterOp}>
+            <Select value={filterOp} onValueChange={setFilterOp}>
               <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>

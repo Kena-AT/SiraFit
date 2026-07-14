@@ -11,7 +11,9 @@ from app.models.user import User
 from app.schemas.user import UserCreate, UserResponse, TokenPayload
 
 router = APIRouter()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login", auto_error=False)
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl=f"{settings.API_V1_STR}/auth/login", auto_error=False
+)
 
 
 def get_current_user(
@@ -36,7 +38,9 @@ def get_current_user(
         )
 
     try:
-        payload = jwt.decode(token_str, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(
+            token_str, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
         token_data = TokenPayload(**payload)
 
         if token_data.type != "access":
@@ -53,6 +57,7 @@ def get_current_user(
         )
 
     import uuid
+
     try:
         user_uuid = uuid.UUID(token_data.sub)
     except ValueError:

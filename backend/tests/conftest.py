@@ -2,6 +2,7 @@
 Shared pytest fixtures for backend tests.
 Uses an in-memory SQLite database for speed — no external services needed.
 """
+
 import os
 
 import pytest
@@ -22,7 +23,9 @@ os.environ.setdefault("SMTP_PASSWORD", "dummy")
 os.environ.setdefault("SMTP_FROM", "noreply@sirafit.com")
 os.environ.setdefault("CORS_ORIGINS", "http://localhost:3030")
 os.environ.setdefault("ENVIRONMENT", "testing")
-os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")  # Use localhost for tests; sync fallback when no Redis
+os.environ.setdefault(
+    "REDIS_URL", "redis://localhost:6379/0"
+)  # Use localhost for tests; sync fallback when no Redis
 # In-process Celery so enqueue helpers fail the broker fast (memory://) and fall back to sync —
 # without this, Celery retries the broker/redis result backend 20× with 1s backoff before the
 # sync fallback fires, turning a <60s suite into ~8 minutes.
@@ -35,7 +38,7 @@ from app.core.database import Base, get_db
 
 # Import ALL models so SQLite creates every table
 import app.models.user  # noqa: F401
-import app.models.job   # noqa: F401
+import app.models.job  # noqa: F401
 import app.models.profile  # noqa: F401
 import app.models.cover_letter  # noqa: F401
 import app.models.batch  # noqa: F401
@@ -115,13 +118,13 @@ def auth_tokens(client, registered_user):
 def db():
     """Provide a fresh database session for each test function."""
     db_session = TestingSessionLocal()
-    
+
     # Override the app's get_db dependency to use this session
     def _get_db():
         yield db_session
-    
+
     fastapi_app.dependency_overrides[get_db] = _get_db
-    
+
     try:
         yield db_session
     finally:
@@ -136,13 +139,13 @@ def test_user(db):
     from app.models.user import User
     from app.core.security import get_password_hash
     import uuid
-    
+
     unique_email = f"test_{uuid.uuid4().hex[:8]}@example.com"
     user = User(
         email=unique_email,
         full_name="Test User",
         hashed_password=get_password_hash("password123"),
-        is_verified=True
+        is_verified=True,
     )
     db.add(user)
     db.commit()
@@ -154,6 +157,6 @@ def test_user(db):
 def auth_headers(test_user):
     """Generate auth headers for function-scoped tests."""
     from app.core.security import create_access_token
-    
+
     token = create_access_token(str(test_user.id))
     return {"Authorization": f"Bearer {token}"}

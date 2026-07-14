@@ -9,6 +9,7 @@ Covers:
   - API: GET /jobs/{id}/analysis returns stored data
   - API: 404 when no analysis exists
 """
+
 import json
 import uuid
 import pytest
@@ -22,8 +23,8 @@ from app.services.ai import AnalysisOutput, _parse_and_validate, keyword_fallbac
 # Schema validation tests
 # ---------------------------------------------------------------------------
 
-class TestAnalysisOutputSchema:
 
+class TestAnalysisOutputSchema:
     def test_valid_full_output(self):
         data = {
             "score": 82,
@@ -50,9 +51,11 @@ class TestAnalysisOutputSchema:
 
     def test_lists_are_truncated_to_6(self):
         data = dict(
-            score=50, summary="x",
+            score=50,
+            summary="x",
             pros=["a", "b", "c", "d", "e", "f", "g", "h"],
-            cons=[], skills_gap=[],
+            cons=[],
+            skills_gap=[],
         )
         output = AnalysisOutput.model_validate(data)
         assert len(output.pros) == 6
@@ -72,13 +75,18 @@ class TestAnalysisOutputSchema:
 # JSON parsing helper
 # ---------------------------------------------------------------------------
 
-class TestParseAndValidate:
 
+class TestParseAndValidate:
     def test_plain_json(self):
-        text = json.dumps({
-            "score": 75, "summary": "Good fit",
-            "pros": ["Python"], "cons": [], "skills_gap": [],
-        })
+        text = json.dumps(
+            {
+                "score": 75,
+                "summary": "Good fit",
+                "pros": ["Python"],
+                "cons": [],
+                "skills_gap": [],
+            }
+        )
         result = _parse_and_validate(text)
         assert result.score == 75
 
@@ -100,8 +108,8 @@ class TestParseAndValidate:
 # Keyword fallback
 # ---------------------------------------------------------------------------
 
-class TestKeywordFallback:
 
+class TestKeywordFallback:
     def test_fallback_returns_valid_output(self):
         result = keyword_fallback("Senior Python Engineer", "We need Python expertise")
         assert isinstance(result, AnalysisOutput)
@@ -119,8 +127,8 @@ class TestKeywordFallback:
 # API tests
 # ---------------------------------------------------------------------------
 
-class TestAnalysisAPI:
 
+class TestAnalysisAPI:
     def test_trigger_analysis_returns_processing_status(self, client, auth_headers, db):
         """POST /jobs/{id}/analyze should return immediately with status=processing or done."""
         from app.models.job import Job

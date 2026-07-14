@@ -8,10 +8,13 @@ from app.services.matching_engine import calculate_match_score, ScoringWeights
 
 # ── Helpers ──
 
-def _make_profile(skills: list[str] | None = None,
-                  experiences: int = 0,
-                  edu_years: int = 0,
-                  edu_degree: str = "") -> MagicMock:
+
+def _make_profile(
+    skills: list[str] | None = None,
+    experiences: int = 0,
+    edu_years: int = 0,
+    edu_degree: str = "",
+) -> MagicMock:
     profile = MagicMock(spec=Profile)
 
     profile.skills = []
@@ -51,24 +54,33 @@ def _make_job(tags: list[str] | None = None) -> MagicMock:
 
 # ── Tests ──
 
-class TestMatchingEngine:
 
+class TestMatchingEngine:
     def test_perfect_match(self):
-        profile = _make_profile(skills=["python", "fastapi", "docker"], experiences=3, edu_years=4, edu_degree="Bachelor")
+        profile = _make_profile(
+            skills=["python", "fastapi", "docker"],
+            experiences=3,
+            edu_years=4,
+            edu_degree="Bachelor",
+        )
         job = _make_job(tags=["python", "fastapi", "docker"])
         result = calculate_match_score(profile, job)
         assert result["score"] >= 90
         assert result["breakdown"]["skills"] == 100
 
     def test_no_skills_match(self):
-        profile = _make_profile(skills=["java"], experiences=1, edu_years=1, edu_degree="Bachelor")
+        profile = _make_profile(
+            skills=["java"], experiences=1, edu_years=1, edu_degree="Bachelor"
+        )
         job = _make_job(tags=["python", "fastapi", "docker"])
         result = calculate_match_score(profile, job)
         assert result["breakdown"]["skills"] == 0
         assert result["score"] < 50
 
     def test_partial_skills_match(self):
-        profile = _make_profile(skills=["python", "go"], experiences=1, edu_years=1, edu_degree="Bachelor")
+        profile = _make_profile(
+            skills=["python", "go"], experiences=1, edu_years=1, edu_degree="Bachelor"
+        )
         job = _make_job(tags=["python", "fastapi", "docker", "kubernetes"])
         result = calculate_match_score(profile, job)
         assert result["breakdown"]["skills"] == 25  # 1/4
@@ -80,14 +92,18 @@ class TestMatchingEngine:
         assert result["breakdown"]["skills"] == 100  # no requirements = 100%
 
     def test_no_experience(self):
-        profile = _make_profile(skills=["python"], experiences=0, edu_years=0, edu_degree="")
+        profile = _make_profile(
+            skills=["python"], experiences=0, edu_years=0, edu_degree=""
+        )
         job = _make_job(tags=["python"])
         result = calculate_match_score(profile, job)
         assert result["breakdown"]["experience"] == 20
         assert "no experience" in result["explanation"].lower()
 
     def test_no_education(self):
-        profile = _make_profile(skills=["python"], experiences=1, edu_years=0, edu_degree="")
+        profile = _make_profile(
+            skills=["python"], experiences=1, edu_years=0, edu_degree=""
+        )
         job = _make_job(tags=["python"])
         result = calculate_match_score(profile, job)
         assert result["breakdown"]["education"] == 20
@@ -102,9 +118,13 @@ class TestMatchingEngine:
         assert result["breakdown"]["education"] == 20
 
     def test_custom_weights(self):
-        profile = _make_profile(skills=["python"], experiences=1, edu_years=1, edu_degree="Bachelor")
+        profile = _make_profile(
+            skills=["python"], experiences=1, edu_years=1, edu_degree="Bachelor"
+        )
         job = _make_job(tags=["python"])
-        weights = ScoringWeights(skills_weight=1.0, experience_weight=0.0, education_weight=0.0)
+        weights = ScoringWeights(
+            skills_weight=1.0, experience_weight=0.0, education_weight=0.0
+        )
         result = calculate_match_score(profile, job, weights=weights)
         assert result["score"] == result["breakdown"]["skills"]  # only skills matters
 
@@ -121,7 +141,9 @@ class TestMatchingEngine:
         assert result["breakdown"]["skills"] == 100
 
     def test_explanation_contains_all_dimensions(self):
-        profile = _make_profile(skills=["python"], experiences=1, edu_years=1, edu_degree="Bachelor")
+        profile = _make_profile(
+            skills=["python"], experiences=1, edu_years=1, edu_degree="Bachelor"
+        )
         job = _make_job(tags=["python"])
         result = calculate_match_score(profile, job)
         expl = result["explanation"]

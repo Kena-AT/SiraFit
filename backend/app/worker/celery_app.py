@@ -11,6 +11,7 @@ generation). When Celery is not available (e.g. local dev without Redis), the
 task wrappers in `app.worker.tasks` gracefully fall back to synchronous
 execution so the API keeps working.
 """
+
 from __future__ import annotations
 
 import logging

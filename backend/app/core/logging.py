@@ -34,7 +34,8 @@ def configure_logging():
     ]
 
     structlog.configure(
-        processors=shared_processors + [
+        processors=shared_processors
+        + [
             structlog.dev.ConsoleRenderer(),  # pretty-print in dev; swap for JSONRenderer in prod
         ],
         wrapper_class=structlog.stdlib.BoundLogger,

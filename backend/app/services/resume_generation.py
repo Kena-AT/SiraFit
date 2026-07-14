@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 # Structured output schema for AI resume generation
 # ---------------------------------------------------------------------------
 
+
 class TailoredExperience(BaseModel):
     title: str
     company: str
@@ -45,6 +46,7 @@ class TailoredEducation(BaseModel):
 
 class TailoredResume(BaseModel):
     """Structured output from AI resume generation."""
+
     name: str
     email: str
     phone: Optional[str] = None
@@ -147,6 +149,7 @@ Rules:
 # Profile serialization helper
 # ---------------------------------------------------------------------------
 
+
 def _serialize_profile(profile: Profile) -> str:
     """Convert a Profile ORM object to a text representation for the prompt."""
     parts = []
@@ -166,7 +169,9 @@ def _serialize_profile(profile: Profile) -> str:
             parts.append(f"\nTitle: {exp.title}")
             parts.append(f"Company: {exp.company}")
             parts.append(f"Location: {exp.location or 'N/A'}")
-            parts.append(f"Period: {exp.start_date} – {'Present' if exp.is_current else exp.end_date}")
+            parts.append(
+                f"Period: {exp.start_date} – {'Present' if exp.is_current else exp.end_date}"
+            )
             parts.append(f"Description: {exp.description or 'N/A'}")
 
     if profile.educations:
@@ -225,6 +230,7 @@ def _serialize_job(job: Job) -> str:
 # AI Provider implementations
 # ---------------------------------------------------------------------------
 
+
 def _parse_ai_response(text: str) -> TailoredResume:
     """Parse and validate AI response into TailoredResume."""
     clean = text.strip()
@@ -238,11 +244,15 @@ def _parse_ai_response(text: str) -> TailoredResume:
     return TailoredResume.model_validate(data)
 
 
-async def _generate_with_gemini(prompt: str, api_key: str, model: str = "gemini-1.5-flash") -> TailoredResume:
+async def _generate_with_gemini(
+    prompt: str, api_key: str, model: str = "gemini-1.5-flash"
+) -> TailoredResume:
     """Generate resume using Google Gemini."""
     import google.generativeai as genai
 
-    model_name = "models/gemini-1.5-pro" if "pro" in model.lower() else "models/gemini-1.5-flash"
+    model_name = (
+        "models/gemini-1.5-pro" if "pro" in model.lower() else "models/gemini-1.5-flash"
+    )
 
     genai.configure(api_key=api_key)
     gen_model = genai.GenerativeModel(model_name)
@@ -250,14 +260,19 @@ async def _generate_with_gemini(prompt: str, api_key: str, model: str = "gemini-
     return _parse_ai_response(response.text)
 
 
-async def _generate_with_openrouter(prompt: str, api_key: str, model: str = "openai/gpt-4o-mini") -> TailoredResume:
+async def _generate_with_openrouter(
+    prompt: str, api_key: str, model: str = "openai/gpt-4o-mini"
+) -> TailoredResume:
     """Generate resume using OpenRouter."""
     import httpx
 
     payload = {
         "model": model,
         "messages": [
-            {"role": "system", "content": "You are an expert resume writer. Return only valid JSON."},
+            {
+                "role": "system",
+                "content": "You are an expert resume writer. Return only valid JSON.",
+            },
             {"role": "user", "content": prompt},
         ],
     }
@@ -283,6 +298,7 @@ async def _generate_with_openrouter(prompt: str, api_key: str, model: str = "ope
 # Retry helper
 # ---------------------------------------------------------------------------
 
+
 async def _with_retry(fn, max_attempts: int = 3):
     """Call async fn up to max_attempts with exponential backoff."""
     last_exc = None
@@ -293,18 +309,19 @@ async def _with_retry(fn, max_attempts: int = 3):
             last_exc = e
             logger.warning(f"Resume generation parse error attempt {attempt + 1}: {e}")
             if attempt < max_attempts - 1:
-                await asyncio.sleep(2 ** attempt)
+                await asyncio.sleep(2**attempt)
         except Exception as e:
             last_exc = e
             logger.warning(f"Resume generation error attempt {attempt + 1}: {e}")
             if attempt < max_attempts - 1:
-                await asyncio.sleep(2 ** attempt)
+                await asyncio.sleep(2**attempt)
     raise last_exc
 
 
 # ---------------------------------------------------------------------------
 # Validation
 # ---------------------------------------------------------------------------
+
 
 def _calculate_ats_score(resume_data: dict, job: Job) -> int:
     """Calculate a basic ATS readiness score."""
@@ -315,7 +332,9 @@ def _calculate_ats_score(resume_data: dict, job: Job) -> int:
         score += 20
 
     # 2. Has experience with bullets (20 pts)
-    if resume_data.get("experience") and any(exp.get("bullets") for exp in resume_data["experience"]):
+    if resume_data.get("experience") and any(
+        exp.get("bullets") for exp in resume_data["experience"]
+    ):
         score += 20
 
     # 3. Has skills (20 pts)
@@ -353,11 +372,11 @@ def validate_resume_json(resume_data: dict, job: Job) -> tuple[bool, list[str]]:
     if resume_data.get("experience"):
         for i, exp in enumerate(resume_data["experience"]):
             if "bullets" not in exp:
-                issues.append(f"Experience {i+1} missing bullets field")
+                issues.append(f"Experience {i + 1} missing bullets field")
             elif exp.get("bullets") is None:
-                issues.append(f"Experience {i+1} missing bullets")
+                issues.append(f"Experience {i + 1} missing bullets")
             elif len(exp["bullets"]) > 5:
-                issues.append(f"Experience {i+1} has more than 5 bullets")
+                issues.append(f"Experience {i + 1} has more than 5 bullets")
 
     if not resume_data.get("skills") or len(resume_data["skills"]) == 0:
         issues.append("No skills listed")
@@ -374,6 +393,7 @@ def validate_resume_json(resume_data: dict, job: Job) -> tuple[bool, list[str]]:
 # ---------------------------------------------------------------------------
 # Template Engine
 # ---------------------------------------------------------------------------
+
 
 def _esc(value) -> str:
     """Escape HTML special characters in a value."""
@@ -439,12 +459,18 @@ def _render_minimal_template(resume_data: dict) -> str:
     lines = []
     lines.append("<!DOCTYPE html>")
     lines.append("<html><head><meta charset='utf-8'><style>")
-    lines.append("body{font-family:Arial,sans-serif;max-width:800px;margin:0 auto;padding:40px;line-height:1.6}")
+    lines.append(
+        "body{font-family:Arial,sans-serif;max-width:800px;margin:0 auto;padding:40px;line-height:1.6}"
+    )
     lines.append("h1{font-size:24px;margin-bottom:4px}")
     lines.append(".contact{font-size:13px;color:#666;margin-bottom:20px}")
-    lines.append("h2{font-size:16px;border-bottom:1px solid #ccc;padding-bottom:4px;margin-top:20px;margin-bottom:10px}")
+    lines.append(
+        "h2{font-size:16px;border-bottom:1px solid #ccc;padding-bottom:4px;margin-top:20px;margin-bottom:10px}"
+    )
     lines.append(".exp-item{margin-bottom:16px}")
-    lines.append(".exp-header{display:flex;justify-content:space-between;font-weight:bold}")
+    lines.append(
+        ".exp-header{display:flex;justify-content:space-between;font-weight:bold}"
+    )
     lines.append(".exp-meta{color:#666;font-size:13px}")
     lines.append("ul{margin:4px 0;padding-left:20px}")
     lines.append("li{margin:2px 0;font-size:14px}")
@@ -482,7 +508,9 @@ def _render_minimal_template(resume_data: dict) -> str:
             period = _esc(exp.get("period", ""))
             loc = _esc(exp.get("location", ""))
             lines.append("<div class='exp-item'>")
-            lines.append(f"<div class='exp-header'><span>{title} — {company}</span><span>{period}</span></div>")
+            lines.append(
+                f"<div class='exp-header'><span>{title} — {company}</span><span>{period}</span></div>"
+            )
             if loc:
                 lines.append(f"<div class='exp-meta'>{loc}</div>")
             if exp.get("bullets"):
@@ -532,17 +560,25 @@ def _render_technical_template(resume_data: dict) -> str:
     lines = []
     lines.append("<!DOCTYPE html>")
     lines.append("<html><head><meta charset='utf-8'><style>")
-    lines.append("body{font-family:'Segoe UI',Arial,sans-serif;max-width:800px;margin:0 auto;padding:40px;line-height:1.6}")
+    lines.append(
+        "body{font-family:'Segoe UI',Arial,sans-serif;max-width:800px;margin:0 auto;padding:40px;line-height:1.6}"
+    )
     lines.append("h1{font-size:26px;margin-bottom:4px;color:#1a1a1a}")
     lines.append(".contact{font-size:13px;color:#555;margin-bottom:24px}")
-    lines.append("h2{font-size:15px;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid #2563eb;padding-bottom:6px;margin-top:24px;margin-bottom:12px;color:#1e40af}")
+    lines.append(
+        "h2{font-size:15px;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid #2563eb;padding-bottom:6px;margin-top:24px;margin-bottom:12px;color:#1e40af}"
+    )
     lines.append(".exp-item{margin-bottom:18px}")
-    lines.append(".exp-header{display:flex;justify-content:space-between;font-weight:600}")
+    lines.append(
+        ".exp-header{display:flex;justify-content:space-between;font-weight:600}"
+    )
     lines.append(".exp-meta{color:#666;font-size:13px}")
     lines.append("ul{margin:6px 0;padding-left:20px}")
     lines.append("li{margin:3px 0;font-size:14px}")
     lines.append(".skills{display:flex;flex-wrap:wrap;gap:6px}")
-    lines.append(".skill-tag{background:#eff6ff;color:#1e40af;padding:3px 8px;border-radius:4px;font-size:13px}")
+    lines.append(
+        ".skill-tag{background:#eff6ff;color:#1e40af;padding:3px 8px;border-radius:4px;font-size:13px}"
+    )
     lines.append("</style></head><body>")
 
     # Header
@@ -594,7 +630,9 @@ def _render_technical_template(resume_data: dict) -> str:
             period = _esc(exp.get("period", ""))
             loc = _esc(exp.get("location", ""))
             lines.append("<div class='exp-item'>")
-            lines.append(f"<div class='exp-header'><span>{title} — {company}</span><span>{period}</span></div>")
+            lines.append(
+                f"<div class='exp-header'><span>{title} — {company}</span><span>{period}</span></div>"
+            )
             if loc:
                 lines.append(f"<div class='exp-meta'>{loc}</div>")
             if exp.get("bullets"):
@@ -616,6 +654,7 @@ def _render_technical_template(resume_data: dict) -> str:
 
     lines.append("</body></html>")
     return "\n".join(lines)
+
 
 def _render_modern_template(resume_data: dict) -> str:
     """Render the modern template: balanced layout with subtle styling and a sidebar accent."""
@@ -668,7 +707,9 @@ def _render_modern_template(resume_data: dict) -> str:
             period = _esc(exp.get("period", ""))
             loc = _esc(exp.get("location", ""))
             lines.append("<div class='exp-item'>")
-            lines.append(f"<div class='exp-header'><span>{title} · {company}</span><span>{period}</span></div>")
+            lines.append(
+                f"<div class='exp-header'><span>{title} · {company}</span><span>{period}</span></div>"
+            )
             if loc:
                 lines.append(f"<div class='exp-meta'>{loc}</div>")
             if exp.get("bullets"):
@@ -702,7 +743,9 @@ def _render_modern_template(resume_data: dict) -> str:
             deg = _esc(edu.get("degree", ""))
             field = _esc(edu.get("field_of_study", ""))
             period = _esc(edu.get("period", ""))
-            lines.append(f"<div class='edu'><span><strong>{inst}</strong> — {deg}, {field}</span><span>{period}</span></div>")
+            lines.append(
+                f"<div class='edu'><span><strong>{inst}</strong> — {deg}, {field}</span><span>{period}</span></div>"
+            )
 
     lines.append("</div></body></html>")
     return "\n".join(lines)
@@ -744,7 +787,9 @@ def _render_corporate_template(resume_data: dict) -> str:
     ]
 
     if resume_data.get("summary"):
-        lines.append(f"<h2>Professional Summary</h2><p style='font-size:13px;text-align:justify'>{_esc(resume_data['summary'])}</p>")
+        lines.append(
+            f"<h2>Professional Summary</h2><p style='font-size:13px;text-align:justify'>{_esc(resume_data['summary'])}</p>"
+        )
 
     if resume_data.get("experience"):
         lines.append("<h2>Professional Experience</h2>")
@@ -811,7 +856,9 @@ def _render_compact_template(resume_data: dict) -> str:
     github = _esc(resume_data.get("github", ""))
     website = _esc(resume_data.get("website", ""))
 
-    contact = " · ".join([c for c in [email, phone, location, linkedin, github, website] if c])
+    contact = " · ".join(
+        [c for c in [email, phone, location, linkedin, github, website] if c]
+    )
 
     lines = [
         "<!DOCTYPE html>",
@@ -834,7 +881,9 @@ def _render_compact_template(resume_data: dict) -> str:
     ]
 
     if resume_data.get("summary"):
-        lines.append(f"<h2>Summary</h2><p style='font-size:11px;margin:2px 0'>{_esc(resume_data['summary'])}</p>")
+        lines.append(
+            f"<h2>Summary</h2><p style='font-size:11px;margin:2px 0'>{_esc(resume_data['summary'])}</p>"
+        )
 
     if resume_data.get("experience"):
         lines.append("<h2>Experience</h2>")
@@ -844,7 +893,9 @@ def _render_compact_template(resume_data: dict) -> str:
             period = _esc(exp.get("period", ""))
             loc = _esc(exp.get("location", ""))
             lines.append("<div class='exp-item'>")
-            lines.append(f"<div class='exp-line'><span>{title} · {company}</span><span>{period}</span></div>")
+            lines.append(
+                f"<div class='exp-line'><span>{title} · {company}</span><span>{period}</span></div>"
+            )
             if loc:
                 lines.append(f"<div class='exp-meta'>{loc}</div>")
             if exp.get("bullets"):
@@ -882,7 +933,9 @@ def _render_compact_template(resume_data: dict) -> str:
                 left += f" — {deg}"
             if field:
                 left += f", {field}"
-            lines.append(f"<div class='edu-line'><span>{left}</span><span>{period}</span></div>")
+            lines.append(
+                f"<div class='edu-line'><span>{left}</span><span>{period}</span></div>"
+            )
     lines.append("</body></html>")
     return "\n".join(lines)
 
@@ -890,6 +943,7 @@ def _render_compact_template(resume_data: dict) -> str:
 # ---------------------------------------------------------------------------
 # Main generation orchestrator
 # ---------------------------------------------------------------------------
+
 
 async def generate_tailored_resume(
     db: Session,
@@ -921,7 +975,9 @@ async def generate_tailored_resume(
     # Build prompt context
     profile_text = _serialize_profile(profile)
     job_text = _serialize_job(job)
-    prompt = RESUME_GENERATION_PROMPT.format(profile_data=profile_text, job_data=job_text)
+    prompt = RESUME_GENERATION_PROMPT.format(
+        profile_data=profile_text, job_data=job_text
+    )
 
     # Determine provider and key
     actual_provider = (provider or "").lower()
@@ -930,16 +986,24 @@ async def generate_tailored_resume(
 
     if not actual_key:
         if actual_provider == "openrouter":
-            actual_key = getattr(settings, 'OPENROUTER_API_KEY', None)
+            actual_key = getattr(settings, "OPENROUTER_API_KEY", None)
         else:
-            actual_key = getattr(settings, 'GEMINI_API_KEY', None)
+            actual_key = getattr(settings, "GEMINI_API_KEY", None)
             actual_provider = "gemini" if not actual_provider else actual_provider
 
     # Generate resume data
     if actual_key and actual_provider == "gemini":
-        tailored = await _with_retry(lambda: _generate_with_gemini(prompt, actual_key, actual_model or "gemini-1.5-flash"))
+        tailored = await _with_retry(
+            lambda: _generate_with_gemini(
+                prompt, actual_key, actual_model or "gemini-1.5-flash"
+            )
+        )
     elif actual_key and actual_provider == "openrouter":
-        tailored = await _with_retry(lambda: _generate_with_openrouter(prompt, actual_key, actual_model or "openai/gpt-4o-mini"))
+        tailored = await _with_retry(
+            lambda: _generate_with_openrouter(
+                prompt, actual_key, actual_model or "openai/gpt-4o-mini"
+            )
+        )
     else:
         raise ValueError("No AI API key configured for resume generation")
 

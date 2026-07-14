@@ -8,15 +8,15 @@ from app.api.users import get_current_user
 from app.models.user import User
 from app.models.batch import BatchJob
 from app.models.job import Job
-from app.schemas.batch import (
-    BatchJobCreate, BatchJobResponse, BatchJobListResponse
-)
+from app.schemas.batch import BatchJobCreate, BatchJobResponse, BatchJobListResponse
 from app.services.batch import enqueue_batch_job
 
 router = APIRouter()
 
 
-def _validate_job_ids(db: Session, user_id: uuid.UUID, job_ids: List[uuid.UUID]) -> List[Job]:
+def _validate_job_ids(
+    db: Session, user_id: uuid.UUID, job_ids: List[uuid.UUID]
+) -> List[Job]:
     """Validate that all job IDs exist and belong to the user's jobs."""
     # For batch operations, we allow jobs from any source (user's own + imported)
     # but we verify they exist in the database
@@ -94,10 +94,11 @@ def get_batch_job(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """Get a single batch job with full result summary."""
-    batch_job = db.query(BatchJob).filter(
-        BatchJob.id == batch_id,
-        BatchJob.user_id == current_user.id
-    ).first()
+    batch_job = (
+        db.query(BatchJob)
+        .filter(BatchJob.id == batch_id, BatchJob.user_id == current_user.id)
+        .first()
+    )
     if not batch_job:
         raise HTTPException(status_code=404, detail="Batch job not found")
     return batch_job
@@ -110,22 +111,24 @@ def retry_batch_job(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """Retry failed items in a batch job by creating a new batch job."""
-    original = db.query(BatchJob).filter(
-        BatchJob.id == batch_id,
-        BatchJob.user_id == current_user.id
-    ).first()
+    original = (
+        db.query(BatchJob)
+        .filter(BatchJob.id == batch_id, BatchJob.user_id == current_user.id)
+        .first()
+    )
     if not original:
         raise HTTPException(status_code=404, detail="Batch job not found")
 
     if original.status not in ("failed", "partial"):
         raise HTTPException(
             status_code=400,
-            detail="Can only retry failed or partially completed batch jobs"
+            detail="Can only retry failed or partially completed batch jobs",
         )
 
     # Extract failed job_ids from result_summary
     failed_ids = [
-        uuid.UUID(job_id) for job_id, result in original.result_summary.items()
+        uuid.UUID(job_id)
+        for job_id, result in original.result_summary.items()
         if result.get("status") == "error"
     ]
 
@@ -141,7 +144,10 @@ def retry_batch_job(
         processed_items=0,
         succeeded_items=0,
         failed_items=0,
-        payload={"job_ids": [str(j) for j in failed_ids], "params": original.payload.get("params", {})},
+        payload={
+            "job_ids": [str(j) for j in failed_ids],
+            "params": original.payload.get("params", {}),
+        },
         result_summary={},
         cancel_requested=False,
     )
@@ -162,17 +168,17 @@ def cancel_batch_job(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """Request cancellation of a running batch job."""
-    batch_job = db.query(BatchJob).filter(
-        BatchJob.id == batch_id,
-        BatchJob.user_id == current_user.id
-    ).first()
+    batch_job = (
+        db.query(BatchJob)
+        .filter(BatchJob.id == batch_id, BatchJob.user_id == current_user.id)
+        .first()
+    )
     if not batch_job:
         raise HTTPException(status_code=404, detail="Batch job not found")
 
     if batch_job.status not in ("pending", "running"):
         raise HTTPException(
-            status_code=400,
-            detail=f"Cannot cancel job with status: {batch_job.status}"
+            status_code=400, detail=f"Cannot cancel job with status: {batch_job.status}"
         )
 
     batch_job.cancel_requested = True

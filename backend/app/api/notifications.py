@@ -7,9 +7,7 @@ from app.core.database import get_db
 from app.api.users import get_current_user
 from app.models.user import User
 from app.models.notification import Notification
-from app.schemas.notification import (
-    NotificationResponse, NotificationListResponse
-)
+from app.schemas.notification import NotificationResponse, NotificationListResponse
 
 router = APIRouter()
 
@@ -24,18 +22,17 @@ def list_notifications(
 ) -> Any:
     """List user's notifications with optional status filter."""
     query = db.query(Notification).filter(Notification.user_id == current_user.id)
-    
+
     if status:
         query = query.filter(Notification.status == status)
-    
+
     total = query.count()
-    notifications = query.order_by(Notification.created_at.desc()).offset(skip).limit(limit).all()
-    
+    notifications = (
+        query.order_by(Notification.created_at.desc()).offset(skip).limit(limit).all()
+    )
+
     return NotificationListResponse(
-        notifications=notifications,
-        total=total,
-        skip=skip,
-        limit=limit
+        notifications=notifications, total=total, skip=skip, limit=limit
     )
 
 
@@ -45,11 +42,14 @@ def get_unread_count(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """Get count of unread notifications."""
-    count = db.query(Notification).filter(
-        Notification.user_id == current_user.id,
-        Notification.status == "unread"
-    ).count()
-    
+    count = (
+        db.query(Notification)
+        .filter(
+            Notification.user_id == current_user.id, Notification.status == "unread"
+        )
+        .count()
+    )
+
     return {"count": count}
 
 
@@ -60,20 +60,24 @@ def mark_notification_read(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """Mark a notification as read."""
-    notification = db.query(Notification).filter(
-        Notification.id == notification_id,
-        Notification.user_id == current_user.id
-    ).first()
-    
+    notification = (
+        db.query(Notification)
+        .filter(
+            Notification.id == notification_id, Notification.user_id == current_user.id
+        )
+        .first()
+    )
+
     if not notification:
         raise HTTPException(status_code=404, detail="Notification not found")
-    
+
     from datetime import datetime, timezone
+
     notification.status = "read"
     notification.read_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(notification)
-    
+
     return notification
 
 
@@ -84,16 +88,16 @@ def mark_all_notifications_read(
 ) -> Any:
     """Mark all notifications as read."""
     from datetime import datetime, timezone
-    
-    count = db.query(Notification).filter(
-        Notification.user_id == current_user.id,
-        Notification.status == "unread"
-    ).update({
-        "status": "read",
-        "read_at": datetime.now(timezone.utc)
-    })
+
+    count = (
+        db.query(Notification)
+        .filter(
+            Notification.user_id == current_user.id, Notification.status == "unread"
+        )
+        .update({"status": "read", "read_at": datetime.now(timezone.utc)})
+    )
     db.commit()
-    
+
     return {"updated": count}
 
 
@@ -104,15 +108,18 @@ def delete_notification(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """Delete a notification."""
-    notification = db.query(Notification).filter(
-        Notification.id == notification_id,
-        Notification.user_id == current_user.id
-    ).first()
-    
+    notification = (
+        db.query(Notification)
+        .filter(
+            Notification.id == notification_id, Notification.user_id == current_user.id
+        )
+        .first()
+    )
+
     if not notification:
         raise HTTPException(status_code=404, detail="Notification not found")
-    
+
     db.delete(notification)
     db.commit()
-    
+
     return {"message": "Notification deleted"}

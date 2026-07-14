@@ -26,9 +26,7 @@ def _skills_score(profile: Profile, job: Job) -> tuple[int, str]:
     matches = sum(1 for tag in job_tags if tag.lower() in profile_skills)
     ratio = matches / len(job_tags)
     score = int(ratio * 100)
-    return score, (
-        f"Matched {matches}/{len(job_tags)} required skills ({score}%)."
-    )
+    return score, (f"Matched {matches}/{len(job_tags)} required skills ({score}%).")
 
 
 def _experience_score(profile: Profile) -> tuple[int, str]:
@@ -42,6 +40,7 @@ def _experience_score(profile: Profile) -> tuple[int, str]:
             years_total += years
         elif exp.start_date and exp.is_current:
             from datetime import date
+
             delta = date.today() - exp.start_date
             years = delta.days / 365.0
             years_total += years
@@ -59,16 +58,20 @@ def _experience_score(profile: Profile) -> tuple[int, str]:
 def _education_score(profile: Profile) -> tuple[int, str]:
     if not profile.educations:
         return 20, "No education entries on profile."
-    levels = {"phd": 100, "master": 90, "bachelor": 75, "associate": 60, "high school": 40}
+    levels = {
+        "phd": 100,
+        "master": 90,
+        "bachelor": 75,
+        "associate": 60,
+        "high school": 40,
+    }
     best = 20
     for edu in profile.educations:
         degree_lower = (edu.degree or "").lower()
         for keyword, val in levels.items():
             if keyword in degree_lower:
                 best = max(best, val)
-    return best, (
-        f"Highest education level scores {best}%."
-    )
+    return best, (f"Highest education level scores {best}%.")
 
 
 def calculate_match_score(

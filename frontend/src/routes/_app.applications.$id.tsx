@@ -9,9 +9,11 @@ import {
   updateApplicationNote,
   deleteApplicationNote,
   getApplicationContacts,
-  createApplicationContact,
+  setFollowUp,
 } from "@/lib/api/applications";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { ApplicationNote } from "@/lib/api/applications";
 
 export const Route = createFileRoute("/_app/applications/$id")({
@@ -305,6 +307,12 @@ function AppDetails() {
             </div>
           </Panel>
 
+          <FollowUpPanel
+            applicationId={id}
+            currentFollowUpAt={application.follow_up_at}
+            currentNote={application.follow_up_note}
+          />
+
           <Panel title="Tags">
             <div className="flex flex-wrap gap-1.5 p-4">
               {application.job?.tags?.map((tag: string) => (
@@ -315,5 +323,137 @@ function AppDetails() {
         </div>
       </div>
     </PageBody>
+  );
+}
+
+// ── Follow-up panel ──────────────────────────────────────────────────────
+
+function FollowUpPanel({
+  applicationId,
+  currentFollowUpAt,
+  currentNote,
+}: {
+  applicationId: string;
+  currentFollowUpAt?: string | null;
+  currentNote?: string | null;
+}) {
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [date, setDate] = useState(
+    currentFollowUpAt ? new Date(currentFollowUpAt).toISOString().slice(0, 16) : "",
+  );
+  const [note, setNote] = useState(currentNote || "");
+
+  const saveMutation = useMutation({
+    mutationFn: () =>
+      setFollowUp(applicationId, {
+        follow_up_at: date ? new Date(date).toISOString() : null,
+        follow_up_note: note || null,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["application", applicationId] });
+      queryClient.invalidateQueries({ queryKey: ["followups"] });
+      setEditing(false);
+    },
+  });
+
+  const clearMutation = useMutation({
+    mutationFn: () => setFollowUp(applicationId, { follow_up_at: null, follow_up_note: null }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["application", applicationId] });
+      queryClient.invalidateQueries({ queryKey: ["followups"] });
+      setDate("");
+      setNote("");
+    },
+  });
+
+  return (
+    <Panel title="Follow-up reminder">
+      <div className="p-4 space-y-3 text-sm">
+        {currentFollowUpAt && !editing ? (
+          <>
+            <div>
+              <div className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                Due
+              </div>
+              <div className="mt-0.5">
+                {new Date(currentFollowUpAt).toLocaleString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </div>
+            </div>
+            {currentNote && (
+              <div>
+                <div className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  Note
+                </div>
+                <div className="mt-0.5 text-foreground/90">{currentNote}</div>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+                Edit
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-muted-foreground hover:text-destructive"
+                onClick={() => clearMutation.mutate()}
+                disabled={clearMutation.isPending}
+              >
+                Clear
+              </Button>
+            </div>
+          </>
+        ) : editing || !currentFollowUpAt ? (
+          <>
+            <div>
+              <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                Due date & time
+              </label>
+              <Input
+                type="datetime-local"
+                className="mt-1 h-8 text-xs"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                Note (optional)
+              </label>
+              <Input
+                className="mt-1 h-8 text-xs"
+                placeholder="e.g. Follow up with recruiter"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                disabled={!date || saveMutation.isPending}
+                onClick={() => saveMutation.mutate()}
+              >
+                {saveMutation.isPending ? "Saving…" : "Set reminder"}
+              </Button>
+              {editing && (
+                <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
+                  Cancel
+                </Button>
+              )}
+            </div>
+            {saveMutation.error && (
+              <div className="text-xs text-destructive">
+                {(saveMutation.error as Error).message}
+              </div>
+            )}
+          </>
+        ) : null}
+      </div>
+    </Panel>
   );
 }

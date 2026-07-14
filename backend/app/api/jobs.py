@@ -11,10 +11,17 @@ from app.models.job import Job, JobImport, JobAnalysis
 from app.models.score import JobMatchScore
 from app.models.profile import Profile
 from app.schemas.job import (
-    JobResponse, JobImportCreate, JobListResponse,
-    JobImportResponse, ImportResultResponse, JobData,
-    JobAnalysisResponse, AnalysisRequest, JobMatchScoreResponse,
-    RankedJobResponse, RankedJobListResponse,
+    JobResponse,
+    JobImportCreate,
+    JobListResponse,
+    JobImportResponse,
+    ImportResultResponse,
+    JobData,
+    JobAnalysisResponse,
+    AnalysisRequest,
+    JobMatchScoreResponse,
+    RankedJobResponse,
+    RankedJobListResponse,
 )
 from app.services.job_import import process_import
 from app.services.job_analysis import run_job_analysis
@@ -26,6 +33,7 @@ router = APIRouter()
 # ---------------------------------------------------------------------------
 # Job listing
 # ---------------------------------------------------------------------------
+
 
 @router.get("/", response_model=JobListResponse)
 def list_jobs(
@@ -69,9 +77,13 @@ def list_jobs(
             # and PostgreSQL (JSONB); `"tag"` matches the JSON-encoded element.
             query = query.filter(cast(Job.tags, String).like(f'%"{tag}"%'))
     if min_salary is not None:
-        query = query.filter(or_(Job.salary_min >= min_salary, Job.salary_max >= min_salary))
+        query = query.filter(
+            or_(Job.salary_min >= min_salary, Job.salary_max >= min_salary)
+        )
     if max_salary is not None:
-        query = query.filter(or_(Job.salary_max <= max_salary, Job.salary_min <= max_salary))
+        query = query.filter(
+            or_(Job.salary_max <= max_salary, Job.salary_min <= max_salary)
+        )
 
     total = query.count()
 
@@ -85,6 +97,7 @@ def list_jobs(
 # ---------------------------------------------------------------------------
 # Single job
 # ---------------------------------------------------------------------------
+
 
 @router.get("/{job_id}", response_model=JobResponse)
 def get_job(
@@ -112,17 +125,22 @@ def get_match_score(
 
     profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
     if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found. Create a profile first.")
+        raise HTTPException(
+            status_code=404, detail="Profile not found. Create a profile first."
+        )
 
     # Calculate score
     score_data = calculate_match_score(profile, job)
-    
+
     # Save/Update score
-    existing_score = db.query(JobMatchScore).filter(
-        JobMatchScore.user_id == current_user.id,
-        JobMatchScore.job_id == job_id
-    ).first()
-    
+    existing_score = (
+        db.query(JobMatchScore)
+        .filter(
+            JobMatchScore.user_id == current_user.id, JobMatchScore.job_id == job_id
+        )
+        .first()
+    )
+
     if existing_score:
         existing_score.score = score_data["score"]
         existing_score.breakdown = score_data["breakdown"]
@@ -136,7 +154,7 @@ def get_match_score(
             job_id=job_id,
             score=score_data["score"],
             breakdown=score_data["breakdown"],
-            explanation=score_data["explanation"]
+            explanation=score_data["explanation"],
         )
         db.add(new_score)
         db.commit()
@@ -147,6 +165,7 @@ def get_match_score(
 # ---------------------------------------------------------------------------
 # AI Analysis
 # ---------------------------------------------------------------------------
+
 
 @router.post("/{job_id}/analyze", response_model=JobAnalysisResponse)
 async def trigger_analysis(
@@ -221,15 +240,22 @@ def list_ranked_jobs(
     jobs = db.query(Job).order_by(Job.created_at.desc()).offset(skip).limit(limit).all()
     items = []
     for job in jobs:
-        score_record = db.query(JobMatchScore).filter(
-            JobMatchScore.user_id == current_user.id,
-            JobMatchScore.job_id == job.id
-        ).first()
-        items.append(RankedJobResponse(
-            job=JobResponse.model_validate(job),
-            match_score=JobMatchScoreResponse.model_validate(score_record) if score_record else None,
-        ))
-    items.sort(key=lambda r: (r.match_score.score if r.match_score else 0), reverse=True)
+        score_record = (
+            db.query(JobMatchScore)
+            .filter(
+                JobMatchScore.user_id == current_user.id, JobMatchScore.job_id == job.id
+            )
+            .first()
+        )
+        items.append(
+            RankedJobResponse(
+                job=JobResponse.model_validate(job),
+                match_score=JobMatchScoreResponse.model_validate(score_record)
+                if score_record
+                else None,
+            )
+        )
+    items.sort(key=lambda r: r.match_score.score if r.match_score else 0, reverse=True)
     return RankedJobListResponse(jobs=items, total=len(items))
 
 
@@ -242,13 +268,16 @@ def get_job_analysis(
     """Get the stored AI analysis for a job (poll this after triggering)."""
     analysis = db.query(JobAnalysis).filter(JobAnalysis.job_id == job_id).first()
     if not analysis:
-        raise HTTPException(status_code=404, detail="No analysis found for this job. Trigger one first.")
+        raise HTTPException(
+            status_code=404, detail="No analysis found for this job. Trigger one first."
+        )
     return analysis
 
 
 # ---------------------------------------------------------------------------
 # Import
 # ---------------------------------------------------------------------------
+
 
 @router.post("/import", response_model=ImportResultResponse)
 def import_jobs(
@@ -259,7 +288,10 @@ def import_jobs(
 ) -> Any:
     """Import jobs from a URL or pasted description."""
     import_record, jobs_data, errors = process_import(
-        db, current_user.id, import_in.source_type, import_in.data,
+        db,
+        current_user.id,
+        import_in.source_type,
+        import_in.data,
     )
     return ImportResultResponse(
         import_record=JobImportResponse.model_validate(import_record),

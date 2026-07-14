@@ -1,11 +1,12 @@
 from pydantic_settings import BaseSettings
 from pathlib import Path
 
+
 class Settings(BaseSettings):
     PROJECT_NAME: str = "SiraFit API"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
-    
+
     # Security
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
@@ -41,6 +42,7 @@ class Settings(BaseSettings):
 
     # Data encryption for user-stored API keys (fall back to SECRET_KEY if not set)
     DATA_ENCRYPTION_KEY: str | None = None
+
     class Config:
         env_file = str(Path(__file__).resolve().parent.parent.parent.parent / ".env")
         case_sensitive = True
@@ -49,5 +51,6 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
+
 
 settings = Settings()

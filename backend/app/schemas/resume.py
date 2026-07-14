@@ -3,18 +3,22 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 import uuid
 
+
 class ResumeBase(BaseModel):
     title: str = Field(..., max_length=255)
     content: str
     is_primary: Optional[bool] = False
 
+
 class ResumeCreate(ResumeBase):
     application_id: Optional[uuid.UUID] = None
+
 
 class ResumeUpdate(BaseModel):
     title: Optional[str] = None
     content: Optional[str] = None
     is_primary: Optional[bool] = None
+
 
 class ResumeResponse(ResumeBase):
     id: uuid.UUID
@@ -29,6 +33,7 @@ class ResumeResponse(ResumeBase):
 
 # --- Resume Versions ---
 
+
 class ResumeVersionCreate(BaseModel):
     content: str
     template: Optional[str] = "minimal"
@@ -36,6 +41,7 @@ class ResumeVersionCreate(BaseModel):
     tailoring_notes: Optional[str] = None
     score: Optional[int] = None
     status: Optional[str] = "completed"
+
 
 class ResumeVersionResponse(BaseModel):
     id: uuid.UUID
@@ -52,17 +58,24 @@ class ResumeVersionResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class ResumeVersionListResponse(BaseModel):
     versions: list[ResumeVersionResponse]
     total: int
 
- # --- Resume Generation ---
+
+# --- Resume Generation ---
+
 
 class ResumeGenerationRequest(BaseModel):
     job_id: uuid.UUID
-    template: str = Field(default="minimal", description="Template name: minimal, technical, modern, corporate, compact")
+    template: str = Field(
+        default="minimal",
+        description="Template name: minimal, technical, modern, corporate, compact",
+    )
     provider: Optional[str] = None
     model: Optional[str] = None
+
 
 class ResumeGenerationResponse(BaseModel):
     version_id: uuid.UUID

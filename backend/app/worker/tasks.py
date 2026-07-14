@@ -13,6 +13,7 @@ broker (Redis) is unreachable, so the API keeps working in environments
 without Redis (tests, local dev). The fallback is logged at WARNING level
 so it is visible in production.
 """
+
 from __future__ import annotations
 
 import json
@@ -33,6 +34,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Storage helper for rendered PDFs
 # ---------------------------------------------------------------------------
+
 
 def _pdf_storage_dir() -> str:
     """Return (creating if needed) the directory used to store rendered PDFs.
@@ -56,6 +58,7 @@ def _save_pdf_bytes(pdf_bytes: bytes, name: str) -> str:
 # ---------------------------------------------------------------------------
 # Resume generation
 # ---------------------------------------------------------------------------
+
 
 def _run_generation(
     version_id: uuid.UUID,
@@ -82,9 +85,15 @@ def _run_generation(
         if not profile or not job:
             logger.error(
                 "resume_generation_missing_inputs",
-                extra={"version_id": str(version_id), "profile_id": str(profile_id), "job_id": str(job_id)},
+                extra={
+                    "version_id": str(version_id),
+                    "profile_id": str(profile_id),
+                    "job_id": str(job_id),
+                },
             )
-            version = db.query(ResumeVersion).filter(ResumeVersion.id == version_id).first()
+            version = (
+                db.query(ResumeVersion).filter(ResumeVersion.id == version_id).first()
+            )
             if version:
                 version.status = "failed"
                 version.tailoring_notes = "Missing profile or job"
@@ -103,7 +112,10 @@ def _run_generation(
 
         version = db.query(ResumeVersion).filter(ResumeVersion.id == version_id).first()
         if not version:
-            logger.error("resume_generation_version_not_found", extra={"version_id": str(version_id)})
+            logger.error(
+                "resume_generation_version_not_found",
+                extra={"version_id": str(version_id)},
+            )
             return
 
         version.content = json.dumps(result["resume_data"])
@@ -128,7 +140,9 @@ def _run_generation(
         db.add(log)
         db.commit()
     except Exception as exc:  # pragma: no cover - defensive
-        logger.exception("resume_generation_failed", extra={"version_id": str(version_id)})
+        logger.exception(
+            "resume_generation_failed", extra={"version_id": str(version_id)}
+        )
         db.rollback()
         version = db.query(ResumeVersion).filter(ResumeVersion.id == version_id).first()
         if version:
@@ -174,6 +188,7 @@ def enqueue_resume_generation(
 # PDF rendering — resume
 # ---------------------------------------------------------------------------
 
+
 def _run_resume_pdf_render(version_id: uuid.UUID) -> None:
     """Render a ResumeVersion to PDF and persist the path on the row."""
     from app.services.resume_export import export_resume_pdf
@@ -182,7 +197,9 @@ def _run_resume_pdf_render(version_id: uuid.UUID) -> None:
     try:
         version = db.query(ResumeVersion).filter(ResumeVersion.id == version_id).first()
         if not version:
-            logger.error("resume_pdf_version_not_found", extra={"version_id": str(version_id)})
+            logger.error(
+                "resume_pdf_version_not_found", extra={"version_id": str(version_id)}
+            )
             return
 
         version.status = "processing"
@@ -207,7 +224,9 @@ def _run_resume_pdf_render(version_id: uuid.UUID) -> None:
         db.add(log)
         db.commit()
     except Exception:  # pragma: no cover - defensive
-        logger.exception("resume_pdf_render_failed", extra={"version_id": str(version_id)})
+        logger.exception(
+            "resume_pdf_render_failed", extra={"version_id": str(version_id)}
+        )
         db.rollback()
         version = db.query(ResumeVersion).filter(ResumeVersion.id == version_id).first()
         if version:
@@ -240,6 +259,7 @@ def enqueue_resume_pdf_render(version_id: uuid.UUID) -> None:
 # PDF rendering — cover letter
 # ---------------------------------------------------------------------------
 
+
 def _run_cover_letter_pdf_render(letter_id: uuid.UUID) -> None:
     """Render a CoverLetter to PDF and persist the path on the row."""
     from app.services.cover_letter_generation import render_cover_letter_html
@@ -249,13 +269,17 @@ def _run_cover_letter_pdf_render(letter_id: uuid.UUID) -> None:
     try:
         letter = db.query(CoverLetter).filter(CoverLetter.id == letter_id).first()
         if not letter:
-            logger.error("cover_letter_pdf_not_found", extra={"letter_id": str(letter_id)})
+            logger.error(
+                "cover_letter_pdf_not_found", extra={"letter_id": str(letter_id)}
+            )
             return
 
         letter.status = "processing"
         db.commit()
 
-        html = render_cover_letter_html(letter.body, template=letter.template or "classic")
+        html = render_cover_letter_html(
+            letter.body, template=letter.template or "classic"
+        )
         pdf_bytes = render_html_to_pdf(html)
         path = _save_pdf_bytes(pdf_bytes, f"cover-letter-{letter_id}")
 
@@ -272,7 +296,9 @@ def _run_cover_letter_pdf_render(letter_id: uuid.UUID) -> None:
         db.add(log)
         db.commit()
     except Exception:  # pragma: no cover - defensive
-        logger.exception("cover_letter_pdf_render_failed", extra={"letter_id": str(letter_id)})
+        logger.exception(
+            "cover_letter_pdf_render_failed", extra={"letter_id": str(letter_id)}
+        )
         db.rollback()
         letter = db.query(CoverLetter).filter(CoverLetter.id == letter_id).first()
         if letter:
@@ -383,6 +409,7 @@ try:
     def process_batch_job(self, batch_job_id: str) -> dict:
         """Celery task wrapper - delegates to app.services.batch._run_batch_job."""
         from app.services.batch import _run_batch_job
+
         _run_batch_job(uuid.UUID(batch_job_id))
         return {"batch_job_id": batch_job_id, "status": "dispatched"}
 
@@ -393,6 +420,7 @@ except Exception as exc:  # pragma: no cover - import-time broker failure
 # Notification worker tasks
 
 try:
+
     @celery_app.task(
         name="app.worker.tasks.send_notification_task",
         bind=True,
@@ -403,6 +431,7 @@ try:
     def send_notification_task(self, notification_id: str) -> dict:
         """Celery task to send a notification (email, push, etc.)."""
         from app.services.notification_service import send_notification_email
+
         send_notification_email(uuid.UUID(notification_id))
         return {"notification_id": notification_id, "status": "sent"}
 
@@ -415,11 +444,14 @@ try:
     def check_reminders_task(self) -> dict:
         """Celery task to check for upcoming follow-ups and send reminders."""
         from app.services.notification_service import check_and_send_reminders
+
         check_and_send_reminders()
         return {"status": "checked"}
 
 except Exception as exc:  # pragma: no cover - import-time broker failure
-    logger.warning("celery_task_registration_skipped_notifications", extra={"error": str(exc)})
+    logger.warning(
+        "celery_task_registration_skipped_notifications", extra={"error": str(exc)}
+    )
 
 
 __all__ = [

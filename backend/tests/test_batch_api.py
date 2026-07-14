@@ -8,7 +8,12 @@ def test_batch_job_create(client, auth_headers, db):
     # Create test jobs using the db fixture session
     job_ids = []
     for i in range(3):
-        job = Job(external_id=f"batch-test-{i}-{uuid.uuid4().hex[:8]}", title="Engineer", company="Co", tags=["python"])
+        job = Job(
+            external_id=f"batch-test-{i}-{uuid.uuid4().hex[:8]}",
+            title="Engineer",
+            company="Co",
+            tags=["python"],
+        )
         db.add(job)
         db.commit()
         db.refresh(job)
@@ -16,11 +21,7 @@ def test_batch_job_create(client, auth_headers, db):
 
     response = client.post(
         "/api/v1/batch",
-        json={
-            "operation_type": "score",
-            "job_ids": job_ids,
-            "params": {}
-        },
+        json={"operation_type": "score", "job_ids": job_ids, "params": {}},
         headers=auth_headers,
     )
     assert response.status_code == 200, response.text
@@ -60,7 +61,12 @@ def test_batch_job_retry(client, auth_headers, db):
 
     # Create a test job with string UUID
     job_id = uuid.uuid4()
-    job = Job(id=job_id, external_id=f"retry-test-job-{job_id.hex[:8]}", title="Engineer", company="Co")
+    job = Job(
+        id=job_id,
+        external_id=f"retry-test-job-{job_id.hex[:8]}",
+        title="Engineer",
+        company="Co",
+    )
     db.add(job)
     db.commit()
     db.refresh(job)
@@ -68,11 +74,7 @@ def test_batch_job_retry(client, auth_headers, db):
     # Create batch job
     response = client.post(
         "/api/v1/batch",
-        json={
-            "operation_type": "score",
-            "job_ids": [str(job_id)],
-            "params": {}
-        },
+        json={"operation_type": "score", "job_ids": [str(job_id)], "params": {}},
         headers=auth_headers,
     )
     assert response.status_code == 200
@@ -104,11 +106,7 @@ def test_batch_job_invalid_operation(client, auth_headers):
     """Test creating batch job with invalid operation type."""
     response = client.post(
         "/api/v1/batch",
-        json={
-            "operation_type": "invalid",
-            "job_ids": [],
-            "params": {}
-        },
+        json={"operation_type": "invalid", "job_ids": [], "params": {}},
         headers=auth_headers,
     )
     assert response.status_code == 422  # Validation error
@@ -118,11 +116,7 @@ def test_batch_job_empty_job_ids(client, auth_headers):
     """Test creating batch job with empty job_ids."""
     response = client.post(
         "/api/v1/batch",
-        json={
-            "operation_type": "score",
-            "job_ids": [],
-            "params": {}
-        },
+        json={"operation_type": "score", "job_ids": [], "params": {}},
         headers=auth_headers,
     )
     # Pydantic validation returns 422 for min_length validation
@@ -134,11 +128,7 @@ def test_batch_job_too_many_job_ids(client, auth_headers):
     job_ids = [str(uuid.uuid4()) for _ in range(501)]
     response = client.post(
         "/api/v1/batch",
-        json={
-            "operation_type": "score",
-            "job_ids": job_ids,
-            "params": {}
-        },
+        json={"operation_type": "score", "job_ids": job_ids, "params": {}},
         headers=auth_headers,
     )
     # Pydantic validation returns 422 for max_length validation

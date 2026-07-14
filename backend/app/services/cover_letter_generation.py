@@ -57,6 +57,7 @@ Return ONLY plain text (no markdown, no code fences)."""
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _serialize_profile(profile: Profile) -> str:
     """Convert a Profile ORM object to a text representation."""
     parts = [
@@ -90,25 +91,35 @@ def _serialize_job(job: Job) -> str:
 # AI providers (mirrors resume_generation.py)
 # ---------------------------------------------------------------------------
 
-async def _generate_with_gemini(prompt: str, api_key: str, model: str = "gemini-1.5-flash") -> str:
+
+async def _generate_with_gemini(
+    prompt: str, api_key: str, model: str = "gemini-1.5-flash"
+) -> str:
     """Generate cover letter using Google Gemini."""
     import google.generativeai as genai
 
-    model_name = "models/gemini-1.5-pro" if "pro" in model.lower() else "models/gemini-1.5-flash"
+    model_name = (
+        "models/gemini-1.5-pro" if "pro" in model.lower() else "models/gemini-1.5-flash"
+    )
     genai.configure(api_key=api_key)
     gen_model = genai.GenerativeModel(model_name)
     response = gen_model.generate_content(prompt)
     return response.text.strip()
 
 
-async def _generate_with_openrouter(prompt: str, api_key: str, model: str = "openai/gpt-4o-mini") -> str:
+async def _generate_with_openrouter(
+    prompt: str, api_key: str, model: str = "openai/gpt-4o-mini"
+) -> str:
     """Generate cover letter using OpenRouter."""
     import httpx
 
     payload = {
         "model": model,
         "messages": [
-            {"role": "system", "content": "You are an expert cover letter writer. Return only plain text."},
+            {
+                "role": "system",
+                "content": "You are an expert cover letter writer. Return only plain text.",
+            },
             {"role": "user", "content": prompt},
         ],
     }
@@ -139,13 +150,14 @@ async def _with_retry(fn, max_attempts: int = 3):
             last_exc = e
             logger.warning(f"Cover letter generation error attempt {attempt + 1}: {e}")
             if attempt < max_attempts - 1:
-                await asyncio.sleep(2 ** attempt)
+                await asyncio.sleep(2**attempt)
     raise last_exc
 
 
 # ---------------------------------------------------------------------------
 # Main entry
 # ---------------------------------------------------------------------------
+
 
 async def generate_cover_letter(
     profile: Profile,
@@ -181,9 +193,9 @@ async def generate_cover_letter(
 
     if not actual_key:
         if actual_provider == "openrouter":
-            actual_key = getattr(settings, 'OPENROUTER_API_KEY', None)
+            actual_key = getattr(settings, "OPENROUTER_API_KEY", None)
         else:
-            actual_key = getattr(settings, 'GEMINI_API_KEY', None)
+            actual_key = getattr(settings, "GEMINI_API_KEY", None)
             actual_provider = "gemini" if not actual_provider else actual_provider
 
     if actual_key and actual_provider == "gemini":
@@ -208,9 +220,12 @@ async def generate_cover_letter(
 # HTML renderer
 # ---------------------------------------------------------------------------
 
+
 def render_cover_letter_html(body: str, template: str = "classic") -> str:
     """Render a cover letter body into HTML using the specified template."""
-    template_name = template if template in ("classic", "modern", "compact") else "classic"
+    template_name = (
+        template if template in ("classic", "modern", "compact") else "classic"
+    )
     if template_name == "classic":
         return _render_classic(body)
     if template_name == "modern":
@@ -249,7 +264,9 @@ def _render_modern(body: str) -> str:
     html_paragraphs = ""
     for p in paragraphs:
         if p.strip():
-            html_paragraphs += f'<p style="margin:1.2em 0;font-size:15px;color:#1f2937">{_esc(p)}</p>'
+            html_paragraphs += (
+                f'<p style="margin:1.2em 0;font-size:15px;color:#1f2937">{_esc(p)}</p>'
+            )
     return f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8"><style>
 body{{font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:40px auto;line-height:1.7;color:#1f2937}}
@@ -261,7 +278,9 @@ def _render_compact(body: str) -> str:
     html_paragraphs = ""
     for p in paragraphs:
         if p.strip():
-            html_paragraphs += f'<p style="margin:0.4em 0;font-size:12px;color:#111">{_esc(p)}</p>'
+            html_paragraphs += (
+                f'<p style="margin:0.4em 0;font-size:12px;color:#111">{_esc(p)}</p>'
+            )
     return f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8"><style>
 body{{font-family:Arial,sans-serif;max-width:640px;margin:20px auto;line-height:1.35;color:#111;font-size:12px}}

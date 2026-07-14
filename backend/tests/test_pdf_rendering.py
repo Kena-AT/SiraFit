@@ -67,7 +67,12 @@ class TestPdfRendering:
 
     def test_multi_page_html(self):
         """Test HTML that should span multiple pages."""
-        paragraphs = "\n".join([f"<p>Paragraph {i} with some content to fill space.</p>" for i in range(100)])
+        paragraphs = "\n".join(
+            [
+                f"<p>Paragraph {i} with some content to fill space.</p>"
+                for i in range(100)
+            ]
+        )
         html = f"<html><body>{paragraphs}</body></html>"
 
         result = render_html_to_pdf_bytes(html)

@@ -57,7 +57,9 @@ function Notifications() {
     );
   }
 
-  const unreadCount = notifications.filter((n) => n.status === "unread").length;
+  const unreadCount = notifications.filter(
+    (n: (typeof notifications)[number]) => n.status === "unread",
+  ).length;
 
   return (
     <PageBody>
@@ -82,7 +84,7 @@ function Notifications() {
           {notifications.length === 0 ? (
             <li className="px-4 py-8 text-center text-muted-foreground">No notifications yet</li>
           ) : (
-            notifications.map((n) => (
+            notifications.map((n: (typeof notifications)[number]) => (
               <li
                 key={n.id}
                 className={`flex items-start gap-3 px-4 py-3 ${n.status === "unread" ? "bg-muted/20" : ""}`}

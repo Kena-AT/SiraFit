@@ -18,6 +18,7 @@ from app.services.resume_generation import (
 # Test data
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def sample_resume_data():
     return {
@@ -63,6 +64,7 @@ def sample_resume_data():
 @pytest.fixture
 def sample_job():
     from app.models.job import Job
+
     return Job(
         id=uuid.uuid4(),
         external_id="job-123",
@@ -81,6 +83,7 @@ def sample_job():
 # ---------------------------------------------------------------------------
 # Parsing tests
 # ---------------------------------------------------------------------------
+
 
 class TestParseAIResponse:
     def test_valid_json_parsing(self, sample_resume_data):
@@ -109,6 +112,7 @@ class TestParseAIResponse:
 # ---------------------------------------------------------------------------
 # Validation tests
 # ---------------------------------------------------------------------------
+
 
 class TestValidateResumeJson:
     def test_valid_resume(self, sample_resume_data, sample_job):
@@ -158,6 +162,7 @@ class TestValidateResumeJson:
 # ATS Score tests
 # ---------------------------------------------------------------------------
 
+
 class TestCalculateATSScore:
     def test_perfect_score(self, sample_resume_data, sample_job):
         """Test that a complete resume gets a high ATS score."""
@@ -185,6 +190,7 @@ class TestCalculateATSScore:
 # ---------------------------------------------------------------------------
 # Template engine tests
 # ---------------------------------------------------------------------------
+
 
 class TestRenderResumeHtml:
     def test_minimal_template(self, sample_resume_data):
@@ -260,10 +266,12 @@ class TestRenderResumeHtml:
 # Serialization tests
 # ---------------------------------------------------------------------------
 
+
 class TestSerializeProfile:
     def test_profile_with_all_fields(self):
         """Test serializing a profile with all fields."""
         from app.models.profile import Profile
+
         profile = Profile(
             id=uuid.uuid4(),
             user_id=uuid.uuid4(),
@@ -287,6 +295,7 @@ class TestSerializeProfile:
     def test_profile_with_experiences(self):
         """Test serializing a profile with experiences."""
         from app.models.profile import Profile, Experience
+
         profile = Profile(
             id=uuid.uuid4(),
             user_id=uuid.uuid4(),
@@ -313,6 +322,7 @@ class TestSerializeJob:
     def test_job_with_all_fields(self):
         """Test serializing a job with all fields."""
         from app.models.job import Job
+
         job = Job(
             id=uuid.uuid4(),
             external_id="ext-123",
@@ -335,6 +345,7 @@ class TestSerializeJob:
     def test_job_without_description(self):
         """Test serializing a job without description."""
         from app.models.job import Job
+
         job = Job(
             id=uuid.uuid4(),
             external_id="ext-456",

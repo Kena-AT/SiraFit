@@ -3,6 +3,7 @@ Item-level handlers for batch operations.
 Each processes a single job_id and returns a result dict.
 Reuses existing services where possible.
 """
+
 import uuid
 import logging
 from typing import Any, Dict
@@ -38,7 +39,11 @@ async def batch_analyze_item(
         model=params.get("model"),
         user_id=str(user_id),
     )
-    return {"score": analysis.score, "status": analysis.status, "summary": analysis.summary[:200] if analysis.summary else ""}
+    return {
+        "score": analysis.score,
+        "status": analysis.status,
+        "summary": analysis.summary[:200] if analysis.summary else "",
+    }
 
 
 def batch_score_item(
@@ -59,10 +64,14 @@ def batch_score_item(
     score_data = calculate_match_score(profile, job)
 
     # Upsert JobMatchScore
-    existing = db.query(JobMatchScore).filter(
-        JobMatchScore.user_id == user_id,
-        JobMatchScore.job_id == job_id,
-    ).first()
+    existing = (
+        db.query(JobMatchScore)
+        .filter(
+            JobMatchScore.user_id == user_id,
+            JobMatchScore.job_id == job_id,
+        )
+        .first()
+    )
 
     if existing:
         existing.score = score_data["score"]
@@ -127,10 +136,12 @@ def batch_archive_item(
         return {"archived": True, "target": "jobs"}
     elif target == "applications":
         from app.models.job import JobApplication
-        app = db.query(JobApplication).filter(
-            JobApplication.id == job_id,
-            JobApplication.user_id == user_id
-        ).first()
+
+        app = (
+            db.query(JobApplication)
+            .filter(JobApplication.id == job_id, JobApplication.user_id == user_id)
+            .first()
+        )
         if not app:
             raise ValueError(f"Application {job_id} not found")
         app.status = "archived"

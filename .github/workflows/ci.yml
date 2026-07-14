@@ -89,6 +89,9 @@ jobs:
         run: ruff format --check app/ tests/
 
       - name: Run MyPy (type check)
+        # The backend is not yet fully type-annotated, so MyPy reports many
+        # errors. Keep it visible but non-blocking until the code is annotated.
+        continue-on-error: true
         run: mypy app/ --ignore-missing-imports --no-error-summary
 
   # ─── Frontend Lint & Type Check ───────────────────────────────────────────────

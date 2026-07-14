@@ -18,6 +18,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 _fernet_instance = None
 
+
 def _get_fernet():
     """Lazy-initialize Fernet with DATA_ENCRYPTION_KEY (or SECRET_KEY)."""
     global _fernet_instance
@@ -25,20 +26,27 @@ def _get_fernet():
         return _fernet_instance
     try:
         from cryptography.fernet import Fernet
+
         key = settings.DATA_ENCRYPTION_KEY or settings.SECRET_KEY
         if not key:
-            logger.warning("No DATA_ENCRYPTION_KEY or SECRET_KEY configured; user API key storage disabled.")
+            logger.warning(
+                "No DATA_ENCRYPTION_KEY or SECRET_KEY configured; user API key storage disabled."
+            )
             return None
         # Fernet keys must be 32 bytes, URL-safe base64 encoded.
         # We'll derive a proper key using a stable hash if the raw key is too short/long.
         import hashlib
+
         key_bytes = hashlib.sha256(key.encode("utf-8")).digest()
         fernet_key = base64.urlsafe_b64encode(key_bytes)
         _fernet_instance = Fernet(fernet_key)
         return _fernet_instance
     except ImportError:
-        logger.warning("'cryptography' not installed; user API key encryption disabled.")
+        logger.warning(
+            "'cryptography' not installed; user API key encryption disabled."
+        )
         return None
+
 
 def encrypt_value(value: str) -> Optional[str]:
     """Encrypt a string value. Returns None if encryption is unavailable."""
@@ -48,6 +56,7 @@ def encrypt_value(value: str) -> Optional[str]:
     if fernet is None:
         return None
     return fernet.encrypt(value.encode("utf-8")).decode("utf-8")
+
 
 def decrypt_value(encrypted: str) -> Optional[str]:
     """Decrypt a previously encrypted string. Returns None on failure."""
@@ -59,7 +68,9 @@ def decrypt_value(encrypted: str) -> Optional[str]:
     try:
         return fernet.decrypt(encrypted.encode("utf-8")).decode("utf-8")
     except Exception:
-        logger.warning("Failed to decrypt user API key; possibly corrupted or wrong DATA_ENCRYPTION_KEY.")
+        logger.warning(
+            "Failed to decrypt user API key; possibly corrupted or wrong DATA_ENCRYPTION_KEY."
+        )
         return None
 
 
@@ -72,31 +83,39 @@ def get_password_hash(password: str) -> str:
 
 
 def create_access_token(
-    subject: Union[str, Any], 
+    subject: Union[str, Any],
     expires_delta: timedelta = None,
-    token_type: str = "access"
+    token_type: str = "access",
 ) -> str:
     """Create JWT access or refresh token"""
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
         if token_type == "refresh":
-            expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+            expire = datetime.now(timezone.utc) + timedelta(
+                days=settings.REFRESH_TOKEN_EXPIRE_DAYS
+            )
         else:
-            expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    
+            expire = datetime.now(timezone.utc) + timedelta(
+                minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+            )
+
     to_encode = {
-        "exp": expire, 
-        "sub": str(subject), 
+        "exp": expire,
+        "sub": str(subject),
         "type": token_type,
-        "jti": str(uuid.uuid4())  # Add unique ID for token revocation
+        "jti": str(uuid.uuid4()),  # Add unique ID for token revocation
     }
-    
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+    encoded_jwt = jwt.encode(
+        to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
+    )
     return encoded_jwt
 
 
-def create_refresh_token(subject: Union[str, Any], expires_delta: timedelta = None) -> str:
+def create_refresh_token(
+    subject: Union[str, Any], expires_delta: timedelta = None
+) -> str:
     """Create a refresh token"""
     return create_access_token(subject, expires_delta, "refresh")
 
@@ -104,7 +123,9 @@ def create_refresh_token(subject: Union[str, Any], expires_delta: timedelta = No
 def decode_token(token: str) -> dict:
     """Decode and validate JWT token"""
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
         return payload
     except jwt.ExpiredSignatureError:
         raise Exception("Token has expired")

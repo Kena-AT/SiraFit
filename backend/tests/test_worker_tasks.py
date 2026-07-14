@@ -17,6 +17,7 @@ from app.worker.tasks import (
 # Storage helpers
 # ---------------------------------------------------------------------------
 
+
 class TestPdfStorage:
     """Tests for the PDF file storage helpers."""
 
@@ -54,6 +55,7 @@ class TestPdfStorage:
 # Resume PDF rendering helper
 # ---------------------------------------------------------------------------
 
+
 class TestRunResumePdfRender:
     """Tests for _run_resume_pdf_render (the synchronous helper)."""
 
@@ -74,15 +76,17 @@ class TestRunResumePdfRender:
             id=version_id,
             resume_id=resume.id,
             version_number=1,
-            content=json.dumps({
-                "name": "Test User",
-                "email": "test@example.com",
-                "summary": "A developer.",
-                "experience": [],
-                "projects": [],
-                "skills": ["Python"],
-                "education": [],
-            }),
+            content=json.dumps(
+                {
+                    "name": "Test User",
+                    "email": "test@example.com",
+                    "summary": "A developer.",
+                    "experience": [],
+                    "projects": [],
+                    "skills": ["Python"],
+                    "education": [],
+                }
+            ),
             template="minimal",
             status="completed",
             score=80,
@@ -152,6 +156,7 @@ class TestRunResumePdfRender:
 # ---------------------------------------------------------------------------
 # Cover letter PDF rendering helper
 # ---------------------------------------------------------------------------
+
 
 class TestRunCoverLetterPdfRender:
     """Tests for _run_cover_letter_pdf_render (the synchronous helper)."""
@@ -230,6 +235,7 @@ class TestRunCoverLetterPdfRender:
 # Enqueue helpers (sync fallback path — no broker in tests)
 # ---------------------------------------------------------------------------
 
+
 class TestEnqueueResumePdfRender:
     """Tests for enqueue_resume_pdf_render (sync fallback)."""
 
@@ -241,15 +247,17 @@ class TestEnqueueResumePdfRender:
             id=uuid.uuid4(),
             resume_id=uuid.uuid4(),
             version_number=1,
-            content=json.dumps({
-                "name": "Test",
-                "email": "t@e.com",
-                "summary": "Dev",
-                "experience": [],
-                "projects": [],
-                "skills": [],
-                "education": [],
-            }),
+            content=json.dumps(
+                {
+                    "name": "Test",
+                    "email": "t@e.com",
+                    "summary": "Dev",
+                    "experience": [],
+                    "projects": [],
+                    "skills": [],
+                    "education": [],
+                }
+            ),
             template="minimal",
             status="completed",
         )
@@ -264,8 +272,13 @@ class TestEnqueueResumePdfRender:
         mock_db.query.return_value.filter.return_value.first.return_value = version
 
         # Simulate broker unavailability so the sync fallback is triggered
-        with patch("app.worker.tasks.SessionLocal", return_value=mock_db), \
-             patch("app.worker.tasks.celery_app.send_task", side_effect=ConnectionError("No broker")):
+        with (
+            patch("app.worker.tasks.SessionLocal", return_value=mock_db),
+            patch(
+                "app.worker.tasks.celery_app.send_task",
+                side_effect=ConnectionError("No broker"),
+            ),
+        ):
             enqueue_resume_pdf_render(version.id)
 
         assert version.status == "completed"
@@ -293,8 +306,13 @@ class TestEnqueueCoverLetterPdfRender:
         mock_db = MagicMock()
         mock_db.query.return_value.filter.return_value.first.return_value = letter
 
-        with patch("app.worker.tasks.SessionLocal", return_value=mock_db), \
-             patch("app.worker.tasks.celery_app.send_task", side_effect=ConnectionError("No broker")):
+        with (
+            patch("app.worker.tasks.SessionLocal", return_value=mock_db),
+            patch(
+                "app.worker.tasks.celery_app.send_task",
+                side_effect=ConnectionError("No broker"),
+            ),
+        ):
             enqueue_cover_letter_pdf_render(letter.id)
 
         assert letter.status == "completed"

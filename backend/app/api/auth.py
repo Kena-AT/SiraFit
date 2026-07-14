@@ -8,7 +8,12 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 
 from app.core.database import get_db
-from app.core.security import verify_password, create_access_token, create_refresh_token, get_password_hash
+from app.core.security import (
+    verify_password,
+    create_access_token,
+    create_refresh_token,
+    get_password_hash,
+)
 from app.core.rate_limiting import check_rate_limit
 from app.models.user import User, RefreshToken
 from app.schemas.user import Token, UserCreate, UserResponse
@@ -23,6 +28,7 @@ from app.schemas.auth import (
 
 from app.core.config import settings
 from app.services.email import email_service
+
 router = APIRouter()
 _email_executor = ThreadPoolExecutor(max_workers=2)
 
@@ -31,7 +37,9 @@ _email_executor = ThreadPoolExecutor(max_workers=2)
 COOKIE_MAX_AGE = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60  # seconds
 
 
-def _set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
+def _set_auth_cookies(
+    response: Response, access_token: str, refresh_token: str
+) -> None:
     """Write tokens into secure, HttpOnly cookies.
     In production: SameSite=Lax + Secure=True (HTTPS required).
     In development: SameSite=Lax + Secure=False (plain HTTP on localhost).
@@ -39,7 +47,7 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str)
     so we always use Lax which works across different ports on the same localhost host.
     """
     is_production = settings.ENVIRONMENT == "production"
-    samesite_mode = "lax"       # Lax works in both dev and prod
+    samesite_mode = "lax"  # Lax works in both dev and prod
     secure_flag = is_production  # True only in production (HTTPS)
     response.set_cookie(
         key="access_token",
@@ -77,7 +85,7 @@ def login_access_token(
     """OAuth2 compatible token login, get an access token for future requests."""
     # Apply rate limit: 5 login attempts per 5 minutes
     check_rate_limit(request, "auth_login")
-    
+
     user = db.query(User).filter(User.email == form_data.username).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
@@ -86,7 +94,9 @@ def login_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     if not user.is_active:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user"
+        )
 
     if not user.is_verified:
         raise HTTPException(
@@ -101,7 +111,8 @@ def login_access_token(
     db_token = RefreshToken(
         user_id=user.id,
         token=refresh_token_str,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+        expires_at=datetime.now(timezone.utc)
+        + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
     )
     db.add(db_token)
     db.commit()
@@ -116,7 +127,9 @@ def login_access_token(
     }
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
+)
 def register_user(
     request: Request,
     *,
@@ -126,7 +139,7 @@ def register_user(
     """Register a new user."""
     # Apply rate limit: 3 registrations per hour
     check_rate_limit(request, "auth_register")
-    
+
     user = db.query(User).filter(User.email == user_in.email).first()
     if user:
         raise HTTPException(
@@ -145,18 +158,22 @@ def register_user(
 
     # Create default preferences
     from app.models.user import UserPreference
+
     prefs = UserPreference(user_id=user.id)
     db.add(prefs)
     db.commit()
 
     # Send verification email in background (best-effort — don't block registration)
     verification_token = create_access_token(user.id, token_type="verification")
-    _email_executor.submit(email_service.send_verification_email, user.email, verification_token)
+    _email_executor.submit(
+        email_service.send_verification_email, user.email, verification_token
+    )
 
     return user
 
 
 # ─── Resend verification email ────────────────────────────────────────────────────────
+
 
 @router.post("/resend-verification", status_code=200)
 def resend_verification(
@@ -169,9 +186,10 @@ def resend_verification(
     background, returning a simple success message.
     """
     verification_token = create_access_token(current_user.id, token_type="verification")
-    _email_executor.submit(email_service.send_verification_email, current_user.email, verification_token)
+    _email_executor.submit(
+        email_service.send_verification_email, current_user.email, verification_token
+    )
     return {"detail": "Verification email resent"}
-
 
 
 @router.post("/verify-email")
@@ -184,9 +202,11 @@ def verify_email(
     """Verify user email with token."""
     # Apply rate limit: 5 verification attempts per 5 minutes
     check_rate_limit(request, "auth_verify_email")
-    
+
     try:
-        payload = jwt.decode(body.token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(
+            body.token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
 
         if payload.get("type") != "verification":
             raise HTTPException(
@@ -196,7 +216,9 @@ def verify_email(
 
         user_id = payload.get("sub")
         if user_id is None:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token"
+            )
 
     except (jwt.PyJWTError, Exception):
         raise HTTPException(
@@ -207,11 +229,15 @@ def verify_email(
     try:
         user_uuid = uuid.UUID(user_id)
     except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token subject")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token subject"
+        )
 
     user = db.query(User).filter(User.id == user_uuid).first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
 
     user.is_verified = True
     db.commit()
@@ -230,7 +256,7 @@ def forgot_password(
     """Request password reset — always returns 200 to avoid email enumeration."""
     # Apply rate limit: 3 password reset requests per hour
     check_rate_limit(request, "auth_forgot_password")
-    
+
     user = db.query(User).filter(User.email == body.email).first()
     if user:
         reset_token = create_access_token(user.id, token_type="reset")
@@ -247,7 +273,9 @@ def reset_password(
 ) -> Any:
     """Reset password with token."""
     try:
-        payload = jwt.decode(body.token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(
+            body.token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
 
         if payload.get("type") != "reset":
             raise HTTPException(
@@ -257,7 +285,9 @@ def reset_password(
 
         user_id = payload.get("sub")
         if user_id is None:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token"
+            )
 
     except (jwt.PyJWTError, Exception):
         raise HTTPException(
@@ -268,11 +298,15 @@ def reset_password(
     try:
         user_uuid = uuid.UUID(user_id)
     except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token subject")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token subject"
+        )
 
     user = db.query(User).filter(User.id == user_uuid).first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
 
     user.hashed_password = get_password_hash(body.new_password)
     db.commit()
@@ -291,9 +325,11 @@ def refresh_token(
     """Refresh access token using refresh token (cookie or body)."""
     # Apply rate limit: 10 refresh attempts per minute
     check_rate_limit(request, "auth_refresh")
-    
+
     # Accept token from cookie or request body
-    token_str = request.cookies.get("refresh_token") or (body.refresh_token if body else None)
+    token_str = request.cookies.get("refresh_token") or (
+        body.refresh_token if body else None
+    )
 
     if not token_str:
         raise HTTPException(
@@ -302,10 +338,14 @@ def refresh_token(
         )
 
     try:
-        payload = jwt.decode(token_str, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(
+            token_str, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
 
         if payload.get("type") != "refresh":
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token type")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token type"
+            )
 
     except jwt.PyJWTError:
         raise HTTPException(
@@ -317,19 +357,29 @@ def refresh_token(
     try:
         user_uuid = uuid.UUID(user_id)
     except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token subject")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token subject"
+        )
 
     user = db.query(User).filter(User.id == user_uuid).first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
     if not user.is_active:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user"
+        )
 
     # Check that the refresh token has not been revoked
-    stored_token = db.query(RefreshToken).filter(
-        RefreshToken.token == token_str,
-        RefreshToken.user_id == user_uuid,
-    ).first()
+    stored_token = (
+        db.query(RefreshToken)
+        .filter(
+            RefreshToken.token == token_str,
+            RefreshToken.user_id == user_uuid,
+        )
+        .first()
+    )
     if not stored_token or stored_token.is_revoked:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -346,7 +396,8 @@ def refresh_token(
     db_token = RefreshToken(
         user_id=user.id,
         token=new_refresh_token,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+        expires_at=datetime.now(timezone.utc)
+        + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
     )
     db.add(db_token)
     db.commit()
@@ -369,11 +420,15 @@ def logout(
     body: Optional[LogoutRequest] = None,
 ) -> Any:
     """Revoke refresh token and clear auth cookies."""
-    token_str = request.cookies.get("refresh_token") or (body.refresh_token if body else None)
+    token_str = request.cookies.get("refresh_token") or (
+        body.refresh_token if body else None
+    )
 
     if token_str:
         try:
-            payload = jwt.decode(token_str, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            payload = jwt.decode(
+                token_str, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+            )
             user_id = payload.get("sub")
 
             if user_id:
@@ -383,11 +438,15 @@ def logout(
                     user_uuid = None
 
                 if user_uuid:
-                    token = db.query(RefreshToken).filter(
-                        RefreshToken.token == token_str,
-                        RefreshToken.user_id == user_uuid,
-                        RefreshToken.is_revoked.is_(False),
-                    ).first()
+                    token = (
+                        db.query(RefreshToken)
+                        .filter(
+                            RefreshToken.token == token_str,
+                            RefreshToken.user_id == user_uuid,
+                            RefreshToken.is_revoked.is_(False),
+                        )
+                        .first()
+                    )
 
                 if token:
                     token.is_revoked = True

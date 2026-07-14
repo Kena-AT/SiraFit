@@ -10,6 +10,7 @@ from app.models.job import Job, JobImport
 
 # ─── URL Platform Detection ───────────────────────────────────────────────
 
+
 def detect_platform(url: str) -> Optional[str]:
     domain = urlparse(url).netloc.lower()
     if "linkedin" in domain:
@@ -53,6 +54,7 @@ def extract_job_id_from_url(url: str) -> Optional[str]:
 
 
 # ─── URL Parsing ──────────────────────────────────────────────────────────
+
 
 def parse_job_from_url(url: str) -> Dict[str, Any]:
     platform = detect_platform(url)
@@ -98,17 +100,60 @@ def parse_job_from_url(url: str) -> Dict[str, Any]:
 # ─── Description Parsing ──────────────────────────────────────────────────
 
 SENIORITY_KEYWORDS = [
-    "senior", "staff", "principal", "lead", "junior", "mid", "associate",
-    "intern", "graduate", "entry", "experienced",
+    "senior",
+    "staff",
+    "principal",
+    "lead",
+    "junior",
+    "mid",
+    "associate",
+    "intern",
+    "graduate",
+    "entry",
+    "experienced",
 ]
 
 SKILL_KEYWORDS = [
-    "python", "javascript", "typescript", "go", "rust", "java", "c++", "c#",
-    "react", "angular", "vue", "node", "nodejs", "django", "flask", "fastapi",
-    "sql", "postgresql", "mysql", "mongodb", "redis", "aws", "gcp", "azure",
-    "docker", "kubernetes", "terraform", "ci/cd", "git", "linux",
-    "machine learning", "ai", "data science", "nlp", "computer vision",
-    "rest api", "graphql", "grpc", "microservices", "distributed systems",
+    "python",
+    "javascript",
+    "typescript",
+    "go",
+    "rust",
+    "java",
+    "c++",
+    "c#",
+    "react",
+    "angular",
+    "vue",
+    "node",
+    "nodejs",
+    "django",
+    "flask",
+    "fastapi",
+    "sql",
+    "postgresql",
+    "mysql",
+    "mongodb",
+    "redis",
+    "aws",
+    "gcp",
+    "azure",
+    "docker",
+    "kubernetes",
+    "terraform",
+    "ci/cd",
+    "git",
+    "linux",
+    "machine learning",
+    "ai",
+    "data science",
+    "nlp",
+    "computer vision",
+    "rest api",
+    "graphql",
+    "grpc",
+    "microservices",
+    "distributed systems",
 ]
 
 
@@ -121,7 +166,9 @@ def extract_tags_from_text(text: str) -> List[str]:
     return found
 
 
-def extract_field_from_text(text: str, field: str, keywords: List[str]) -> Optional[str]:
+def extract_field_from_text(
+    text: str, field: str, keywords: List[str]
+) -> Optional[str]:
     lines = text.split("\n")
     for line in lines:
         line_lower = line.lower().strip()
@@ -131,15 +178,23 @@ def extract_field_from_text(text: str, field: str, keywords: List[str]) -> Optio
                 if colon_idx == -1:
                     colon_idx = line.find("-")
                 if colon_idx != -1 and colon_idx < len(line) - 1:
-                    value = line[colon_idx + 1:].strip()
+                    value = line[colon_idx + 1 :].strip()
                     if value:
                         return value
     return None
 
 
 TITLE_KEYWORDS = [
-    "engineer", "developer", "scientist", "architect", "manager",
-    "designer", "analyst", "intern", "specialist", "consultant",
+    "engineer",
+    "developer",
+    "scientist",
+    "architect",
+    "manager",
+    "designer",
+    "analyst",
+    "intern",
+    "specialist",
+    "consultant",
 ]
 
 
@@ -152,17 +207,38 @@ def parse_job_from_description(description: str) -> Dict[str, Any]:
         if any(kw in first_line.lower() for kw in TITLE_KEYWORDS):
             title = first_line
 
-    company = extract_field_from_text(description, "company", [
-        "company", "organization", "employer", "at ",
-    ])
+    company = extract_field_from_text(
+        description,
+        "company",
+        [
+            "company",
+            "organization",
+            "employer",
+            "at ",
+        ],
+    )
 
-    location = extract_field_from_text(description, "location", [
-        "location", "office", "site", "where",
-    ])
+    location = extract_field_from_text(
+        description,
+        "location",
+        [
+            "location",
+            "office",
+            "site",
+            "where",
+        ],
+    )
 
-    salary_text = extract_field_from_text(description, "salary", [
-        "salary", "compensation", "pay", "range",
-    ])
+    salary_text = extract_field_from_text(
+        description,
+        "salary",
+        [
+            "salary",
+            "compensation",
+            "pay",
+            "range",
+        ],
+    )
     salary_min, salary_max = None, None
     if salary_text:
         nums = re.findall(r"\d[\d,]*", salary_text.replace(",", ""))
@@ -190,6 +266,7 @@ def parse_job_from_description(description: str) -> Dict[str, Any]:
 
 
 # ─── Normalization Pipeline ────────────────────────────────────────────────
+
 
 def normalize_job(job_data: Dict[str, Any]) -> Dict[str, Any]:
     normalized = dict(job_data)
@@ -221,6 +298,7 @@ def normalize_job(job_data: Dict[str, Any]) -> Dict[str, Any]:
 
 # ─── Deduplication ─────────────────────────────────────────────────────────
 
+
 def normalize_for_dedup(text: str) -> str:
     return re.sub(r"[^a-z0-9]", "", text.lower().strip())
 
@@ -234,8 +312,11 @@ def check_duplicate(db: Session, job_data: Dict[str, Any]) -> bool:
     for job in existing:
         t_match = title and normalize_for_dedup(job.title) == title
         c_match = company and normalize_for_dedup(job.company) == company
-        l_match = (not location or not job.location or
-                   normalize_for_dedup(job.location) == location)
+        l_match = (
+            not location
+            or not job.location
+            or normalize_for_dedup(job.location) == location
+        )
         if t_match and c_match and l_match:
             return True
 
@@ -244,8 +325,12 @@ def check_duplicate(db: Session, job_data: Dict[str, Any]) -> bool:
 
 # ─── Main Import Pipeline ─────────────────────────────────────────────────
 
+
 def process_import(
-    db: Session, user_id: uuid.UUID, source_type: str, data: str,
+    db: Session,
+    user_id: uuid.UUID,
+    source_type: str,
+    data: str,
 ) -> Tuple[JobImport, List[Dict[str, Any]]]:
     job_import = JobImport(
         user_id=user_id,
@@ -275,7 +360,9 @@ def process_import(
 
         if is_dup:
             job_import.fail_count += 1
-            errors.append(f"Duplicate job: {normalized['title']} at {normalized['company']}")
+            errors.append(
+                f"Duplicate job: {normalized['title']} at {normalized['company']}"
+            )
         else:
             job = Job(
                 external_id=normalized["external_id"],

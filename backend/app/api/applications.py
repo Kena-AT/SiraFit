@@ -10,10 +10,19 @@ from app.models.user import User
 from app.models.job import JobApplication, Job, AuditLog
 from app.models.profile import Profile
 from app.schemas.job import (
-    JobApplicationCreate, JobApplicationResponse, JobApplicationUpdate,
-    ApplicationEventResponse, ApplicationNoteCreate, ApplicationNoteUpdate, ApplicationNoteResponse,
-    ApplicationContactCreate, ApplicationContactUpdate, ApplicationContactResponse,
-    StatusTransitionRequest, FollowUpSet, FollowUpItem,
+    JobApplicationCreate,
+    JobApplicationResponse,
+    JobApplicationUpdate,
+    ApplicationEventResponse,
+    ApplicationNoteCreate,
+    ApplicationNoteUpdate,
+    ApplicationNoteResponse,
+    ApplicationContactCreate,
+    ApplicationContactUpdate,
+    ApplicationContactResponse,
+    StatusTransitionRequest,
+    FollowUpSet,
+    FollowUpItem,
 )
 from app.services.scoring import analyze_match_score
 from app.services.application import (
@@ -32,6 +41,7 @@ from app.services.application import (
 
 router = APIRouter()
 
+
 @router.get("/", response_model=List[JobApplicationResponse])
 def get_applications(
     db: Session = Depends(get_db),
@@ -49,6 +59,7 @@ def get_applications(
     )
     return applications
 
+
 @router.post("/", response_model=JobApplicationResponse)
 async def create_application(
     *,
@@ -64,45 +75,49 @@ async def create_application(
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    existing = db.query(JobApplication).filter(
-        JobApplication.user_id == current_user.id,
-        JobApplication.job_id == app_in.job_id
-    ).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Application already exists for this job")
-
-    application = JobApplication(
-        user_id=current_user.id,
-        **app_in.model_dump()
+    existing = (
+        db.query(JobApplication)
+        .filter(
+            JobApplication.user_id == current_user.id,
+            JobApplication.job_id == app_in.job_id,
+        )
+        .first()
     )
-    
+    if existing:
+        raise HTTPException(
+            status_code=400, detail="Application already exists for this job"
+        )
+
+    application = JobApplication(user_id=current_user.id, **app_in.model_dump())
+
     # Calculate score
     profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
     if profile:
         score, reason = await analyze_match_score(
-            profile, 
-            job, 
-            req_api_key=x_ai_api_key, 
-            provider=x_ai_provider, 
-            model=x_ai_model
+            profile,
+            job,
+            req_api_key=x_ai_api_key,
+            provider=x_ai_provider,
+            model=x_ai_model,
         )
         application.score = score
         application.score_reason = reason
 
     db.add(application)
-    
+
     # Add audit log
     log = AuditLog(
         user_id=current_user.id,
         action="created_application",
         entity_type="application",
-        details={"job_title": job.title}
+        details={"job_title": job.title},
     )
     db.add(log)
-    
+
     db.commit()
     db.refresh(application)
     return application
+
 
 @router.put("/{app_id}", response_model=JobApplicationResponse)
 def update_application(
@@ -113,10 +128,11 @@ def update_application(
     app_in: JobApplicationUpdate,
 ) -> Any:
     """Update a job application."""
-    application = db.query(JobApplication).filter(
-        JobApplication.id == app_id,
-        JobApplication.user_id == current_user.id
-    ).first()
+    application = (
+        db.query(JobApplication)
+        .filter(JobApplication.id == app_id, JobApplication.user_id == current_user.id)
+        .first()
+    )
     if not application:
         raise HTTPException(status_code=404, detail="Application not found")
 
@@ -135,6 +151,7 @@ def update_application(
 # matching. FastAPI matches routes in registration order, and "timeline" would
 # otherwise be captured as the {app_id} UUID parameter (422 validation error).
 
+
 @router.get("/timeline", response_model=List[ApplicationEventResponse])
 def user_timeline(
     *,
@@ -149,22 +166,22 @@ def user_timeline(
 # --- Follow-up Center ---
 # Registered before /{app_id} so "followups" is not captured as a UUID.
 
+
 @router.get("/followups", response_model=List[FollowUpItem])
 def list_followups(
     *,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    include_past: bool = Query(False, description="Include already-passed follow-up dates"),
+    include_past: bool = Query(
+        False, description="Include already-passed follow-up dates"
+    ),
 ) -> Any:
     """List all applications that have a follow-up date set, soonest first."""
     from datetime import datetime, timezone
 
-    query = (
-        db.query(JobApplication)
-        .filter(
-            JobApplication.user_id == current_user.id,
-            JobApplication.follow_up_at.isnot(None),
-        )
+    query = db.query(JobApplication).filter(
+        JobApplication.user_id == current_user.id,
+        JobApplication.follow_up_at.isnot(None),
     )
     if not include_past:
         query = query.filter(JobApplication.follow_up_at >= datetime.now(timezone.utc))
@@ -174,15 +191,17 @@ def list_followups(
     items = []
     for app in applications:
         job = db.query(Job).filter(Job.id == app.job_id).first()
-        items.append(FollowUpItem(
-            application_id=app.id,
-            job_title=job.title if job else "Unknown",
-            company=job.company if job else "Unknown",
-            status=app.status or "saved",
-            follow_up_at=app.follow_up_at,
-            follow_up_note=app.follow_up_note,
-            score=app.score,
-        ))
+        items.append(
+            FollowUpItem(
+                application_id=app.id,
+                job_title=job.title if job else "Unknown",
+                company=job.company if job else "Unknown",
+                status=app.status or "saved",
+                follow_up_at=app.follow_up_at,
+                follow_up_note=app.follow_up_note,
+                score=app.score,
+            )
+        )
     return items
 
 
@@ -230,6 +249,7 @@ def get_application(
 
 # --- Sprint 9: Status Transitions ---
 
+
 @router.post("/{app_id}/status", response_model=JobApplicationResponse)
 def transition_status(
     *,
@@ -247,6 +267,7 @@ def transition_status(
 
 # --- Sprint 9: Timeline Events (per-application) ---
 
+
 @router.get("/{app_id}/events", response_model=List[ApplicationEventResponse])
 def list_application_events(
     *,
@@ -260,6 +281,7 @@ def list_application_events(
 
 # --- Sprint 9: Notes ---
 
+
 @router.post("/{app_id}/notes", response_model=ApplicationNoteResponse)
 def add_note(
     *,
@@ -269,7 +291,9 @@ def add_note(
     note_in: ApplicationNoteCreate,
 ) -> Any:
     """Create a note on an application."""
-    return create_note(db, app_id, current_user.id, note_in.body, note_in.author, note_in.pinned)
+    return create_note(
+        db, app_id, current_user.id, note_in.body, note_in.author, note_in.pinned
+    )
 
 
 @router.get("/{app_id}/notes", response_model=List[ApplicationNoteResponse])
@@ -293,7 +317,9 @@ def edit_note(
 ) -> Any:
     """Update a note."""
     note = update_note(
-        db, note_id, current_user.id,
+        db,
+        note_id,
+        current_user.id,
         body=note_in.body,
         pinned=note_in.pinned,
     )
@@ -316,6 +342,7 @@ def remove_note(
 
 # --- Sprint 9: Contacts ---
 
+
 @router.post("/{app_id}/contacts", response_model=ApplicationContactResponse)
 def add_contact(
     *,
@@ -326,7 +353,9 @@ def add_contact(
 ) -> Any:
     """Create a contact on an application."""
     return create_contact(
-        db, app_id, current_user.id,
+        db,
+        app_id,
+        current_user.id,
         name=contact_in.name,
         email=contact_in.email,
         phone=contact_in.phone,
@@ -358,7 +387,9 @@ def edit_contact(
     contact_in: ApplicationContactUpdate,
 ) -> Any:
     """Update a contact."""
-    contact = update_contact(db, contact_id, current_user.id, **contact_in.model_dump(exclude_unset=True))
+    contact = update_contact(
+        db, contact_id, current_user.id, **contact_in.model_dump(exclude_unset=True)
+    )
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
     return contact

@@ -223,8 +223,7 @@ class TestJobFiltering:
         assert resp.status_code == 200
         data = resp.json()
         assert all(
-            "python" in job["tags"] and "react" in job["tags"]
-            for job in data["jobs"]
+            "python" in job["tags"] and "react" in job["tags"] for job in data["jobs"]
         )
 
     def test_filter_by_min_salary(self, client, auth_tokens, db):
@@ -254,9 +253,8 @@ class TestJobFiltering:
         assert resp.status_code == 200
         data = resp.json()
         for job in data["jobs"]:
-            assert (
-                (job["salary_min"] and job["salary_min"] >= 100000) or
-                (job["salary_max"] and job["salary_max"] >= 100000)
+            assert (job["salary_min"] and job["salary_min"] >= 100000) or (
+                job["salary_max"] and job["salary_max"] >= 100000
             )
 
     def test_filter_by_max_salary(self, client, auth_tokens, db):
@@ -486,7 +484,7 @@ class TestJobListResponse:
         )
         assert resp.status_code == 200
         data = resp.json()
-        
+
         if len(data["jobs"]) > 0:
             job_data = data["jobs"][0]
             assert "id" in job_data

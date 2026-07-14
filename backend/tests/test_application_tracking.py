@@ -1,15 +1,23 @@
 """
 QA tests for Sprint 9 — Application tracking (status machine, timeline, notes, contacts).
 """
-import uuid
 
+import uuid
 
 
 # --- Status Machine Tests ---
 
 VALID_STATUSES = [
-    "saved", "preparing", "applied", "screening", "interview",
-    "final_round", "offer", "rejected", "withdrawn", "archived",
+    "saved",
+    "preparing",
+    "applied",
+    "screening",
+    "interview",
+    "final_round",
+    "offer",
+    "rejected",
+    "withdrawn",
+    "archived",
 ]
 
 
@@ -113,6 +121,7 @@ def test_transition_status_invalid(client, auth_headers, test_user, db):
 
 # --- Notes CRUD Tests ---
 
+
 def test_create_note(client, auth_headers, test_user, db):
     """Create a note on an application."""
     from app.models.job import Job, JobApplication
@@ -128,7 +137,11 @@ def test_create_note(client, auth_headers, test_user, db):
 
     response = client.post(
         f"/api/v1/applications/{app.id}/notes",
-        json={"body": "Great conversation with recruiter!", "author": "Me", "pinned": True},
+        json={
+            "body": "Great conversation with recruiter!",
+            "author": "Me",
+            "pinned": True,
+        },
         headers=auth_headers,
     )
     assert response.status_code == 200
@@ -217,7 +230,9 @@ def test_delete_note(client, auth_headers, test_user, db):
     )
     note_id = create_res.json()["id"]
 
-    response = client.delete(f"/api/v1/applications/notes/{note_id}", headers=auth_headers)
+    response = client.delete(
+        f"/api/v1/applications/notes/{note_id}", headers=auth_headers
+    )
     assert response.status_code == 204
 
     list_res = client.get(f"/api/v1/applications/{app.id}/notes", headers=auth_headers)
@@ -225,6 +240,7 @@ def test_delete_note(client, auth_headers, test_user, db):
 
 
 # --- Contacts CRUD Tests ---
+
 
 def test_create_contact(client, auth_headers, test_user, db):
     """Create a contact on an application."""
@@ -279,7 +295,9 @@ def test_list_contacts_primary_first(client, auth_headers, test_user, db):
         headers=auth_headers,
     )
 
-    response = client.get(f"/api/v1/applications/{app.id}/contacts", headers=auth_headers)
+    response = client.get(
+        f"/api/v1/applications/{app.id}/contacts", headers=auth_headers
+    )
     assert response.status_code == 200
     contacts = response.json()
     assert contacts[0]["is_primary"] is True
@@ -335,11 +353,14 @@ def test_delete_contact(client, auth_headers, test_user, db):
     )
     contact_id = create_res.json()["id"]
 
-    response = client.delete(f"/api/v1/applications/contacts/{contact_id}", headers=auth_headers)
+    response = client.delete(
+        f"/api/v1/applications/contacts/{contact_id}", headers=auth_headers
+    )
     assert response.status_code == 204
 
 
 # --- Timeline Events Tests ---
+
 
 def test_status_change_creates_event(client, auth_headers, test_user, db):
     """Status transition creates an ApplicationEvent."""
@@ -407,6 +428,7 @@ def test_user_timeline_endpoint(client, auth_headers, test_user, db):
 
 # --- Audit Log Tests ---
 
+
 def test_status_transition_creates_audit_log(client, auth_headers, test_user, db):
     """Status transition writes to audit log."""
     from app.models.job import Job, JobApplication, AuditLog
@@ -439,6 +461,7 @@ def test_status_transition_creates_audit_log(client, auth_headers, test_user, db
 
 
 # --- Authorization Tests ---
+
 
 def test_cannot_access_other_users_notes(client, auth_headers, db):
     """User gets empty notes list (not 404) for another user's application."""

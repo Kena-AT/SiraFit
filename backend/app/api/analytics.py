@@ -6,10 +6,15 @@ from app.core.database import get_db
 from app.api.users import get_current_user
 from app.models.user import User
 from app.models.analytics import AnalyticsSnapshot
-from app.services.analytics import generate_analytics_metrics, create_analytics_snapshot, get_latest_snapshot
+from app.services.analytics import (
+    generate_analytics_metrics,
+    create_analytics_snapshot,
+    get_latest_snapshot,
+)
 from app.schemas.notification import (
-    AnalyticsSnapshotResponse, AnalyticsSnapshotListResponse,
-    MetricsResponse
+    AnalyticsSnapshotResponse,
+    AnalyticsSnapshotListResponse,
+    MetricsResponse,
 )
 
 router = APIRouter()
@@ -43,15 +48,19 @@ def list_snapshots(
     limit: int = Query(20, ge=1, le=100),
 ) -> Any:
     """List analytics snapshots for the user."""
-    query = db.query(AnalyticsSnapshot).filter(AnalyticsSnapshot.user_id == current_user.id)
+    query = db.query(AnalyticsSnapshot).filter(
+        AnalyticsSnapshot.user_id == current_user.id
+    )
     total = query.count()
-    snapshots = query.order_by(AnalyticsSnapshot.snapshot_date.desc()).offset(skip).limit(limit).all()
-    
+    snapshots = (
+        query.order_by(AnalyticsSnapshot.snapshot_date.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
     return AnalyticsSnapshotListResponse(
-        snapshots=snapshots,
-        total=total,
-        skip=skip,
-        limit=limit
+        snapshots=snapshots, total=total, skip=skip, limit=limit
     )
 
 

@@ -10,16 +10,22 @@ from pydantic import BaseModel, ConfigDict, Field
 # Base
 # ---------------------------------------------------------------------------
 
+
 class CoverLetterBase(BaseModel):
     title: str = Field(..., max_length=255)
     body: str = Field(..., min_length=1)
-    tone: Optional[str] = Field(default="matching", description="matching | conversational | formal")
-    template: Optional[str] = Field(default="classic", description="classic | modern | compact")
+    tone: Optional[str] = Field(
+        default="matching", description="matching | conversational | formal"
+    )
+    template: Optional[str] = Field(
+        default="classic", description="classic | modern | compact"
+    )
 
 
 # ---------------------------------------------------------------------------
 # Create / Update
 # ---------------------------------------------------------------------------
+
 
 class CoverLetterCreate(CoverLetterBase):
     resume_id: Optional[uuid.UUID] = None
@@ -38,6 +44,7 @@ class CoverLetterUpdate(BaseModel):
 # Response
 # ---------------------------------------------------------------------------
 
+
 class CoverLetterResponse(CoverLetterBase):
     id: uuid.UUID
     user_id: uuid.UUID
@@ -55,11 +62,16 @@ class CoverLetterResponse(CoverLetterBase):
 # Generation
 # ---------------------------------------------------------------------------
 
+
 class CoverLetterGenerateRequest(BaseModel):
     job_id: uuid.UUID
     resume_id: Optional[uuid.UUID] = None
-    tone: str = Field(default="matching", description="matching | conversational | formal")
-    template: Optional[str] = Field(default="classic", description="classic | modern | compact")
+    tone: str = Field(
+        default="matching", description="matching | conversational | formal"
+    )
+    template: Optional[str] = Field(
+        default="classic", description="classic | modern | compact"
+    )
 
 
 class CoverLetterGenerateResponse(BaseModel):

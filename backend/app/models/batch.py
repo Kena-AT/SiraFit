@@ -6,6 +6,7 @@ from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
+
 def _utcnow():
     return datetime.now(timezone.utc)
 
@@ -14,9 +15,13 @@ class BatchJob(Base):
     __tablename__ = "batch_jobs"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
     operation_type = Column(String(30), nullable=False)  # analyze, score, tag, archive
-    status = Column(String(20), nullable=False, default="pending")  # pending, running, completed, failed, partial, cancelled
+    status = Column(
+        String(20), nullable=False, default="pending"
+    )  # pending, running, completed, failed, partial, cancelled
     total_items = Column(Integer, nullable=False, default=0)
     processed_items = Column(Integer, nullable=False, default=0)
     succeeded_items = Column(Integer, nullable=False, default=0)

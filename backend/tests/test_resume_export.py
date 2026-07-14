@@ -7,7 +7,9 @@ from io import BytesIO
 from app.models.job import ResumeVersion
 
 
-def make_version(content_dict: dict, template: str = "minimal", version_number: int = 1) -> ResumeVersion:
+def make_version(
+    content_dict: dict, template: str = "minimal", version_number: int = 1
+) -> ResumeVersion:
     """Helper to create a ResumeVersion for testing."""
     v = ResumeVersion()
     v.id = uuid.uuid4()
@@ -65,7 +67,16 @@ MINIMAL_DATA = {
             "url": None,
         },
     ],
-    "skills": ["Python", "JavaScript", "TypeScript", "Go", "FastAPI", "React", "PostgreSQL", "Docker"],
+    "skills": [
+        "Python",
+        "JavaScript",
+        "TypeScript",
+        "Go",
+        "FastAPI",
+        "React",
+        "PostgreSQL",
+        "Docker",
+    ],
     "education": [
         {
             "institution": "Addis Ababa University",

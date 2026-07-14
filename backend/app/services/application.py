@@ -4,6 +4,7 @@ Application service for Sprint 9 — status transitions, timeline events, notes,
 The module defines a deterministic status machine, creates timeline events on
 every mutation, and provides CRUD helpers for notes and contacts.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -125,6 +126,7 @@ def transition_application(
 # Notes CRUD
 # ---------------------------------------------------------------------------
 
+
 def create_note(
     db: Session,
     application_id: uuid.UUID,
@@ -134,7 +136,6 @@ def create_note(
     pinned: bool = False,
 ) -> "ApplicationNote":
     """Create a note attached to an application."""
-
 
     note = ApplicationNote(
         application_id=application_id,
@@ -158,7 +159,6 @@ def get_notes_for_application(
 ) -> List["ApplicationNote"]:
     """List notes for an application, pinned first."""
 
-
     return (
         db.query(ApplicationNote)
         .filter(
@@ -178,7 +178,6 @@ def update_note(
     pinned: Optional[bool] = None,
 ) -> Optional["ApplicationNote"]:
     """Update a note's body or pin status."""
-
 
     note = (
         db.query(ApplicationNote)
@@ -202,7 +201,6 @@ def update_note(
 def delete_note(db: Session, note_id: uuid.UUID, user_id: uuid.UUID) -> bool:
     """Delete a note. Returns True if deleted."""
 
-
     note = (
         db.query(ApplicationNote)
         .filter(ApplicationNote.id == note_id, ApplicationNote.user_id == user_id)
@@ -220,6 +218,7 @@ def delete_note(db: Session, note_id: uuid.UUID, user_id: uuid.UUID) -> bool:
 # Contacts CRUD
 # ---------------------------------------------------------------------------
 
+
 def create_contact(
     db: Session,
     application_id: uuid.UUID,
@@ -234,7 +233,6 @@ def create_contact(
     is_primary: bool = False,
 ) -> "ApplicationContact":
     """Create a contact attached to an application."""
-
 
     contact = ApplicationContact(
         application_id=application_id,
@@ -263,14 +261,15 @@ def get_contacts_for_application(
 ) -> List["ApplicationContact"]:
     """List contacts for an application, primary first."""
 
-
     return (
         db.query(ApplicationContact)
         .filter(
             ApplicationContact.application_id == application_id,
             ApplicationContact.user_id == user_id,
         )
-        .order_by(ApplicationContact.is_primary.desc(), ApplicationContact.created_at.desc())
+        .order_by(
+            ApplicationContact.is_primary.desc(), ApplicationContact.created_at.desc()
+        )
         .all()
     )
 
@@ -283,16 +282,26 @@ def update_contact(
 ) -> Optional["ApplicationContact"]:
     """Update a contact with arbitrary kwargs."""
 
-
     contact = (
         db.query(ApplicationContact)
-        .filter(ApplicationContact.id == contact_id, ApplicationContact.user_id == user_id)
+        .filter(
+            ApplicationContact.id == contact_id, ApplicationContact.user_id == user_id
+        )
         .first()
     )
     if not contact:
         return None
 
-    for field in ("name", "email", "phone", "role", "company", "linkedin", "notes", "is_primary"):
+    for field in (
+        "name",
+        "email",
+        "phone",
+        "role",
+        "company",
+        "linkedin",
+        "notes",
+        "is_primary",
+    ):
         if field in kwargs:
             setattr(contact, field, kwargs[field])
     contact.updated_at = datetime.now(timezone.utc)
@@ -305,10 +314,11 @@ def update_contact(
 def delete_contact(db: Session, contact_id: uuid.UUID, user_id: uuid.UUID) -> bool:
     """Delete a contact. Returns True if deleted."""
 
-
     contact = (
         db.query(ApplicationContact)
-        .filter(ApplicationContact.id == contact_id, ApplicationContact.user_id == user_id)
+        .filter(
+            ApplicationContact.id == contact_id, ApplicationContact.user_id == user_id
+        )
         .first()
     )
     if not contact:
@@ -323,13 +333,13 @@ def delete_contact(db: Session, contact_id: uuid.UUID, user_id: uuid.UUID) -> bo
 # Timeline Events Fetch
 # ---------------------------------------------------------------------------
 
+
 def get_events_for_application(
     db: Session,
     application_id: uuid.UUID,
     user_id: uuid.UUID,
 ) -> List["ApplicationEvent"]:
     """List timeline events for an application, newest first."""
-
 
     return (
         db.query(ApplicationEvent)
@@ -348,7 +358,6 @@ def get_all_events_for_user(
     limit: int = 100,
 ) -> List["ApplicationEvent"]:
     """Fetch recent events across all applications for the user's timeline page."""
-
 
     return (
         db.query(ApplicationEvent)

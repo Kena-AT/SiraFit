@@ -6,17 +6,23 @@ import uuid
 from app.core.database import get_db
 from app.api.users import get_current_user
 from app.models.user import User
-from app.schemas.notification import (
-    NotificationResponse, NotificationListResponse
-)
+from app.schemas.notification import NotificationResponse, NotificationListResponse
 from app.services.notification import (
-    get_notifications, mark_as_read, mark_all_as_read, get_unread_count
+    get_notifications,
+    mark_as_read,
+    mark_all_as_read,
+    get_unread_count,
 )
 from app.services.analytics import (
-    generate_analytics_metrics, create_analytics_snapshot, get_latest_snapshot, get_snapshots
+    generate_analytics_metrics,
+    create_analytics_snapshot,
+    get_latest_snapshot,
+    get_snapshots,
 )
 from app.schemas.notification import (
-    AnalyticsSnapshotResponse, AnalyticsSnapshotListResponse, MetricsResponse
+    AnalyticsSnapshotResponse,
+    AnalyticsSnapshotListResponse,
+    MetricsResponse,
 )
 
 router = APIRouter()
@@ -33,10 +39,7 @@ def list_notifications(
     """List user's notifications with pagination."""
     notifications, total = get_notifications(db, current_user.id, skip, limit, status)
     return NotificationListResponse(
-        notifications=notifications,
-        total=total,
-        skip=skip,
-        limit=limit
+        notifications=notifications, total=total, skip=skip, limit=limit
     )
 
 
@@ -75,6 +78,7 @@ def mark_all_notifications_read(
 
 # Analytics endpoints
 
+
 @router.get("/analytics/metrics", response_model=MetricsResponse)
 def get_analytics_metrics(
     db: Session = Depends(get_db),
@@ -105,10 +109,7 @@ def list_snapshots(
     """List analytics snapshots for the user."""
     snapshots, total = get_snapshots(db, current_user.id, skip, limit)
     return AnalyticsSnapshotListResponse(
-        snapshots=snapshots,
-        total=total,
-        skip=skip,
-        limit=limit
+        snapshots=snapshots, total=total, skip=skip, limit=limit
     )
 
 

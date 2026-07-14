@@ -28,7 +28,7 @@ function Dashboard() {
         <Panel title="Get Started" description="Complete these steps to begin your job search">
           <div className="space-y-4 p-4">
             <Link
-              to="/resume-profiles"
+              to="/resumes/profiles"
               className="block rounded-lg border border-border p-4 hover:bg-muted/40 transition-colors"
             >
               <div className="flex items-center justify-between">

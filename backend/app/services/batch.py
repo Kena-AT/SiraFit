@@ -1,6 +1,7 @@
 """
 Batch job service functions.
 """
+
 import asyncio
 import inspect
 import uuid
@@ -35,7 +36,10 @@ def _run_item(task_fn, item_id, user_id, params, db):
 def _run_batch_job(batch_job_id: uuid.UUID) -> dict:
     """Synchronous helper that processes a batch job."""
     from app.services.batch_operations import (
-        batch_analyze_item, batch_score_item, batch_tag_item, batch_archive_item
+        batch_analyze_item,
+        batch_score_item,
+        batch_tag_item,
+        batch_archive_item,
     )
     from app.core.database import SessionLocal
 
@@ -70,14 +74,13 @@ def _run_batch_job(batch_job_id: uuid.UUID) -> dict:
 
             try:
                 result = _run_item(
-                    task_fn,
-                    uuid.UUID(item_id),
-                    batch_job.user_id,
-                    params,
-                    db
+                    task_fn, uuid.UUID(item_id), batch_job.user_id, params, db
                 )
                 batch_job.succeeded_items += 1
-                batch_job.result_summary[item_id] = {"status": "success", "result": result}
+                batch_job.result_summary[item_id] = {
+                    "status": "success",
+                    "result": result,
+                }
             except Exception as e:
                 batch_job.failed_items += 1
                 batch_job.result_summary[item_id] = {"status": "error", "error": str(e)}
@@ -100,7 +103,7 @@ def _run_batch_job(batch_job_id: uuid.UUID) -> dict:
 
     except Exception:
         logger.exception("batch_job_failed", extra={"batch_job_id": str(batch_job_id)})
-        if 'batch_job' in locals() and batch_job:
+        if "batch_job" in locals() and batch_job:
             batch_job.status = "failed"
             batch_job.completed_at = _utcnow()
             db.commit()
@@ -113,6 +116,7 @@ def enqueue_batch_job(batch_job_id: uuid.UUID) -> None:
     """Dispatch batch job to Celery (sync fallback for tests)."""
     try:
         from app.worker.celery_app import celery_app
+
         celery_app.send_task(
             "app.worker.tasks.process_batch_job",
             kwargs={"batch_job_id": str(batch_job_id)},

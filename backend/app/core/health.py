@@ -19,22 +19,23 @@ def health_ready(db: Session = Depends(get_db)):
         # Check database connection
         result = db.execute(text("SELECT 1"))
         result.fetchone()
-        
+
         # Check Redis (if available)
         redis_ready = True
         try:
             import redis
+
             r = redis.from_url("redis://localhost:6379/0")
             r.ping()
         except Exception:
             redis_ready = False  # Redis is optional for basic health
-        
+
         return {
             "status": "ready",
             "service": "sirafit-api",
             "database": "connected",
             "redis": "connected" if redis_ready else "disabled",
-            "ready": True
+            "ready": True,
         }
     except Exception as e:
         return {
@@ -42,5 +43,5 @@ def health_ready(db: Session = Depends(get_db)):
             "service": "sirafit-api",
             "database": "error",
             "error": str(e),
-            "ready": False
+            "ready": False,
         }

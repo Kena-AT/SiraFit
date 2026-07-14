@@ -31,12 +31,12 @@ class EmailService:
         to: EmailStr,
         subject: str,
         html_content: str,
-        text_content: Optional[str] = None
+        text_content: Optional[str] = None,
     ) -> bool:
         """Send an email using Brevo SMTP"""
         try:
             server = self._create_connection()
-            
+
             msg = MIMEMultipart("alternative")
             msg["Subject"] = subject
             msg["From"] = f"SiraFit Team <{self.from_email}>"
@@ -45,7 +45,7 @@ class EmailService:
             if text_content:
                 part1 = MIMEText(text_content, "plain")
                 msg.attach(part1)
-            
+
             part2 = MIMEText(html_content, "html")
             msg.attach(part2)
 
@@ -53,11 +53,7 @@ class EmailService:
             server.quit()
 
             logger.info(
-                "email_sent",
-                to=to,
-                subject=subject,
-                service="brevo",
-                success=True
+                "email_sent", to=to, subject=subject, service="brevo", success=True
             )
             return True
 
@@ -68,7 +64,7 @@ class EmailService:
                 subject=subject,
                 error=str(e),
                 service="brevo",
-                success=False
+                success=False,
             )
             return False
 
@@ -76,7 +72,7 @@ class EmailService:
         """Send email verification email"""
         verification_url = f"http://localhost:3030/verify-email?token={token}"
         subject = "Welcome to SiraFit - Verify Your Account"
-        
+
         html_content = f"""
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1px;">
           <div style="background: white; border-radius: 8px; padding: 40px; margin: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
@@ -142,14 +138,14 @@ class EmailService:
           </div>
         </div>
         """
-        
+
         return self.send_email(email, subject, html_content)
 
     def send_password_reset_email(self, email: EmailStr, token: str) -> bool:
         """Send password reset email"""
         reset_url = f"http://localhost:3030/reset-password?token={token}"
         subject = "SiraFit - Reset Your Password"
-        
+
         html_content = f"""
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1px;">
           <div style="background: white; border-radius: 8px; padding: 40px; margin: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
@@ -221,19 +217,15 @@ class EmailService:
           </div>
         </div>
         """
-        
+
         return self.send_email(email, subject, html_content)
 
     def send_application_update(
-        self,
-        email: EmailStr,
-        job_title: str,
-        company: str,
-        new_status: str
+        self, email: EmailStr, job_title: str, company: str, new_status: str
     ) -> bool:
         """Send job application status update email"""
         subject = f"Update on your {job_title} application"
-        
+
         html_content = f"""
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #3525cd;">Application Status Update</h2>
@@ -248,7 +240,7 @@ class EmailService:
             </p>
         </div>
         """
-        
+
         return self.send_email(email, subject, html_content)
 
 

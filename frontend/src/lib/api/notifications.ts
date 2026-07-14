@@ -34,6 +34,7 @@ export interface MetricsResponse {
   market_demand: Array<{ role: string; demand: number; postings: number; change: string }>;
   top_technologies: Array<[string, number]>;
   salary_medians: Array<[string, string]>;
+  skill_gaps?: string[];
   generated_at: string;
 }
 

@@ -17,8 +17,10 @@ class JobBase(BaseModel):
     url: Optional[str] = None
     source: Optional[str] = "manual"
 
+
 class JobCreate(JobBase):
     external_id: str = Field(..., max_length=255)
+
 
 class JobResponse(JobBase):
     id: uuid.UUID
@@ -28,8 +30,10 @@ class JobResponse(JobBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class JobListResponse(BaseModel):
     """Paginated list of jobs with metadata."""
+
     jobs: List[JobResponse]
     total: int
     skip: int
@@ -57,6 +61,7 @@ class JobImportCreate(BaseModel):
     source_type: str  # "url", "description", "csv"
     data: str  # The URL or the full description text
 
+
 class JobImportResponse(BaseModel):
     id: uuid.UUID
     source: str
@@ -68,6 +73,7 @@ class JobImportResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
 
 class ImportResultResponse(BaseModel):
     import_record: JobImportResponse
@@ -83,11 +89,14 @@ class JobApplicationBase(BaseModel):
     follow_up_at: Optional[datetime] = None
     follow_up_note: Optional[str] = None
 
+
 class JobApplicationCreate(JobApplicationBase):
     job_id: uuid.UUID
 
+
 class JobApplicationUpdate(JobApplicationBase):
     pass
+
 
 class JobApplicationResponse(JobApplicationBase):
     id: uuid.UUID
@@ -105,16 +114,21 @@ class JobApplicationResponse(JobApplicationBase):
 
 # --- Follow-up / Reminder ---
 
+
 class FollowUpSet(BaseModel):
     """Payload to set or clear a follow-up on an application."""
+
     follow_up_at: Optional[datetime] = Field(
         None, description="UTC datetime when the follow-up is due; null to clear"
     )
-    follow_up_note: Optional[str] = Field(None, max_length=500, description="Short reminder label")
+    follow_up_note: Optional[str] = Field(
+        None, max_length=500, description="Short reminder label"
+    )
 
 
 class FollowUpItem(BaseModel):
     """A single follow-up item for the Follow-up Center."""
+
     application_id: uuid.UUID
     job_title: str
     company: str
@@ -124,6 +138,7 @@ class FollowUpItem(BaseModel):
     score: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
+
 
 class JobAnalysisResponse(BaseModel):
     id: uuid.UUID
@@ -172,8 +187,10 @@ class AnalysisRequest(BaseModel):
 
 # --- Sprint 9 Application Tracking ---
 
+
 class ApplicationEventResponse(BaseModel):
     """Timeline event for an application."""
+
     id: uuid.UUID
     application_id: uuid.UUID
     event_type: str
@@ -248,4 +265,3 @@ class ApplicationContactResponse(ApplicationContactBase):
 
 class StatusTransitionRequest(BaseModel):
     to_status: str
-

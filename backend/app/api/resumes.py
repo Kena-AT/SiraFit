@@ -9,8 +9,11 @@ from app.models.user import User
 from app.models.job import Resume, ResumeVersion, Job, AuditLog
 from app.models.profile import Profile
 from app.schemas.resume import (
-    ResumeCreate, ResumeResponse, ResumeUpdate,
-    ResumeVersionCreate, ResumeVersionResponse,
+    ResumeCreate,
+    ResumeResponse,
+    ResumeUpdate,
+    ResumeVersionCreate,
+    ResumeVersionResponse,
 )
 
 router = APIRouter()
@@ -19,6 +22,7 @@ router = APIRouter()
 # ---------------------------------------------------------------------------
 # Resumes
 # ---------------------------------------------------------------------------
+
 
 @router.get("/", response_model=List[ResumeResponse])
 def get_resumes(
@@ -45,10 +49,7 @@ def create_resume(
     resume_in: ResumeCreate,
 ) -> Any:
     """Create a new resume."""
-    resume = Resume(
-        user_id=current_user.id,
-        **resume_in.model_dump()
-    )
+    resume = Resume(user_id=current_user.id, **resume_in.model_dump())
     db.add(resume)
 
     # Add audit log
@@ -56,7 +57,7 @@ def create_resume(
         user_id=current_user.id,
         action="created_resume",
         entity_type="resume",
-        details={"title": resume.title}
+        details={"title": resume.title},
     )
     db.add(log)
 
@@ -72,10 +73,11 @@ def get_resume(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """Get a specific resume."""
-    resume = db.query(Resume).filter(
-        Resume.id == resume_id,
-        Resume.user_id == current_user.id
-    ).first()
+    resume = (
+        db.query(Resume)
+        .filter(Resume.id == resume_id, Resume.user_id == current_user.id)
+        .first()
+    )
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
     return resume
@@ -89,10 +91,11 @@ def update_resume(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """Update a resume."""
-    resume = db.query(Resume).filter(
-        Resume.id == resume_id,
-        Resume.user_id == current_user.id
-    ).first()
+    resume = (
+        db.query(Resume)
+        .filter(Resume.id == resume_id, Resume.user_id == current_user.id)
+        .first()
+    )
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
 
@@ -109,7 +112,7 @@ def update_resume(
         user_id=current_user.id,
         action="updated_resume",
         entity_type="resume",
-        details={"title": resume.title}
+        details={"title": resume.title},
     )
     db.add(log)
     db.commit()
@@ -124,10 +127,11 @@ def delete_resume(
     current_user: User = Depends(get_current_user),
 ) -> None:
     """Delete a resume and all its versions."""
-    resume = db.query(Resume).filter(
-        Resume.id == resume_id,
-        Resume.user_id == current_user.id
-    ).first()
+    resume = (
+        db.query(Resume)
+        .filter(Resume.id == resume_id, Resume.user_id == current_user.id)
+        .first()
+    )
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
 
@@ -139,6 +143,7 @@ def delete_resume(
 # Resume Versions
 # ---------------------------------------------------------------------------
 
+
 @router.get("/{resume_id}/versions", response_model=List[ResumeVersionResponse])
 def get_resume_versions(
     resume_id: uuid.UUID,
@@ -146,10 +151,11 @@ def get_resume_versions(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """Get all versions for a resume."""
-    resume = db.query(Resume).filter(
-        Resume.id == resume_id,
-        Resume.user_id == current_user.id
-    ).first()
+    resume = (
+        db.query(Resume)
+        .filter(Resume.id == resume_id, Resume.user_id == current_user.id)
+        .first()
+    )
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
 
@@ -161,7 +167,11 @@ def get_resume_versions(
     )
 
 
-@router.post("/{resume_id}/versions", response_model=ResumeVersionResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{resume_id}/versions",
+    response_model=ResumeVersionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_resume_version(
     resume_id: uuid.UUID,
     version_in: ResumeVersionCreate,
@@ -169,10 +179,11 @@ async def create_resume_version(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """Create a new version of a resume (manual or from generation)."""
-    resume = db.query(Resume).filter(
-        Resume.id == resume_id,
-        Resume.user_id == current_user.id
-    ).first()
+    resume = (
+        db.query(Resume)
+        .filter(Resume.id == resume_id, Resume.user_id == current_user.id)
+        .first()
+    )
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
 
@@ -204,7 +215,7 @@ async def create_resume_version(
         user_id=current_user.id,
         action="created_resume_version",
         entity_type="resume_version",
-        details={"resume_id": str(resume_id), "version_number": next_version}
+        details={"resume_id": str(resume_id), "version_number": next_version},
     )
     db.add(log)
     db.commit()
@@ -215,6 +226,7 @@ async def create_resume_version(
 # ---------------------------------------------------------------------------
 # AI Resume Generation
 # ---------------------------------------------------------------------------
+
 
 @router.post("/{resume_id}/generate", response_model=ResumeVersionResponse)
 async def generate_resume(
@@ -233,10 +245,11 @@ async def generate_resume(
     """
     from app.worker.tasks import enqueue_resume_generation
 
-    resume = db.query(Resume).filter(
-        Resume.id == resume_id,
-        Resume.user_id == current_user.id
-    ).first()
+    resume = (
+        db.query(Resume)
+        .filter(Resume.id == resume_id, Resume.user_id == current_user.id)
+        .first()
+    )
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
 
@@ -246,7 +259,9 @@ async def generate_resume(
 
     profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
     if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found. Create a profile first.")
+        raise HTTPException(
+            status_code=404, detail="Profile not found. Create a profile first."
+        )
 
     # Get next version number
     latest = (
@@ -272,7 +287,11 @@ async def generate_resume(
         user_id=current_user.id,
         action="resume_generation_requested",
         entity_type="resume_version",
-        details={"resume_id": str(resume_id), "job_id": str(job_id), "template": template},
+        details={
+            "resume_id": str(resume_id),
+            "job_id": str(job_id),
+            "template": template,
+        },
     )
     db.add(log)
     db.commit()
@@ -294,12 +313,15 @@ async def generate_resume(
 # Resume Export
 # ---------------------------------------------------------------------------
 
+
 @router.get("/{resume_id}/versions/{version_id}/export")
 def export_resume_version(
     resume_id: uuid.UUID,
     version_id: uuid.UUID,
     format: str = Query("html", description="Export format: html, docx, pdf"),
-    async_export: bool = Query(False, description="If true, queue PDF rendering on a worker and return 202"),
+    async_export: bool = Query(
+        False, description="If true, queue PDF rendering on a worker and return 202"
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -313,21 +335,30 @@ def export_resume_version(
     When ``async_export=True`` and ``format=pdf``, the PDF is rendered on the
     Celery ``pdf_rendering`` queue and a 202 with a polling URL is returned.
     """
-    resume = db.query(Resume).filter(
-        Resume.id == resume_id,
-        Resume.user_id == current_user.id
-    ).first()
+    resume = (
+        db.query(Resume)
+        .filter(Resume.id == resume_id, Resume.user_id == current_user.id)
+        .first()
+    )
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
 
-    version = db.query(ResumeVersion).filter(
-        ResumeVersion.id == version_id,
-        ResumeVersion.resume_id == resume_id,
-    ).first()
+    version = (
+        db.query(ResumeVersion)
+        .filter(
+            ResumeVersion.id == version_id,
+            ResumeVersion.resume_id == resume_id,
+        )
+        .first()
+    )
     if not version:
         raise HTTPException(status_code=404, detail="Version not found")
 
-    from app.services.resume_export import export_resume_html, export_resume_docx, export_resume_pdf
+    from app.services.resume_export import (
+        export_resume_html,
+        export_resume_docx,
+        export_resume_pdf,
+    )
     from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse
 
     # Asynchronous PDF rendering path
