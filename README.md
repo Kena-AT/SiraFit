@@ -16,51 +16,58 @@ SiraFit is your personal "Command Center" for job hunting. Instead of juggling s
 ## ✨ Core Features
 
 ### 📝 Resume & Profile Management
+
 - **Master Profile**: A robust editor to manage your entire professional history with autosave and real-time validation.
 - **Smart Resume Builder**: Generate targeted resumes that highlight the specific skills each employer is looking for.
 - **Cover Letter Generation**: AI-crafted cover letters that bridge the gap between your experience and the job requirements.
 
 ### 🔍 Intelligent Job Sourcing
+
 - **Multi-Platform Import**: Scrape job details from LinkedIn, Glassdoor, ZipRecruiter, and more.
 - **Manual Import**: Paste any job description to instantly extract key requirements.
 - **Skill Extraction**: Automatically identifies required tech stacks and soft skills from job postings.
 
 ### 📊 Automation & Analytics
+
 - **Application Tracking**: A structured pipeline to track interviews, follow-ups, and offers.
 - **Insight Dashboard**: Monitor your application conversion rates and response times.
 - **Market Intelligence**: Insights into market salary trends and the most sought-after skills in your niche.
 
 ### 🔔 Smart Notifications
+
 - **Follow-up Reminders**: Never miss an opportunity to follow up after an interview.
 - **Job Alerts**: Get notified when new matches are found or when applications need attention.
 
 ## 🛠 Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
+| Layer              | Technology                                             |
+| ------------------ | ------------------------------------------------------ |
 | **Frontend** | React 19 (TanStack Start), TypeScript, Tailwind CSS v4 |
-| **Backend** | Python 3.12, FastAPI, SQLAlchemy, Pydantic |
-| **Database** | PostgreSQL, Redis (for caching & background tasks) |
-| **Worker** | Celery + Redis for asynchronous processing |
-| **Auth** | Secure JWT with HttpOnly cookies & Refresh Tokens |
-| **Email** | Brevo SMTP for notifications and verification |
+| **Backend**  | Python 3.12, FastAPI, SQLAlchemy, Pydantic             |
+| **Database** | PostgreSQL, Redis (for caching & background tasks)     |
+| **Worker**   | Celery + Redis for asynchronous processing             |
+| **Auth**     | Secure JWT with HttpOnly cookies & Refresh Tokens      |
+| **Email**    | Brevo SMTP for notifications and verification          |
 
 ---
 
 ## ⚡ Quick Start
 
 ### Prerequisites
+
 - Python 3.12+
 - Node.js 18+
 - Redis (for background workers)
 
 ### 1. Clone and configure
+
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/Kena-AT/SiraFit
 cd SiraFit
 ```
 
 ### 2. Start Backend
+
 ```bash
 cd backend
 python -m venv venv
@@ -71,6 +78,7 @@ uvicorn app.main:app --reload
 ```
 
 ### 3. Start Frontend
+
 ```bash
 cd frontend
 npm install
@@ -90,12 +98,14 @@ npm run dev
 ## 🧪 Testing
 
 ### Backend
+
 ```bash
 cd backend
 pytest tests/
 ```
 
 ### Frontend
+
 ```bash
 cd frontend
 npm run test:e2e
