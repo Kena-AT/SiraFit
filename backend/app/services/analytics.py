@@ -2,15 +2,13 @@
 Analytics service for generating metrics and snapshots.
 """
 import uuid
-from datetime import datetime, timezone, timedelta
-from typing import Any, Dict, List
+from datetime import datetime, timezone
+from typing import Any, Dict
 from sqlalchemy.orm import Session
-from sqlalchemy import func, cast, Date
 
 from app.models.job import Job, JobApplication
-from app.models.profile import Profile, Skill
+from app.models.profile import Profile
 from app.models.analytics import AnalyticsSnapshot
-from app.models.score import JobMatchScore
 
 
 def _utcnow():
@@ -91,32 +89,75 @@ def generate_analytics_metrics(db: Session, user_id: uuid.UUID) -> Dict[str, Any
             "market": market,
         })
     
-    # 5. Market roles (mock data for now - could be from external API)
-    market_roles = [
-        {"role": "Software Engineer", "demand": 95, "postings": 12500, "change": "+12%"},
-        {"role": "Backend Engineer", "demand": 88, "postings": 8200, "change": "+8%"},
-        {"role": "Full Stack Engineer", "demand": 82, "postings": 7100, "change": "+5%"},
-        {"role": "DevOps Engineer", "demand": 78, "postings": 5400, "change": "+15%"},
-        {"role": "Frontend Engineer", "demand": 75, "postings": 4800, "change": "+3%"},
-    ]
-    
-    # 6. Top technologies
+    # 5. Market roles — aggregated from the actual jobs imported by this user
+    # Count applications per job title (normalised), take the top 10
+    from collections import Counter
+    title_counter: Counter = Counter()
+    all_imported_jobs = db.query(Job).all()
+    for job in all_imported_jobs:
+        # Normalise: strip seniority words and lowercase
+        import re
+        normalised = re.sub(
+            r"\b(senior|junior|staff|principal|lead|mid|associate|sr\.|jr\.)\b",
+            "",
+            job.title,
+            flags=re.IGNORECASE,
+        ).strip().title()
+        if normalised:
+            title_counter[normalised] += 1
+
+    top_roles = title_counter.most_common(8)
+    market_roles = []
+    for rank, (role, count) in enumerate(top_roles):
+        demand = max(10, 100 - rank * 10)
+        market_roles.append({
+            "role": role,
+            "demand": demand,
+            "postings": count,
+            "change": "+0%",  # would need historical data
+        })
+
+    # 6. Top technologies — frequency count from all job tags
+    tag_counter: Counter = Counter()
+    for job in all_imported_jobs:
+        if job.tags:
+            for tag in job.tags:
+                tag_counter[tag.lower()] += 1
+
+    total_tags = sum(tag_counter.values()) or 1
     top_technologies = [
-        ["TypeScript", 71],
-        ["Python", 64],
-        ["React", 58],
-        ["AWS", 56],
-        ["Kubernetes", 41],
+        [tag.title(), round(count / total_tags * 100)]
+        for tag, count in tag_counter.most_common(10)
+    ] or [
+        ["Python", 0], ["JavaScript", 0], ["React", 0], ["AWS", 0], ["Docker", 0]
     ]
-    
-    # 7. Salary medians
-    salary_medians = [
-        ["SF Bay Area", "$165k"],
-        ["NYC", "$155k"],
-        ["Remote (US)", "$145k"],
-        ["Berlin", "€68k"],
-        ["London", "£72k"],
+
+    # 7. Salary medians — derived from imported jobs that have salary data
+    salary_data = [
+        (job.salary_min, job.salary_max, job.currency or "USD")
+        for job in all_imported_jobs
+        if job.salary_min or job.salary_max
     ]
+
+    if salary_data:
+        import statistics
+        midpoints = [
+            ((s_min or 0) + (s_max or 0)) / (2 if s_min and s_max else 1)
+            for s_min, s_max, _ in salary_data
+            if (s_min or 0) + (s_max or 0) > 0
+        ]
+        if midpoints:
+            median_val = statistics.median(midpoints)
+            currency = salary_data[0][2]
+            salary_medians = [
+                ["Median (your imports)", f"{currency}{int(median_val / 1000)}k"],
+                ["25th percentile", f"{currency}{int(sorted(midpoints)[len(midpoints) // 4] / 1000)}k"],
+                ["75th percentile", f"{currency}{int(sorted(midpoints)[3 * len(midpoints) // 4] / 1000)}k"],
+            ]
+        else:
+            salary_medians = [["No salary data", "—"]]
+    else:
+        salary_medians = [["No salary data", "—"]]
     
     return {
         "total_applications": total_applications,

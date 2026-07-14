@@ -1,7 +1,7 @@
 from typing import List, Any, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Header
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, cast, String
 import uuid
 
 from app.core.database import get_db
@@ -65,7 +65,9 @@ def list_jobs(
         query = query.filter(Job.source == source)
     if tags:
         for tag in [t.strip() for t in tags.split(",")]:
-            query = query.filter(Job.tags.contains([tag]))
+            # Cast to text so the match works on both SQLite (JSON-as-text)
+            # and PostgreSQL (JSONB); `"tag"` matches the JSON-encoded element.
+            query = query.filter(cast(Job.tags, String).like(f'%"{tag}"%'))
     if min_salary is not None:
         query = query.filter(or_(Job.salary_min >= min_salary, Job.salary_max >= min_salary))
     if max_salary is not None:

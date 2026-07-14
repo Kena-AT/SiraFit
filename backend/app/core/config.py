@@ -1,7 +1,4 @@
 from pydantic_settings import BaseSettings
-from pydantic import EmailStr
-from functools import lru_cache
-import os
 from pathlib import Path
 
 class Settings(BaseSettings):

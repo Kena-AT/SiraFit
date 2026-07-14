@@ -20,15 +20,12 @@ import logging
 import os
 import tempfile
 import uuid
-from datetime import datetime, timezone
 from typing import Any
 
 from app.core.database import SessionLocal
 from app.models.cover_letter import CoverLetter
-from app.models.job import ResumeVersion, Job, AuditLog, JobApplication
+from app.models.job import ResumeVersion, Job, AuditLog
 from app.models.profile import Profile
-from app.models.batch import BatchJob
-from app.models.notification import Notification
 
 logger = logging.getLogger(__name__)
 

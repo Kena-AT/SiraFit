@@ -83,8 +83,13 @@ function Notifications() {
             <li className="px-4 py-8 text-center text-muted-foreground">No notifications yet</li>
           ) : (
             notifications.map((n) => (
-              <li key={n.id} className="flex items-start gap-3 px-4 py-3">
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--brand)]" />
+              <li
+                key={n.id}
+                className={`flex items-start gap-3 px-4 py-3 ${n.status === "unread" ? "bg-muted/20" : ""}`}
+              >
+                <span
+                  className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${n.status === "unread" ? "bg-[color:var(--brand)]" : "bg-muted-foreground/30"}`}
+                />
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <div className="text-sm font-semibold">{n.title}</div>
@@ -92,8 +97,18 @@ function Notifications() {
                   </div>
                   <div className="text-[12px] text-muted-foreground">{n.body}</div>
                 </div>
-                <div className="font-mono text-[11px] text-muted-foreground tabular-nums">
-                  {new Date(n.created_at).toLocaleString()}
+                <div className="flex items-center gap-3 shrink-0">
+                  <div className="font-mono text-[11px] text-muted-foreground tabular-nums">
+                    {new Date(n.created_at).toLocaleString()}
+                  </div>
+                  {n.status === "unread" && (
+                    <button
+                      onClick={() => markReadMutation.mutate(n.id)}
+                      className="rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-border hover:bg-muted"
+                    >
+                      Mark read
+                    </button>
+                  )}
                 </div>
               </li>
             ))

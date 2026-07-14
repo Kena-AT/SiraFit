@@ -1,6 +1,5 @@
 """Tests for PDF rendering service."""
 
-import pytest
 from io import BytesIO
 
 from app.services.pdf_rendering import render_html_to_pdf_bytes, render_html_to_pdf

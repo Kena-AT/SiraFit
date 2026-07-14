@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel } from "@/components/sirafit/bits";
+import { getAnalyticsMetrics } from "@/lib/api/notifications";
 
 interface MarketRole {
   role: string;
@@ -141,10 +142,4 @@ function MarketInsights() {
   );
 }
 
-async function getAnalyticsMetrics() {
-  const response = await fetch("/api/v1/analytics/metrics", {
-    credentials: "include",
-  });
-  if (!response.ok) throw new Error("Failed to fetch analytics metrics");
-  return response.json();
-}
+// getAnalyticsMetrics is imported from @/lib/api/notifications above

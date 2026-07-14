@@ -1,7 +1,6 @@
-from typing import Any, Dict, List, Optional
+from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-import uuid
 
 from app.core.database import get_db
 from app.api.users import get_current_user

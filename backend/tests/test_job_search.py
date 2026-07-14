@@ -3,7 +3,6 @@ Tests for job search, filtering, sorting, and pagination.
 """
 
 import uuid
-import pytest
 from app.models.job import Job
 
 
@@ -498,5 +497,15 @@ class TestJobListResponse:
             assert "updated_at" in job_data
 
     def test_unauthenticated_access(self, client):
-        resp = client.get("/api/v1/jobs")
+        # The shared session-scoped client may carry an auth cookie from the
+        # login fixture; swap in a fresh empty cookie jar (and restore it)
+        # so this request is truly unauthenticated.
+        import httpx
+
+        saved = client.cookies
+        client.cookies = httpx.Cookies()
+        try:
+            resp = client.get("/api/v1/jobs")
+        finally:
+            client.cookies = saved
         assert resp.status_code == 401

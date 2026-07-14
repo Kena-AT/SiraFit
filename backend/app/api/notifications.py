@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 import uuid
@@ -7,12 +7,8 @@ from app.core.database import get_db
 from app.api.users import get_current_user
 from app.models.user import User
 from app.models.notification import Notification
-from app.models.analytics import AnalyticsSnapshot
-from app.services.analytics import generate_analytics_metrics, create_analytics_snapshot
 from app.schemas.notification import (
-    NotificationResponse, NotificationListResponse,
-    AnalyticsSnapshotResponse, AnalyticsSnapshotListResponse,
-    MetricsResponse
+    NotificationResponse, NotificationListResponse
 )
 
 router = APIRouter()

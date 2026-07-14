@@ -1,6 +1,5 @@
 """Tests for resume export service (HTML, DOCX, PDF)."""
 
-import pytest
 import json
 import uuid
 from io import BytesIO

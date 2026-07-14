@@ -41,6 +41,21 @@ export interface StatusTransitionRequest {
   to_status: string;
 }
 
+export interface FollowUpItem {
+  application_id: string;
+  job_title: string;
+  company: string;
+  status: string;
+  follow_up_at: string;
+  follow_up_note: string | null;
+  score: number | null;
+}
+
+export interface FollowUpSet {
+  follow_up_at: string | null; // ISO datetime string or null to clear
+  follow_up_note?: string | null;
+}
+
 // Applications API
 export const getApplications = async () => {
   const response = await apiFetch("/api/v1/applications");
@@ -184,5 +199,28 @@ export const getUserTimeline = async (limit = 100): Promise<ApplicationEvent[]> 
 export const getApplicationEvents = async (applicationId: string): Promise<ApplicationEvent[]> => {
   const response = await apiFetch(`/api/v1/applications/${applicationId}/events`);
   if (!response.ok) throw new Error("Failed to fetch events");
+  return response.json();
+};
+
+// Follow-up Center API
+export const getFollowUps = async (includePast = false): Promise<FollowUpItem[]> => {
+  const response = await apiFetch(`/api/v1/applications/followups?include_past=${includePast}`);
+  if (!response.ok) throw new Error("Failed to fetch follow-ups");
+  return response.json();
+};
+
+export const setFollowUp = async (
+  applicationId: string,
+  payload: FollowUpSet,
+): Promise<unknown> => {
+  const response = await apiFetch(`/api/v1/applications/${applicationId}/followup`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ detail: "Failed to set follow-up" }));
+    throw new Error(err.detail || "Failed to set follow-up");
+  }
   return response.json();
 };

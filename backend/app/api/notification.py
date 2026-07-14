@@ -1,4 +1,4 @@
-from typing import List, Optional, Any, Dict
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 import uuid
@@ -6,9 +6,8 @@ import uuid
 from app.core.database import get_db
 from app.api.users import get_current_user
 from app.models.user import User
-from app.models.notification import Notification
 from app.schemas.notification import (
-    NotificationResponse, NotificationListResponse, NotificationCreate
+    NotificationResponse, NotificationListResponse
 )
 from app.services.notification import (
     get_notifications, mark_as_read, mark_all_as_read, get_unread_count

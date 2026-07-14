@@ -1,8 +1,7 @@
-import uuid
-import pytest
 from app.services.analytics import generate_analytics_metrics, create_analytics_snapshot
 from app.models.job import Job, JobApplication
 from app.models.profile import Profile, Skill
+import uuid
 
 def test_generate_analytics_metrics(test_user, db):
     """Test generating analytics metrics for a user."""
@@ -17,9 +16,9 @@ def test_generate_analytics_metrics(test_user, db):
     db.commit()
     
     # Create some jobs
-    job1 = Job(external_id="job-1", title="Software Engineer", company="Acme", tags=["python", "react"])
-    job2 = Job(external_id="job-2", title="Backend Engineer", company="Beta", tags=["python", "aws"])
-    job3 = Job(external_id="job-3", title="Frontend Engineer", company="Gamma", tags=["react", "typescript"])
+    job1 = Job(external_id=f"analytics-job-1-{uuid.uuid4().hex[:8]}", title="Software Engineer", company="Acme", tags=["python", "react"])
+    job2 = Job(external_id=f"analytics-job-2-{uuid.uuid4().hex[:8]}", title="Backend Engineer", company="Beta", tags=["python", "aws"])
+    job3 = Job(external_id=f"analytics-job-3-{uuid.uuid4().hex[:8]}", title="Frontend Engineer", company="Gamma", tags=["react", "typescript"])
     db.add_all([job1, job2, job3])
     db.commit()
     

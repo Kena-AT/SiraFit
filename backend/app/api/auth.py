@@ -386,7 +386,7 @@ def logout(
                     token = db.query(RefreshToken).filter(
                         RefreshToken.token == token_str,
                         RefreshToken.user_id == user_uuid,
-                        RefreshToken.is_revoked == False,
+                        RefreshToken.is_revoked.is_(False),
                     ).first()
 
                 if token:

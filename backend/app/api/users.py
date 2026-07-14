@@ -6,9 +6,8 @@ import jwt
 from pydantic import ValidationError
 
 from app.core.database import get_db
-from app.core.security import get_password_hash
 from app.core.config import settings
-from app.models.user import User, UserPreference
+from app.models.user import User
 from app.schemas.user import UserCreate, UserResponse, TokenPayload
 
 router = APIRouter()

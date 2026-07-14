@@ -6,13 +6,13 @@ Orchestrates AI-powered resume tailoring with validation and template rendering.
 import json
 import logging
 import asyncio
-from typing import Optional, Dict, List, Any
-from datetime import datetime
+import html as _html
+from typing import Optional, List
 from pydantic import BaseModel, Field, ValidationError
 
 from sqlalchemy.orm import Session
 from app.models.profile import Profile
-from app.models.job import Job, Resume, ResumeVersion
+from app.models.job import Job
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -309,7 +309,6 @@ async def _with_retry(fn, max_attempts: int = 3):
 def _calculate_ats_score(resume_data: dict, job: Job) -> int:
     """Calculate a basic ATS readiness score."""
     score = 0
-    total_checks = 5
 
     # 1. Has summary (20 pts)
     if resume_data.get("summary"):
@@ -375,9 +374,6 @@ def validate_resume_json(resume_data: dict, job: Job) -> tuple[bool, list[str]]:
 # ---------------------------------------------------------------------------
 # Template Engine
 # ---------------------------------------------------------------------------
-
-import html as _html
-
 
 def _esc(value) -> str:
     """Escape HTML special characters in a value."""
@@ -632,7 +628,7 @@ def _render_modern_template(resume_data: dict) -> str:
     website = _esc(resume_data.get("website", ""))
 
     contact = " · ".join([c for c in [email, phone, location] if c])
-    links = " · ".join([l for l in [linkedin, github, website] if l])
+    links = " · ".join([link for link in [linkedin, github, website] if link])
 
     lines = [
         "<!DOCTYPE html>",
@@ -723,7 +719,7 @@ def _render_corporate_template(resume_data: dict) -> str:
     website = _esc(resume_data.get("website", ""))
 
     contact = " | ".join([c for c in [email, phone, location] if c])
-    links = " | ".join([l for l in [linkedin, github, website] if l])
+    links = " | ".join([link for link in [linkedin, github, website] if link])
 
     lines = [
         "<!DOCTYPE html>",
@@ -921,7 +917,6 @@ async def generate_tailored_resume(
     Returns:
         dict with keys: resume_data (TailoredResume), html (str), ats_score (int), issues (list)
     """
-    import uuid
 
     # Build prompt context
     profile_text = _serialize_profile(profile)

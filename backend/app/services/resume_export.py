@@ -2,7 +2,6 @@
 
 import json
 import io
-from typing import Optional
 
 from app.models.job import ResumeVersion
 from app.services.resume_generation import render_resume_html
@@ -31,7 +30,7 @@ def export_resume_docx(version: ResumeVersion) -> io.BytesIO:
     Returns a BytesIO stream suitable for use as a file download.
     """
     from docx import Document
-    from docx.shared import Pt, Inches
+    from docx.shared import Pt
     from docx.enum.text import WD_ALIGN_PARAGRAPH
 
     data = json.loads(version.content) if version.content else {}

@@ -144,7 +144,7 @@ TITLE_KEYWORDS = [
 
 
 def parse_job_from_description(description: str) -> Dict[str, Any]:
-    lines = [l.strip() for l in description.split("\n") if l.strip()]
+    lines = [line.strip() for line in description.split("\n") if line.strip()]
 
     title = "Unknown Position"
     if lines:

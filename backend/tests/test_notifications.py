@@ -1,5 +1,3 @@
-import uuid
-import pytest
 from app.services.notification import (
     create_notification,
     get_notifications,

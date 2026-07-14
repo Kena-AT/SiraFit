@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from app.models.profile import Profile
 from app.models.job import Job
 

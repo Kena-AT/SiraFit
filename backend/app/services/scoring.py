@@ -1,4 +1,3 @@
-import re
 from typing import Tuple
 from app.models.profile import Profile
 from app.models.job import Job
@@ -77,10 +76,14 @@ def _keyword_match_score(profile: Profile, job: Job) -> Tuple[int, str]:
         reasons.append("Profile has no experience listed.")
 
     completeness = 0
-    if profile.summary: completeness += 5
-    if profile.educations: completeness += 5
-    if profile.projects: completeness += 5
-    if profile.linkedin or profile.github: completeness += 5
+    if profile.summary:
+        completeness += 5
+    if profile.educations:
+        completeness += 5
+    if profile.projects:
+        completeness += 5
+    if profile.linkedin or profile.github:
+        completeness += 5
     
     score += completeness
     reasons.append(f"Profile completeness contributes {completeness} points. (Fallback Matcher)")

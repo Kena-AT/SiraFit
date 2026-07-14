@@ -1,11 +1,8 @@
-import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
-from datetime import date
 
-from app.main import app
 from app.models.user import User
-from app.models.profile import Profile, Experience, Education, Skill, Project, Certification
+from app.models.profile import Profile
 from app.core.security import get_password_hash
 
 

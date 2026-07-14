@@ -4,13 +4,20 @@ Application service for Sprint 9 — status transitions, timeline events, notes,
 The module defines a deterministic status machine, creates timeline events on
 every mutation, and provides CRUD helpers for notes and contacts.
 """
+from __future__ import annotations
+
 import uuid
 from typing import Optional, List
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
-from app.models.job import JobApplication, AuditLog
-from app.models.cover_letter import CoverLetter
+from app.models.job import (
+    JobApplication,
+    AuditLog,
+    ApplicationNote,
+    ApplicationContact,
+    ApplicationEvent,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -88,7 +95,7 @@ def transition_application(
     db.refresh(application)
 
     # Create timeline event
-    from app.models.job import ApplicationEvent
+
     event = ApplicationEvent(
         application_id=application_id,
         user_id=user_id,
@@ -127,7 +134,7 @@ def create_note(
     pinned: bool = False,
 ) -> "ApplicationNote":
     """Create a note attached to an application."""
-    from app.models.job import ApplicationNote
+
 
     note = ApplicationNote(
         application_id=application_id,
@@ -150,7 +157,7 @@ def get_notes_for_application(
     user_id: uuid.UUID,
 ) -> List["ApplicationNote"]:
     """List notes for an application, pinned first."""
-    from app.models.job import ApplicationNote
+
 
     return (
         db.query(ApplicationNote)
@@ -171,7 +178,7 @@ def update_note(
     pinned: Optional[bool] = None,
 ) -> Optional["ApplicationNote"]:
     """Update a note's body or pin status."""
-    from app.models.job import ApplicationNote
+
 
     note = (
         db.query(ApplicationNote)
@@ -194,7 +201,7 @@ def update_note(
 
 def delete_note(db: Session, note_id: uuid.UUID, user_id: uuid.UUID) -> bool:
     """Delete a note. Returns True if deleted."""
-    from app.models.job import ApplicationNote
+
 
     note = (
         db.query(ApplicationNote)
@@ -227,7 +234,7 @@ def create_contact(
     is_primary: bool = False,
 ) -> "ApplicationContact":
     """Create a contact attached to an application."""
-    from app.models.job import ApplicationContact
+
 
     contact = ApplicationContact(
         application_id=application_id,
@@ -255,7 +262,7 @@ def get_contacts_for_application(
     user_id: uuid.UUID,
 ) -> List["ApplicationContact"]:
     """List contacts for an application, primary first."""
-    from app.models.job import ApplicationContact
+
 
     return (
         db.query(ApplicationContact)
@@ -275,7 +282,7 @@ def update_contact(
     **kwargs,
 ) -> Optional["ApplicationContact"]:
     """Update a contact with arbitrary kwargs."""
-    from app.models.job import ApplicationContact
+
 
     contact = (
         db.query(ApplicationContact)
@@ -297,7 +304,7 @@ def update_contact(
 
 def delete_contact(db: Session, contact_id: uuid.UUID, user_id: uuid.UUID) -> bool:
     """Delete a contact. Returns True if deleted."""
-    from app.models.job import ApplicationContact
+
 
     contact = (
         db.query(ApplicationContact)
@@ -322,7 +329,7 @@ def get_events_for_application(
     user_id: uuid.UUID,
 ) -> List["ApplicationEvent"]:
     """List timeline events for an application, newest first."""
-    from app.models.job import ApplicationEvent
+
 
     return (
         db.query(ApplicationEvent)
@@ -341,7 +348,7 @@ def get_all_events_for_user(
     limit: int = 100,
 ) -> List["ApplicationEvent"]:
     """Fetch recent events across all applications for the user's timeline page."""
-    from app.models.job import ApplicationEvent
+
 
     return (
         db.query(ApplicationEvent)

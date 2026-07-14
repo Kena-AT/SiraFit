@@ -1,4 +1,4 @@
-from typing import List, Optional, Any, Dict
+from typing import List, Optional, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 import uuid
@@ -9,7 +9,7 @@ from app.models.user import User
 from app.models.batch import BatchJob
 from app.models.job import Job
 from app.schemas.batch import (
-    BatchJobCreate, BatchJobUpdate, BatchJobResponse, BatchJobListResponse
+    BatchJobCreate, BatchJobResponse, BatchJobListResponse
 )
 from app.services.batch import enqueue_batch_job
 

@@ -8,7 +8,6 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
 # Provide all required env vars BEFORE any app imports
 os.environ.setdefault("DATABASE_URL", "sqlite:///test.db")
@@ -89,6 +88,15 @@ def registered_user(client):
         },
     )
     assert response.status_code == 201, response.text
+
+    # Mark the fixture user as verified so login-based fixtures succeed in tests.
+    db = TestingSessionLocal()
+    user = db.query(app.models.user.User).filter_by(email="fixture@example.com").first()
+    if user:
+        user.is_verified = True
+        db.commit()
+    db.close()
+
     return response.json()
 
 

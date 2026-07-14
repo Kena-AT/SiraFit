@@ -4,14 +4,11 @@ Notification service for sending emails and processing reminders.
 import uuid
 import logging
 from datetime import datetime, timezone, timedelta
-from typing import List, Optional
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
 
 from app.models.notification import Notification
 from app.models.user import User, UserPreference
-from app.models.application import JobApplication
-from app.models.job import Job
+from app.models.job import JobApplication, Job
 from app.core.database import SessionLocal
 from app.services.email import send_email
 

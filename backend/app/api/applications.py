@@ -1,6 +1,7 @@
 from typing import List, Any, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import asc
 import uuid
 
 from app.core.database import get_db
@@ -12,7 +13,7 @@ from app.schemas.job import (
     JobApplicationCreate, JobApplicationResponse, JobApplicationUpdate,
     ApplicationEventResponse, ApplicationNoteCreate, ApplicationNoteUpdate, ApplicationNoteResponse,
     ApplicationContactCreate, ApplicationContactUpdate, ApplicationContactResponse,
-    StatusTransitionRequest,
+    StatusTransitionRequest, FollowUpSet, FollowUpItem,
 )
 from app.services.scoring import analyze_match_score
 from app.services.application import (
@@ -143,6 +144,70 @@ def user_timeline(
 ) -> Any:
     """Get all events across applications (global timeline page)."""
     return get_all_events_for_user(db, current_user.id, limit)
+
+
+# --- Follow-up Center ---
+# Registered before /{app_id} so "followups" is not captured as a UUID.
+
+@router.get("/followups", response_model=List[FollowUpItem])
+def list_followups(
+    *,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    include_past: bool = Query(False, description="Include already-passed follow-up dates"),
+) -> Any:
+    """List all applications that have a follow-up date set, soonest first."""
+    from datetime import datetime, timezone
+
+    query = (
+        db.query(JobApplication)
+        .filter(
+            JobApplication.user_id == current_user.id,
+            JobApplication.follow_up_at.isnot(None),
+        )
+    )
+    if not include_past:
+        query = query.filter(JobApplication.follow_up_at >= datetime.now(timezone.utc))
+
+    applications = query.order_by(asc(JobApplication.follow_up_at)).all()
+
+    items = []
+    for app in applications:
+        job = db.query(Job).filter(Job.id == app.job_id).first()
+        items.append(FollowUpItem(
+            application_id=app.id,
+            job_title=job.title if job else "Unknown",
+            company=job.company if job else "Unknown",
+            status=app.status or "saved",
+            follow_up_at=app.follow_up_at,
+            follow_up_note=app.follow_up_note,
+            score=app.score,
+        ))
+    return items
+
+
+@router.put("/{app_id}/followup", response_model=JobApplicationResponse)
+def set_followup(
+    *,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    app_id: uuid.UUID,
+    payload: FollowUpSet,
+) -> Any:
+    """Set or clear the follow-up date on an application."""
+    application = (
+        db.query(JobApplication)
+        .filter(JobApplication.id == app_id, JobApplication.user_id == current_user.id)
+        .first()
+    )
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+
+    application.follow_up_at = payload.follow_up_at
+    application.follow_up_note = payload.follow_up_note
+    db.commit()
+    db.refresh(application)
+    return application
 
 
 @router.get("/{app_id}", response_model=JobApplicationResponse)

@@ -9,7 +9,6 @@ Supports Gemini and OpenRouter providers with:
 import json
 import asyncio
 import logging
-from typing import Optional
 from pydantic import BaseModel, ValidationError
 
 import httpx

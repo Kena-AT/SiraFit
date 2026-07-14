@@ -8,7 +8,7 @@ import logging
 from typing import Any, Dict
 from sqlalchemy.orm import Session
 
-from app.models.job import Job, JobAnalysis
+from app.models.job import Job
 from app.models.profile import Profile
 from app.models.score import JobMatchScore
 from app.services.job_analysis import run_job_analysis

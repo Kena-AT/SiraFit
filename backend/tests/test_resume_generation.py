@@ -3,7 +3,6 @@
 import pytest
 import json
 import uuid
-from datetime import date
 
 from app.services.resume_generation import (
     _parse_ai_response,
@@ -12,7 +11,6 @@ from app.services.resume_generation import (
     render_resume_html,
     _serialize_profile,
     _serialize_job,
-    TEMPLATES,
 )
 
 

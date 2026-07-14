@@ -1,5 +1,4 @@
 import uuid
-import pytest
 
 
 def test_batch_job_create(client, auth_headers, db):

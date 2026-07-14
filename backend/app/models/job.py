@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text, Integer, JSON, Enum
+from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text, Integer, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -43,6 +43,8 @@ class JobApplication(Base):
     general_notes = Column(Text, nullable=True)  # General notes (legacy field, use ApplicationNote for rich notes)
     score = Column(Integer, nullable=True)  # AI-generated match score (0-100)
     score_reason = Column(Text, nullable=True)  # AI explanation for score
+    follow_up_at = Column(DateTime, nullable=True)   # Optional follow-up reminder date
+    follow_up_note = Column(String(500), nullable=True)  # Brief label for the reminder
     
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)

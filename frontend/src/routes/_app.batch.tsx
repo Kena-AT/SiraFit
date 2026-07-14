@@ -5,8 +5,20 @@ import { PageHeader, Panel, StatusPill, EmptyState } from "@/components/sirafit/
 import { Plus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getBatchJobs, createBatchJob, cancelBatchJob, type BatchJobCreateInput, type BatchOperationType } from "@/lib/api/batch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  getBatchJobs,
+  createBatchJob,
+  cancelBatchJob,
+  type BatchJobCreateInput,
+  type BatchOperationType,
+} from "@/lib/api/batch";
 import { getJobs } from "@/lib/api/jobs";
 import { useState } from "react";
 
@@ -21,13 +33,21 @@ function BatchCenter() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterOp, setFilterOp] = useState<string>("all");
 
-  const { data: jobs = [] } = useQuery({ queryKey: ["jobs-for-batch"], queryFn: () => getJobs({ limit: 500 }) });
+  const { data: jobs = [] } = useQuery({
+    queryKey: ["jobs-for-batch"],
+    queryFn: () => getJobs({ limit: 500 }),
+  });
   const { data: batchData, isLoading } = useQuery({
-    queryKey: ["batch-jobs", filterStatus === "all" ? undefined : filterStatus, filterOp === "all" ? undefined : filterOp],
-    queryFn: () => getBatchJobs({
-      status: filterStatus === "all" ? undefined : filterStatus,
-      operation_type: filterOp === "all" ? undefined : filterOp,
-    }),
+    queryKey: [
+      "batch-jobs",
+      filterStatus === "all" ? undefined : filterStatus,
+      filterOp === "all" ? undefined : filterOp,
+    ],
+    queryFn: () =>
+      getBatchJobs({
+        status: filterStatus === "all" ? undefined : filterStatus,
+        operation_type: filterOp === "all" ? undefined : filterOp,
+      }),
   });
 
   const batchJobs = batchData?.jobs ?? [];
@@ -45,7 +65,11 @@ function BatchCenter() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["batch-jobs"] }),
   });
 
-  const handleCreate = (input: { operation_type: BatchOperationType; job_ids: string[]; params?: Record<string, unknown> }) => {
+  const handleCreate = (input: {
+    operation_type: BatchOperationType;
+    job_ids: string[];
+    params?: Record<string, unknown>;
+  }) => {
     createMutation.mutate(input);
   };
 
@@ -81,7 +105,9 @@ function BatchCenter() {
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <Input placeholder="Filter batches..." className="w-64" />
             <Select value={filterStatus} onChange={setFilterStatus}>
-              <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All statuses</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
@@ -93,7 +119,9 @@ function BatchCenter() {
               </SelectContent>
             </Select>
             <Select value={filterOp} onChange={setFilterOp}>
-              <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All operations</SelectItem>
                 <SelectItem value="analyze">Analyze</SelectItem>
@@ -119,13 +147,14 @@ function BatchCenter() {
                 <div
                   key={batchJob.id}
                   className="flex items-center gap-4 p-4 rounded-lg bg-card ring-1 ring-border hover:ring-[color:var(--brand)]/40 transition-colors cursor-pointer"
-                  onClick={() => window.location.href = `/batch/${batchJob.id}`}
+                  onClick={() => (window.location.href = `/batch/${batchJob.id}`)}
                 >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     <StatusPill status={batchJob.operation_type} className="shrink-0" />
                     <div className="min-w-0">
                       <div className="text-sm font-semibold truncate">
-                        {batchJob.operation_type.charAt(0).toUpperCase() + batchJob.operation_type.slice(1)}
+                        {batchJob.operation_type.charAt(0).toUpperCase() +
+                          batchJob.operation_type.slice(1)}
                       </div>
                       <div className="text-[11px] text-muted-foreground">
                         {batchJob.processed_items} / {batchJob.total_items} items
@@ -136,9 +165,13 @@ function BatchCenter() {
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                       <div
                         className="h-full bg-[color:var(--brand)]"
-                        style={{ width: `${batchJob.total_items > 0
-                          ? Math.round((batchJob.processed_items / batchJob.total_items) * 100)
-                          : 0}%` }}
+                        style={{
+                          width: `${
+                            batchJob.total_items > 0
+                              ? Math.round((batchJob.processed_items / batchJob.total_items) * 100)
+                              : 0
+                          }%`,
+                        }}
                       />
                     </div>
                   </div>

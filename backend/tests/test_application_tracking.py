@@ -3,7 +3,6 @@ QA tests for Sprint 9 — Application tracking (status machine, timeline, notes,
 """
 import uuid
 
-import pytest
 
 
 # --- Status Machine Tests ---

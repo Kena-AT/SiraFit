@@ -6,7 +6,6 @@ import inspect
 import uuid
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 from app.models.batch import BatchJob
 
 
@@ -99,7 +98,7 @@ def _run_batch_job(batch_job_id: uuid.UUID) -> dict:
 
         return {"status": batch_job.status, "processed": batch_job.processed_items}
 
-    except Exception as exc:
+    except Exception:
         logger.exception("batch_job_failed", extra={"batch_job_id": str(batch_job_id)})
         if 'batch_job' in locals() and batch_job:
             batch_job.status = "failed"

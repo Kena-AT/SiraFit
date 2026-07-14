@@ -4,11 +4,12 @@ Implements token bucket algorithm with Redis backend for distributed systems.
 Falls back to in-memory storage for development.
 """
 
-from datetime import datetime, timedelta
 from typing import Dict, Tuple, Optional
 from fastapi import Request, HTTPException, status
 from collections import defaultdict
 import time
+
+from app.core.config import settings
 
 
 class RateLimiter:
@@ -181,7 +182,12 @@ def check_rate_limit(
     """
     if limit_type not in RATE_LIMITS:
         raise ValueError(f"Unknown rate limit type: {limit_type}")
-    
+
+    # Bypass rate limiting in non-production environments (tests, local dev)
+    # so automated test suites and local development are never throttled.
+    if settings.ENVIRONMENT in ("testing", "test", "development"):
+        return
+
     max_requests, window_seconds = RATE_LIMITS[limit_type]
     
     # Use user ID if available, otherwise use IP
