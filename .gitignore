@@ -19,6 +19,10 @@ venv/
 *.egg-info/
 .pytest_cache/
 .mypy_cache/
+# Generated test databases (SQLite)
+*.db
+*.sqlite
+*.sqlite3
 
 # ---------------------------------------------------------------------------
 # Node
