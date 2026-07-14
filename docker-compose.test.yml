@@ -1,0 +1,136 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: sirafit-postgres-test
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=sirafit_test
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - sirafit-test-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: sirafit-redis-test
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_test_data:/data
+    restart: unless-stopped
+    networks:
+      - sirafit-test-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sirafit-backend-test
+    ports:
+      - "8001:8000"
+    env_file:
+      - ./backend/.env.test
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/sirafit_test
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - sirafit-test-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.celery
+    container_name: sirafit-celery-worker-test
+    env_file:
+      - ./backend/.env.test
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/sirafit_test
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - sirafit-test-network
+
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.celery
+    container_name: sirafit-celery-beat-test
+    env_file:
+      - ./backend/.env.test
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/sirafit_test
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - sirafit-test-network
+    command: celery -A app.worker.celery_app beat --schedule-file /tmp/celery-beat.schedule
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sirafit-frontend-test
+    ports:
+      - "3031:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - sirafit-test-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_test_data:
+  redis_test_data:
+
+networks:
+  sirafit-test-network:
+    driver: bridge

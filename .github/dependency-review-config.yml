@@ -1,0 +1,12 @@
+# Dependency Review Configuration
+# This file configures the dependency review action to fail on high severity vulnerabilities
+
+# Fail the build if any vulnerability with severity HIGH or CRITICAL is found
+fail-on-severity: high
+
+# Allow specific vulnerabilities to be ignored (use sparingly)
+# allow-ghsas:
+#   - GHSA-xxxx-xxxx-xxxx
+
+# Configuration for the dependency review
+# See: https://github.com/actions/dependency-review-action#configuration-options
