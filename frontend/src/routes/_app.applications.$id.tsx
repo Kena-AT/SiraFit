@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_app/applications/$id")({
 function AppDetails() {
   const { id } = Route.useParams();
   const queryClient = useQueryClient();
-  
+
   const { data: application, isLoading } = useQuery({
     queryKey: ["application", id],
     queryFn: () => getApplication(id),
@@ -115,8 +115,8 @@ function AppDetails() {
         actions={
           <>
             {application.status && <StatusPill status={application.status} />}
-            <Link 
-              to="/applications" 
+            <Link
+              to="/applications"
               className="rounded-md bg-card px-3 py-1.5 text-sm font-medium ring-1 ring-border hover:bg-muted"
             >
               Back to board
@@ -148,7 +148,10 @@ function AppDetails() {
           <Panel title="Notes">
             <div className="space-y-3 p-5">
               {notes.map((note: any) => (
-                <div key={note.id} className="rounded bg-muted/40 p-3 text-sm ring-1 ring-transparent">
+                <div
+                  key={note.id}
+                  className="rounded bg-muted/40 p-3 text-sm ring-1 ring-transparent"
+                >
                   <div className="flex items-start justify-between gap-2">
                     <div className="font-mono text-[10px] text-muted-foreground">
                       {note.author || "Me"} · {new Date(note.created_at).toLocaleDateString()}
@@ -219,7 +222,9 @@ function AppDetails() {
                 placeholder="Add a note... (Enter to save, Shift+Enter for newline)"
                 value={newNote}
                 onChange={(e) => setNewNote(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleAddNote())}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleAddNote())
+                }
               />
               <button
                 onClick={handleAddNote}
@@ -236,9 +241,9 @@ function AppDetails() {
               {application.resumes?.map((resume: any) => (
                 <li key={resume.id} className="flex items-center justify-between px-4 py-2.5">
                   <span>Resume — {resume.title}</span>
-                  <Link 
-                    to="/resumes/$id" 
-                    params={{ id: resume.id }} 
+                  <Link
+                    to="/resumes/$id"
+                    params={{ id: resume.id }}
                     className="text-[color:var(--brand)] hover:underline"
                   >
                     Preview →
@@ -268,8 +273,16 @@ function AppDetails() {
                       </span>
                     )}
                   </div>
-                  {contact.email && <div className="font-mono text-[11px] text-muted-foreground">{contact.email}</div>}
-                  {contact.phone && <div className="font-mono text-[11px] text-muted-foreground">{contact.phone}</div>}
+                  {contact.email && (
+                    <div className="font-mono text-[11px] text-muted-foreground">
+                      {contact.email}
+                    </div>
+                  )}
+                  {contact.phone && (
+                    <div className="font-mono text-[11px] text-muted-foreground">
+                      {contact.phone}
+                    </div>
+                  )}
                 </div>
               ))}
             </Panel>
@@ -279,12 +292,16 @@ function AppDetails() {
             <div className="space-y-2 p-4 text-sm">
               {application.job?.salary_min && application.job?.salary_max && (
                 <div>
-                  <span className="text-muted-foreground">Posted range:</span>{" "}
-                  ${application.job.salary_min}–${application.job.salary_max}
+                  <span className="text-muted-foreground">Posted range:</span> $
+                  {application.job.salary_min}–${application.job.salary_max}
                 </div>
               )}
-              <div><span className="text-muted-foreground">Equity:</span> Not specified</div>
-              <div><span className="text-muted-foreground">Sponsorship:</span> Check listing</div>
+              <div>
+                <span className="text-muted-foreground">Equity:</span> Not specified
+              </div>
+              <div>
+                <span className="text-muted-foreground">Sponsorship:</span> Check listing
+              </div>
             </div>
           </Panel>
 

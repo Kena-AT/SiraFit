@@ -8,7 +8,7 @@ import { useState } from "react";
 // Status columns for the Kanban board
 const STATUS_COLUMNS = [
   "saved",
-  "preparing", 
+  "preparing",
   "applied",
   "screening",
   "interview",
@@ -32,7 +32,7 @@ function Board() {
   });
 
   const transitionMutation = useMutation({
-    mutationFn: ({ id, toStatus }: { id: string; toStatus: string }) => 
+    mutationFn: ({ id, toStatus }: { id: string; toStatus: string }) =>
       transitionApplicationStatus(id, toStatus),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["applications"] }),
   });
@@ -76,10 +76,16 @@ function Board() {
         description="Drag through the hiring lifecycle. Status transitions are deterministic — no AI auto-moves."
         actions={
           <>
-            <Link to="/applications/timeline" className="rounded-md bg-card px-3 py-1.5 text-sm font-medium ring-1 ring-border hover:bg-muted">
+            <Link
+              to="/applications/timeline"
+              className="rounded-md bg-card px-3 py-1.5 text-sm font-medium ring-1 ring-border hover:bg-muted"
+            >
               Timeline view
             </Link>
-            <Link to="/applications/followups" className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background ring-1 ring-foreground hover:bg-foreground/90">
+            <Link
+              to="/applications/followups"
+              className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background ring-1 ring-foreground hover:bg-foreground/90"
+            >
               Follow-ups · 4
             </Link>
           </>
@@ -117,10 +123,14 @@ function Board() {
                       onDragStart={(e) => handleDragStart(e, app.id)}
                     >
                       <div className="flex items-center justify-between">
-                        <div className="text-[13px] font-semibold">{app.job?.company || "Unknown"}</div>
+                        <div className="text-[13px] font-semibold">
+                          {app.job?.company || "Unknown"}
+                        </div>
                         {app.score && <ScorePill value={app.score} />}
                       </div>
-                      <div className="text-[11px] text-muted-foreground">{app.job?.title || "Unknown"}</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {app.job?.title || "Unknown"}
+                      </div>
                       {app.general_notes ? (
                         <div className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-foreground/80">
                           {app.general_notes}

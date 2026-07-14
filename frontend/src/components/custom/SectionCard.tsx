@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, ReactNode } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useState, ReactNode } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 interface SectionCardProps {
   title: string;
@@ -23,11 +23,7 @@ export default function SectionCard({ title, children, defaultOpen = false }: Se
           {isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
         </span>
       </button>
-      {isOpen && (
-        <div className="p-4 bg-background-primary">
-          {children}
-        </div>
-      )}
+      {isOpen && <div className="p-4 bg-background-primary">{children}</div>}
     </div>
   );
 }

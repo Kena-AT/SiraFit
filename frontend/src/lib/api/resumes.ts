@@ -37,10 +37,7 @@ export const createResume = async (data: {
   return response.json();
 };
 
-export const updateResume = async (
-  id: string,
-  data: Partial<Resume>
-): Promise<Resume> => {
+export const updateResume = async (id: string, data: Partial<Resume>): Promise<Resume> => {
   const response = await apiFetch(`/api/v1/resumes/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -81,7 +78,7 @@ export const createResumeVersion = async (
     tailoring_notes?: string;
     score?: number;
     status?: string;
-  }
+  },
 ): Promise<ResumeVersion> => {
   const response = await apiFetch(`/api/v1/resumes/${resumeId}/versions`, {
     method: "POST",
@@ -102,7 +99,7 @@ export const generateResume = async (
   params: {
     job_id: string;
     template?: string;
-  }
+  },
 ): Promise<ResumeVersion> => {
   const queryParams = new URLSearchParams();
   queryParams.append("job_id", params.job_id);
@@ -115,7 +112,7 @@ export const generateResume = async (
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-    }
+    },
   );
   if (!response.ok) {
     const err = await response.json().catch(() => ({ detail: "Failed to generate resume" }));
@@ -129,9 +126,9 @@ export const generateResume = async (
 export const getExportUrl = (
   resumeId: string,
   versionId: string,
-  format: "html" | "docx" | "pdf" = "html"
+  format: "html" | "docx" | "pdf" = "html",
 ): string => {
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
   const params = new URLSearchParams({ format });
   // Use absolute URL so window.open() works cross-origin
   return `${API_BASE_URL}/api/v1/resumes/${resumeId}/versions/${versionId}/export?${params.toString()}`;

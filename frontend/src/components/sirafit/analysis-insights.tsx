@@ -13,9 +13,11 @@ function ScoreRing({ score }: { score: number }) {
   const offset = circumference - (score / 100) * circumference;
 
   const color =
-    score >= 75 ? "var(--success, #22c55e)" :
-    score >= 50 ? "var(--warning, #f59e0b)" :
-    "var(--destructive, #ef4444)";
+    score >= 75
+      ? "var(--success, #22c55e)"
+      : score >= 50
+        ? "var(--warning, #f59e0b)"
+        : "var(--destructive, #ef4444)";
 
   return (
     <div className="flex flex-col items-center gap-1">
@@ -23,7 +25,9 @@ function ScoreRing({ score }: { score: number }) {
         <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
           {/* Track */}
           <circle
-            cx={size / 2} cy={size / 2} r={radius}
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
             fill="none"
             stroke="currentColor"
             strokeWidth={strokeW}
@@ -31,7 +35,9 @@ function ScoreRing({ score }: { score: number }) {
           />
           {/* Progress */}
           <circle
-            cx={size / 2} cy={size / 2} r={radius}
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
             fill="none"
             stroke={color}
             strokeWidth={strokeW}
@@ -61,8 +67,14 @@ function ScoreRing({ score }: { score: number }) {
 // ---------------------------------------------------------------------------
 
 function ListSection({
-  title, items, variant,
-}: { title: string; items: string[]; variant: "pro" | "con" | "gap" | "req" }) {
+  title,
+  items,
+  variant,
+}: {
+  title: string;
+  items: string[];
+  variant: "pro" | "con" | "gap" | "req";
+}) {
   if (!items || items.length === 0) return null;
 
   const iconClass = {

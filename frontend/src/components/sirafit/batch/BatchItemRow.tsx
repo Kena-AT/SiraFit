@@ -36,9 +36,7 @@ export function BatchItemRow({ itemId, result }: BatchItemRowProps) {
       </td>
       <td className="px-4 py-3 text-right">
         {isError && (
-          <span className="text-xs text-destructive font-mono">
-            {result.error?.slice(0, 80)}…
-          </span>
+          <span className="text-xs text-destructive font-mono">{result.error?.slice(0, 80)}…</span>
         )}
       </td>
     </tr>

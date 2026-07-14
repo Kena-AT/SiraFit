@@ -18,13 +18,14 @@ export const Route = createFileRoute("/_app/applications/timeline")({
       const today = new Date();
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
-      
-      const key = date.toDateString() === today.toDateString() 
-        ? "Today" 
-        : date.toDateString() === yesterday.toDateString()
-        ? "Yesterday"
-        : date.toLocaleDateString("en-US", { day: "numeric", month: "short" });
-      
+
+      const key =
+        date.toDateString() === today.toDateString()
+          ? "Today"
+          : date.toDateString() === yesterday.toDateString()
+            ? "Yesterday"
+            : date.toLocaleDateString("en-US", { day: "numeric", month: "short" });
+
       if (!acc[key]) acc[key] = [];
       acc[key].push(event);
       return acc;
@@ -41,7 +42,11 @@ export const Route = createFileRoute("/_app/applications/timeline")({
 
     return (
       <PageBody>
-        <PageHeader eyebrow="Pipeline" title="Application timeline" description="Chronological activity across every application." />
+        <PageHeader
+          eyebrow="Pipeline"
+          title="Application timeline"
+          description="Chronological activity across every application."
+        />
         <Panel>
           <div className="divide-y divide-border">
             {Object.entries(grouped).map(([date, items]) => (
@@ -53,12 +58,18 @@ export const Route = createFileRoute("/_app/applications/timeline")({
                   {items.map((event: any, i: number) => (
                     <li key={event.id} className="flex items-start gap-3 text-sm">
                       <span className="w-12 shrink-0 font-mono text-[11px] text-muted-foreground tabular-nums">
-                        {new Date(event.occurred_at).toLocaleTimeString("en-US", { 
-                          hour: "numeric", 
-                          minute: "2-digit" 
+                        {new Date(event.occurred_at).toLocaleTimeString("en-US", {
+                          hour: "numeric",
+                          minute: "2-digit",
                         })}
                       </span>
-                      <StatusPill status={event.event_type === "status_change" ? event.event_metadata?.to_status : event.event_type} />
+                      <StatusPill
+                        status={
+                          event.event_type === "status_change"
+                            ? event.event_metadata?.to_status
+                            : event.event_type
+                        }
+                      />
                       <span className="text-foreground/90">{event.title}</span>
                     </li>
                   ))}

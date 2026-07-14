@@ -112,7 +112,7 @@ function ResumePreviewPage() {
       <PageHeader
         eyebrow={`Resume · ${id.slice(0, 8)}`}
         title={resume.title}
-        description={`${versions.length} version${versions.length !== 1 ? 's' : ''} · Last updated ${new Date(resume.updated_at).toLocaleDateString()}`}
+        description={`${versions.length} version${versions.length !== 1 ? "s" : ""} · Last updated ${new Date(resume.updated_at).toLocaleDateString()}`}
         actions={
           <>
             <Button
@@ -178,7 +178,9 @@ function ResumePreviewPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span>Template</span>
-                <span className="text-muted-foreground">{selectedVersion?.template || "default"}</span>
+                <span className="text-muted-foreground">
+                  {selectedVersion?.template || "default"}
+                </span>
               </div>
             </div>
           </Panel>
@@ -234,9 +236,7 @@ function ResumePreview({
 
       {data.summary && (
         <section>
-          <h3 className="font-mono text-[10px] font-semibold uppercase tracking-widest">
-            Summary
-          </h3>
+          <h3 className="font-mono text-[10px] font-semibold uppercase tracking-widest">Summary</h3>
           <p className="mt-1 text-[13px] leading-relaxed">{data.summary}</p>
         </section>
       )}
@@ -254,9 +254,7 @@ function ResumePreview({
                 </span>
                 <span className="text-muted-foreground text-xs">{exp.period}</span>
               </div>
-              {exp.location && (
-                <div className="text-xs text-muted-foreground">{exp.location}</div>
-              )}
+              {exp.location && <div className="text-xs text-muted-foreground">{exp.location}</div>}
               <ul className="list-disc space-y-0.5 pl-5 text-[12px] leading-relaxed">
                 {exp.bullets.map((b, j) => (
                   <li key={j}>{b}</li>

@@ -29,11 +29,11 @@ export const Route = createFileRoute("/_app/applications/followups")({
   head: () => ({ meta: [{ title: "Follow-ups · SiraFit" }] }),
   component: () => (
     <PageBody>
-      <PageHeader 
-        eyebrow="Pipeline" 
-        title="Follow-up center" 
-        description="Recruiter pings, deadlines, and reminders. Nothing falls through." 
-        actions={<Button>+ New reminder</Button>} 
+      <PageHeader
+        eyebrow="Pipeline"
+        title="Follow-up center"
+        description="Recruiter pings, deadlines, and reminders. Nothing falls through."
+        actions={<Button>+ New reminder</Button>}
       />
       <Panel>
         <ul className="divide-y divide-border">
@@ -47,8 +47,12 @@ export const Route = createFileRoute("/_app/applications/followups")({
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className="font-mono text-[11px] text-muted-foreground tabular-nums">{f.when}</span>
-                <Button variant="ghost" size="sm">Snooze</Button>
+                <span className="font-mono text-[11px] text-muted-foreground tabular-nums">
+                  {f.when}
+                </span>
+                <Button variant="ghost" size="sm">
+                  Snooze
+                </Button>
               </div>
             </li>
           ))}

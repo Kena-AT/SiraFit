@@ -57,7 +57,7 @@ export interface Profile {
   website?: string | null;
   linkedin?: string | null;
   github?: string | null;
-  
+
   experiences: Experience[];
   educations: Education[];
   skills: Skill[];

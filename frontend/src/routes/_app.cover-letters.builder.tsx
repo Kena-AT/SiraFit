@@ -4,7 +4,13 @@ import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, Tag } from "@/components/sirafit/bits";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   getCoverLetter,
   createCoverLetter,
@@ -59,7 +65,9 @@ function Builder() {
 
   // Load jobs and existing letter (if editing)
   useEffect(() => {
-    getJobs({ limit: 200 }).then((res) => setJobs(res.jobs)).catch(console.error);
+    getJobs({ limit: 200 })
+      .then((res) => setJobs(res.jobs))
+      .catch(console.error);
 
     if (editId) {
       getCoverLetter(editId)
@@ -148,10 +156,16 @@ function Builder() {
     setStatus("idle");
     saveTimer.current = setTimeout(() => {
       updateCoverLetter(letter.id, { body, tone, template })
-        .then((updated) => { setLetter(updated); setStatus("saved"); setTimeout(() => setStatus("idle"), 2000); })
+        .then((updated) => {
+          setLetter(updated);
+          setStatus("saved");
+          setTimeout(() => setStatus("idle"), 2000);
+        })
         .catch(() => setStatus("error"));
     }, 1500);
-    return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
   }, [body, tone, template]);
 
   const handleExportPdf = () => {
@@ -167,7 +181,11 @@ function Builder() {
       <PageHeader
         eyebrow="Assets · Builder"
         title={title || "Cover letter builder"}
-        description={letter ? `Auto-saved · ${wordCount(body)} words` : "Generate from profile + job, then edit freely"}
+        description={
+          letter
+            ? `Auto-saved · ${wordCount(body)} words`
+            : "Generate from profile + job, then edit freely"
+        }
         actions={
           <>
             {letter && (
@@ -219,27 +237,35 @@ function Builder() {
 
           <Panel title="Options" bodyClassName="p-3 space-y-3">
             <div>
-              <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Tone</label>
+              <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                Tone
+              </label>
               <Select value={tone} onValueChange={setTone}>
                 <SelectTrigger className="mt-1 h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {TONES.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Template</label>
+              <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                Template
+              </label>
               <Select value={template} onValueChange={setTemplate}>
                 <SelectTrigger className="mt-1 h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {TEMPLATES.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -259,7 +285,11 @@ function Builder() {
         {/* Editor */}
         <Panel
           title="Draft"
-          actions={<span className="font-mono text-[10px] text-muted-foreground">{wordCount(body)} words</span>}
+          actions={
+            <span className="font-mono text-[10px] text-muted-foreground">
+              {wordCount(body)} words
+            </span>
+          }
         >
           {generating ? (
             <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
@@ -286,9 +316,7 @@ function Builder() {
             {paragraphs.length === 0 ? (
               <p className="text-muted-foreground text-xs">Preview will appear here as you type…</p>
             ) : (
-              paragraphs.map((para, i) => (
-                <p key={i}>{para}</p>
-              ))
+              paragraphs.map((para, i) => <p key={i}>{para}</p>)
             )}
           </div>
         </Panel>

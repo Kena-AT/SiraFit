@@ -53,9 +53,11 @@ function JobDetails() {
   useEffect(() => {
     if (!jobId) return;
     getJobAnalysis(jobId)
-      .then((data) => { if (data) setAnalysis(data); })
+      .then((data) => {
+        if (data) setAnalysis(data);
+      })
       .catch(() => {});
-    
+
     setMatchScoreLoading(true);
     getMatchScore(jobId)
       .then((data) => setMatchScore(data))
@@ -87,7 +89,12 @@ function JobDetails() {
   };
 
   // Cleanup polling on unmount
-  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
+  useEffect(
+    () => () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    },
+    [],
+  );
 
   const handleRunAnalysis = async (forceRefresh = false) => {
     setAnalysisLoading(true);
@@ -119,7 +126,9 @@ function JobDetails() {
   const formatDate = (dateStr: string) => {
     try {
       return new Date(dateStr).toLocaleDateString("en-US", {
-        month: "long", day: "numeric", year: "numeric",
+        month: "long",
+        day: "numeric",
+        year: "numeric",
       });
     } catch {
       return dateStr;
@@ -143,7 +152,14 @@ function JobDetails() {
         <EmptyState
           title="Job not found"
           body={error || "The job you're looking for doesn't exist"}
-          action={<Link to="/jobs" className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background">Back to jobs</Link>}
+          action={
+            <Link
+              to="/jobs"
+              className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background"
+            >
+              Back to jobs
+            </Link>
+          }
         />
       </PageBody>
     );
@@ -177,7 +193,10 @@ function JobDetails() {
         }
         actions={
           <>
-            <Link to="/jobs" className="rounded-md bg-card px-3 py-1.5 text-sm font-medium ring-1 ring-border hover:bg-muted">
+            <Link
+              to="/jobs"
+              className="rounded-md bg-card px-3 py-1.5 text-sm font-medium ring-1 ring-border hover:bg-muted"
+            >
               Back to jobs
             </Link>
             {job.url && (
@@ -190,10 +209,16 @@ function JobDetails() {
                 View original →
               </a>
             )}
-            <Link to="/resumes/builder" className="rounded-md bg-card px-3 py-1.5 text-sm font-medium ring-1 ring-border hover:bg-muted">
+            <Link
+              to="/resumes/builder"
+              className="rounded-md bg-card px-3 py-1.5 text-sm font-medium ring-1 ring-border hover:bg-muted"
+            >
               Tailor resume
             </Link>
-            <Link to="/cover-letters/builder" className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background ring-1 ring-foreground hover:bg-foreground/90">
+            <Link
+              to="/cover-letters/builder"
+              className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background ring-1 ring-foreground hover:bg-foreground/90"
+            >
               Apply
             </Link>
           </>
@@ -206,7 +231,9 @@ function JobDetails() {
           <Panel title="Job description">
             <div className="space-y-4 p-5">
               {job.description ? (
-                <div className="whitespace-pre-wrap text-sm text-foreground/90">{job.description}</div>
+                <div className="whitespace-pre-wrap text-sm text-foreground/90">
+                  {job.description}
+                </div>
               ) : (
                 <p className="text-sm text-muted-foreground">No description available</p>
               )}
@@ -215,7 +242,9 @@ function JobDetails() {
                   <div className="w-full font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                     Extracted tags
                   </div>
-                  {job.tags.map((t) => <Tag key={t}>{t}</Tag>)}
+                  {job.tags.map((t) => (
+                    <Tag key={t}>{t}</Tag>
+                  ))}
                 </div>
               )}
             </div>
@@ -234,7 +263,9 @@ function JobDetails() {
                   <div className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                     Source
                   </div>
-                  <div className="mt-1"><Tag>{job.source}</Tag></div>
+                  <div className="mt-1">
+                    <Tag>{job.source}</Tag>
+                  </div>
                 </div>
                 <div>
                   <div className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
@@ -299,9 +330,7 @@ function JobDetails() {
                 <p className="text-xs text-muted-foreground">
                   Run AI analysis to get a match score, pros & cons, and skills gap.
                 </p>
-                {analysisError && (
-                  <p className="text-xs text-destructive">{analysisError}</p>
-                )}
+                {analysisError && <p className="text-xs text-destructive">{analysisError}</p>}
                 <Button
                   className="w-full"
                   onClick={() => handleRunAnalysis()}

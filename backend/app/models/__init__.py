@@ -13,6 +13,8 @@ from app.models.cover_letter import CoverLetter
 from app.models.profile import Profile, Experience, Education, Skill, Project, Certification
 from app.models.score import JobMatchScore
 from app.models.batch import BatchJob
+from app.models.notification import Notification
+from app.models.analytics import AnalyticsSnapshot
 
 __all__ = [
     "User", "UserPreference", "RefreshToken",
@@ -22,4 +24,6 @@ __all__ = [
     "Profile", "Experience", "Education", "Skill", "Project", "Certification",
     "JobMatchScore",
     "BatchJob",
+    "Notification",
+    "AnalyticsSnapshot",
 ]

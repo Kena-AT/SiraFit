@@ -87,7 +87,12 @@ export const getApplicationNotes = async (applicationId: string): Promise<Applic
   return response.json();
 };
 
-export const createApplicationNote = async (applicationId: string, body: string, author?: string, pinned?: boolean): Promise<ApplicationNote> => {
+export const createApplicationNote = async (
+  applicationId: string,
+  body: string,
+  author?: string,
+  pinned?: boolean,
+): Promise<ApplicationNote> => {
   const response = await apiFetch(`/api/v1/applications/${applicationId}/notes`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -97,7 +102,11 @@ export const createApplicationNote = async (applicationId: string, body: string,
   return response.json();
 };
 
-export const updateApplicationNote = async (noteId: string, body?: string, pinned?: boolean): Promise<ApplicationNote> => {
+export const updateApplicationNote = async (
+  noteId: string,
+  body?: string,
+  pinned?: boolean,
+): Promise<ApplicationNote> => {
   const response = await apiFetch(`/api/v1/applications/notes/${noteId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -115,7 +124,9 @@ export const deleteApplicationNote = async (noteId: string): Promise<void> => {
 };
 
 // Contacts API
-export const getApplicationContacts = async (applicationId: string): Promise<ApplicationContact[]> => {
+export const getApplicationContacts = async (
+  applicationId: string,
+): Promise<ApplicationContact[]> => {
   const response = await apiFetch(`/api/v1/applications/${applicationId}/contacts`);
   if (!response.ok) throw new Error("Failed to fetch contacts");
   return response.json();
@@ -132,7 +143,7 @@ export const createApplicationContact = async (
     linkedin?: string;
     notes?: string;
     is_primary?: boolean;
-  }
+  },
 ): Promise<ApplicationContact> => {
   const response = await apiFetch(`/api/v1/applications/${applicationId}/contacts`, {
     method: "POST",
@@ -145,7 +156,7 @@ export const createApplicationContact = async (
 
 export const updateApplicationContact = async (
   contactId: string,
-  contact: Partial<ApplicationContact>
+  contact: Partial<ApplicationContact>,
 ): Promise<ApplicationContact> => {
   const response = await apiFetch(`/api/v1/applications/contacts/${contactId}`, {
     method: "PUT",

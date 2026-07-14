@@ -55,7 +55,7 @@ export interface ImportResult {
 }
 
 export interface JobImportData {
-  source_type: 'url' | 'description' | 'csv';
+  source_type: "url" | "description" | "csv";
   data: string;
 }
 
@@ -70,7 +70,7 @@ export interface JobAnalysis {
   key_requirements: string[];
   seniority: string | null;
   analysis_version: string | null;
-  status: 'pending' | 'processing' | 'done' | 'failed';
+  status: "pending" | "processing" | "done" | "failed";
   created_at: string;
   updated_at: string | null;
 }
@@ -85,7 +85,6 @@ export interface JobMatchScore {
   created_at: string;
   updated_at: string | null;
 }
-
 
 // --- Sprint 9 Application Types ---
 
@@ -148,4 +147,3 @@ export interface ApplicationContact {
   created_at: string;
   updated_at: string;
 }
-

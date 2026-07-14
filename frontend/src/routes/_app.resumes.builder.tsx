@@ -3,7 +3,13 @@ import { useState, useEffect } from "react";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, ScoreMeter, Tag } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { generateResume, getResumes, createResume, getResumeVersions } from "@/lib/api/resumes";
 import { getJobs } from "@/lib/api/jobs";
 import type { Job } from "@/types/job";
@@ -33,21 +39,25 @@ function Builder() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getJobs({ limit: 200 }).then((res) => setJobs(res.jobs)).catch(console.error);
-    getResumes().then(async (res) => {
-      if (res.length === 0) {
-        const created = await createResume({
-          title: "My Resume",
-          content: "{}",
-          is_primary: true,
-        });
-        setResumes([created]);
-        setSelectedResume(created);
-      } else {
-        setResumes(res);
-        setSelectedResume(res[0]);
-      }
-    }).catch(console.error);
+    getJobs({ limit: 200 })
+      .then((res) => setJobs(res.jobs))
+      .catch(console.error);
+    getResumes()
+      .then(async (res) => {
+        if (res.length === 0) {
+          const created = await createResume({
+            title: "My Resume",
+            content: "{}",
+            is_primary: true,
+          });
+          setResumes([created]);
+          setSelectedResume(created);
+        } else {
+          setResumes(res);
+          setSelectedResume(res[0]);
+        }
+      })
+      .catch(console.error);
   }, []);
 
   // Poll for version status updates when any version is processing
@@ -101,7 +111,10 @@ function Builder() {
             <Button variant="outline" disabled={generating}>
               Re-validate
             </Button>
-            <Button onClick={handleGenerate} disabled={!selectedJob || !selectedResume || generating}>
+            <Button
+              onClick={handleGenerate}
+              disabled={!selectedJob || !selectedResume || generating}
+            >
               {generating ? "Generating..." : "Generate Version"}
             </Button>
           </>
@@ -120,7 +133,12 @@ function Builder() {
           <div className="text-sm text-muted-foreground">Select the job to tailor for:</div>
           <div className="space-y-2">
             {jobs.length === 0 ? (
-              <div className="text-xs text-muted-foreground">No jobs imported. <Link to="/jobs/import" className="text-[color:var(--brand)] underline">Import jobs first.</Link></div>
+              <div className="text-xs text-muted-foreground">
+                No jobs imported.{" "}
+                <Link to="/jobs/import" className="text-[color:var(--brand)] underline">
+                  Import jobs first.
+                </Link>
+              </div>
             ) : (
               jobs.map((job) => (
                 <button
@@ -203,8 +221,8 @@ function Builder() {
                       {v.status === "processing"
                         ? "Generating..."
                         : v.status === "completed"
-                        ? `v${v.version_number} · Score: ${v.score ?? "N/A"}`
-                        : `Failed: ${v.tailoring_notes || ""}`}
+                          ? `v${v.version_number} · Score: ${v.score ?? "N/A"}`
+                          : `Failed: ${v.tailoring_notes || ""}`}
                     </span>
                   </li>
                 ))
@@ -267,7 +285,9 @@ function ResumePreview({ data }: { data: any }) {
       )}
       {data.experience?.length > 0 && (
         <section>
-          <h3 className="font-mono text-[10px] font-semibold uppercase tracking-widest">Experience</h3>
+          <h3 className="font-mono text-[10px] font-semibold uppercase tracking-widest">
+            Experience
+          </h3>
           {data.experience.map((exp: any) => (
             <div key={exp.title + exp.company} className="mt-2 space-y-1">
               <div className="flex items-baseline justify-between text-sm">
@@ -293,7 +313,9 @@ function ResumePreview({ data }: { data: any }) {
       )}
       {data.education?.length > 0 && (
         <section>
-          <h3 className="font-mono text-[10px] font-semibold uppercase tracking-widest">Education</h3>
+          <h3 className="font-mono text-[10px] font-semibold uppercase tracking-widest">
+            Education
+          </h3>
           {data.education.map((edu: any) => (
             <div key={edu.institution} className="flex items-baseline justify-between text-[12px]">
               <span>

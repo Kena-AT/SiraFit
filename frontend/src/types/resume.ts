@@ -20,7 +20,7 @@ export interface ResumeVersion {
   job_id: string | null;
   tailoring_notes: string | null;
   score: number | null;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status: "pending" | "processing" | "completed" | "failed";
   created_at: string;
   updated_at: string | null;
 }

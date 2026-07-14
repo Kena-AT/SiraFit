@@ -40,14 +40,14 @@ export function BatchCreateModal({
   onSubmit,
   availableJobs,
 }: BatchCreateModalProps) {
-  if (!isOpen) return null;
-
   const [operation, setOperation] = useState<"analyze" | "score" | "tag" | "archive">("analyze");
   const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState(false);
   const [tags, setTags] = useState("");
   const [tagAction, setTagAction] = useState<"add" | "remove">("add");
   const [archiveTarget, setArchiveTarget] = useState<"jobs" | "applications">("jobs");
+
+  if (!isOpen) return null;
 
   const handleJobToggle = (id: string) => {
     setSelectedJobIds((prev) => (prev.includes(id) ? prev.filter((j) => j !== id) : [...prev, id]));
@@ -139,7 +139,10 @@ export function BatchCreateModal({
                 onChange={(e) => setTags(e.target.value)}
                 placeholder="remote, senior, python"
               />
-              <RadioGroup value={tagAction} onValueChange={(value: "add" | "remove") => setTagAction(value)}>
+              <RadioGroup
+                value={tagAction}
+                onValueChange={(value) => setTagAction(value as "add" | "remove")}
+              >
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-2">
                     <RadioGroupItem value="add" /> Add
@@ -155,7 +158,10 @@ export function BatchCreateModal({
           {operation === "archive" && (
             <div>
               <Label>Target</Label>
-              <RadioGroup value={archiveTarget} onValueChange={(value: "jobs" | "applications") => setArchiveTarget(value)}>
+              <RadioGroup
+                value={archiveTarget}
+                onValueChange={(value) => setArchiveTarget(value as "jobs" | "applications")}
+              >
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-2">
                     <RadioGroupItem value="jobs" /> Jobs

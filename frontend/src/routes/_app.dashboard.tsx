@@ -15,8 +15,8 @@ function Dashboard() {
         title="Dashboard"
         description="Your job search command center"
         actions={
-          <Link 
-            to="/jobs/import" 
+          <Link
+            to="/jobs/import"
             className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background ring-1 ring-foreground hover:bg-foreground/90"
           >
             Import jobs
@@ -27,8 +27,8 @@ function Dashboard() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel title="Get Started" description="Complete these steps to begin your job search">
           <div className="space-y-4 p-4">
-            <Link 
-              to="/resume-profiles" 
+            <Link
+              to="/resume-profiles"
               className="block rounded-lg border border-border p-4 hover:bg-muted/40 transition-colors"
             >
               <div className="flex items-center justify-between">
@@ -42,8 +42,8 @@ function Dashboard() {
               </div>
             </Link>
 
-            <Link 
-              to="/jobs/import" 
+            <Link
+              to="/jobs/import"
               className="block rounded-lg border border-border p-4 hover:bg-muted/40 transition-colors"
             >
               <div className="flex items-center justify-between">
@@ -61,9 +61,7 @@ function Dashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-medium">Match & Score Jobs</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Coming in Sprint 4
-                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">Coming in Sprint 4</p>
                 </div>
                 <span className="text-sm text-muted-foreground">🔜</span>
               </div>
@@ -79,9 +77,9 @@ function Dashboard() {
               ["Resume Profiles", "/resume-profiles"],
               ["Settings", "/settings"],
             ].map(([label, to]) => (
-              <Link 
-                key={to} 
-                to={to} 
+              <Link
+                key={to}
+                to={to}
                 className="bg-card px-4 py-4 text-sm font-medium hover:bg-muted/40"
               >
                 <div className="text-foreground">{label} →</div>

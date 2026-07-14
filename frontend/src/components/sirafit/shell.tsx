@@ -71,14 +71,19 @@ export function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div
+      className="flex min-h-screen bg-background text-foreground"
+      style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
+    >
       {/* Sidebar */}
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-border bg-sidebar md:flex">
         <div className="flex h-12 items-center justify-between border-b border-border px-4">
           <Link to="/dashboard">
             <Logo />
           </Link>
-          <span className="font-mono text-[9px] font-medium uppercase tracking-widest text-muted-foreground">v0.8.2</span>
+          <span className="font-mono text-[9px] font-medium uppercase tracking-widest text-muted-foreground">
+            v0.8.2
+          </span>
         </div>
         <nav className="flex-1 overflow-y-auto px-2 py-3">
           {NAV.map((group) => (
@@ -161,7 +166,9 @@ function TopBar({ pathname }: { pathname: string }) {
         {segs.map((s, i) => (
           <span key={i} className="inline-flex items-center gap-1.5">
             <span className="text-border">/</span>
-            <span className={cn(i === segs.length - 1 ? "text-foreground" : "")}>{s.replace(/-/g, " ")}</span>
+            <span className={cn(i === segs.length - 1 ? "text-foreground" : "")}>
+              {s.replace(/-/g, " ")}
+            </span>
           </span>
         ))}
       </nav>
@@ -180,26 +187,40 @@ function TopBar({ pathname }: { pathname: string }) {
 }
 
 export function PageBody({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("mx-auto w-full max-w-7xl space-y-6 px-4 py-6 md:px-6 md:py-8", className)}>{children}</div>;
+  return (
+    <div className={cn("mx-auto w-full max-w-7xl space-y-6 px-4 py-6 md:px-6 md:py-8", className)}>
+      {children}
+    </div>
+  );
 }
 
 export function MarketingShell({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-background text-foreground" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div
+      className="min-h-screen bg-background text-foreground"
+      style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
+    >
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <Link to="/">
             <Logo />
           </Link>
           <nav className="hidden gap-8 text-sm font-medium text-muted-foreground md:flex">
-            <a href="#pipeline" className="hover:text-foreground">Pipeline</a>
-            <a href="#intelligence" className="hover:text-foreground">Intelligence</a>
+            <a href="#pipeline" className="hover:text-foreground">
+              Pipeline
+            </a>
+            <a href="#intelligence" className="hover:text-foreground">
+              Intelligence
+            </a>
             <Link to="/help" className="hover:text-foreground">
               Docs
             </Link>
           </nav>
           <div className="flex items-center gap-2">
-            <Link to="/login" className="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
+            <Link
+              to="/login"
+              className="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+            >
               Log in
             </Link>
             <Link
@@ -219,9 +240,15 @@ export function MarketingShell({ children }: { children: ReactNode }) {
             <span>© {new Date().getFullYear()} SiraFit Labs.</span>
           </div>
           <div className="flex gap-5">
-            <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
-            <Link to="/terms" className="hover:text-foreground">Terms</Link>
-            <Link to="/help" className="hover:text-foreground">Help</Link>
+            <Link to="/privacy" className="hover:text-foreground">
+              Privacy
+            </Link>
+            <Link to="/terms" className="hover:text-foreground">
+              Terms
+            </Link>
+            <Link to="/help" className="hover:text-foreground">
+              Help
+            </Link>
           </div>
         </div>
       </footer>
@@ -229,9 +256,22 @@ export function MarketingShell({ children }: { children: ReactNode }) {
   );
 }
 
-export function AuthShell({ title, subtitle, children, footer }: { title: string; subtitle?: string; children: ReactNode; footer?: ReactNode }) {
+export function AuthShell({
+  title,
+  subtitle,
+  children,
+  footer,
+}: {
+  title: string;
+  subtitle?: string;
+  children: ReactNode;
+  footer?: ReactNode;
+}) {
   return (
-    <div className="grid min-h-screen bg-background text-foreground md:grid-cols-2" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div
+      className="grid min-h-screen bg-background text-foreground md:grid-cols-2"
+      style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
+    >
       <div className="flex flex-col">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <Link to="/">
@@ -255,7 +295,8 @@ export function AuthShell({ title, subtitle, children, footer }: { title: string
               Why SiraFit
             </div>
             <p className="mt-3 max-w-md text-[15px] leading-relaxed text-foreground">
-              A career operations layer for engineers. Deterministic scoring, ATS-normalized data, and structured resume tailoring — without the autonomous-agent nonsense.
+              A career operations layer for engineers. Deterministic scoring, ATS-normalized data,
+              and structured resume tailoring — without the autonomous-agent nonsense.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3">

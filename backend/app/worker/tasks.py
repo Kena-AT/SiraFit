@@ -1,11 +1,12 @@
 """
 Celery tasks for asynchronous resume generation and PDF rendering.
 
-Two queues are used:
+Three queues are used:
   - ``resume_generation`` — AI resume tailoring (slow, I/O-bound)
   - ``pdf_rendering``     — HTML → PDF conversion (CPU-bound but offloads
                             heavy work from the request thread)
   - ``batch_processing``  — Batch operations (analyze, score, tag, archive)
+  - ``notifications``     — Email reminders and notification processing
 
 Every enqueue helper falls back to synchronous execution when the Celery
 broker (Redis) is unreachable, so the API keeps working in environments
@@ -24,9 +25,10 @@ from typing import Any
 
 from app.core.database import SessionLocal
 from app.models.cover_letter import CoverLetter
-from app.models.job import ResumeVersion, Job, AuditLog
+from app.models.job import ResumeVersion, Job, AuditLog, JobApplication
 from app.models.profile import Profile
 from app.models.batch import BatchJob
+from app.models.notification import Notification
 
 logger = logging.getLogger(__name__)
 
@@ -391,6 +393,38 @@ except Exception as exc:  # pragma: no cover - import-time broker failure
     logger.warning("celery_task_registration_skipped_batch", extra={"error": str(exc)})
 
 
+# Notification worker tasks
+
+try:
+    @celery_app.task(
+        name="app.worker.tasks.send_notification_task",
+        bind=True,
+        max_retries=3,
+        default_retry_delay=60,
+        acks_late=True,
+    )
+    def send_notification_task(self, notification_id: str) -> dict:
+        """Celery task to send a notification (email, push, etc.)."""
+        from app.services.notification_service import send_notification_email
+        send_notification_email(uuid.UUID(notification_id))
+        return {"notification_id": notification_id, "status": "sent"}
+
+    @celery_app.task(
+        name="app.worker.tasks.check_reminders_task",
+        bind=True,
+        max_retries=0,
+        acks_late=True,
+    )
+    def check_reminders_task(self) -> dict:
+        """Celery task to check for upcoming follow-ups and send reminders."""
+        from app.services.notification_service import check_and_send_reminders
+        check_and_send_reminders()
+        return {"status": "checked"}
+
+except Exception as exc:  # pragma: no cover - import-time broker failure
+    logger.warning("celery_task_registration_skipped_notifications", extra={"error": str(exc)})
+
+
 __all__ = [
     "enqueue_resume_generation",
     "enqueue_resume_pdf_render",
@@ -399,4 +433,6 @@ __all__ = [
     "render_resume_pdf_task",
     "render_cover_letter_pdf_task",
     "process_batch_job",
+    "send_notification_task",
+    "check_reminders_task",
 ]

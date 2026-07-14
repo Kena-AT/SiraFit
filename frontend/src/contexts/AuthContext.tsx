@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useNavigate } from '@tanstack/react-router';
-import { apiFetch } from '@/lib/api/client';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { apiFetch } from "@/lib/api/client";
 
 type User = {
   id: string;
@@ -31,7 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const response = await apiFetch('/api/v1/users/me');
+        const response = await apiFetch("/api/v1/users/me");
         if (response.ok) {
           const userData = await response.json();
           setUser(userData);
@@ -46,49 +46,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    const response = await apiFetch('/api/v1/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    const response = await apiFetch("/api/v1/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ username: email, password }),
     });
 
     if (response.ok) {
-      const meResponse = await apiFetch('/api/v1/users/me');
+      const meResponse = await apiFetch("/api/v1/users/me");
       if (meResponse.ok) {
         const userData = await meResponse.json();
         setUser(userData);
       } else {
-        throw new Error('Failed to fetch user details after login');
+        throw new Error("Failed to fetch user details after login");
       }
     } else {
       const errorData = await response.json();
-      throw new Error(errorData.detail || 'Login failed');
+      throw new Error(errorData.detail || "Login failed");
     }
   };
 
   const logout = async () => {
     try {
-      await apiFetch('/api/v1/auth/logout', { method: 'POST' });
+      await apiFetch("/api/v1/auth/logout", { method: "POST" });
     } catch {
       // Best-effort — clear state regardless
     } finally {
       setUser(null);
-      navigate({ to: '/login' });
+      navigate({ to: "/login" });
     }
   };
 
   const register = async (email: string, password: string, full_name?: string) => {
-    const response = await apiFetch('/api/v1/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const response = await apiFetch("/api/v1/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password, full_name }),
     });
 
     if (response.ok) {
-      navigate({ to: '/verify-email' });
+      navigate({ to: "/verify-email" });
     } else {
       const errorData = await response.json();
-      throw new Error(errorData.detail || 'Registration failed');
+      throw new Error(errorData.detail || "Registration failed");
     }
   };
 
@@ -107,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 }

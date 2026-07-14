@@ -14,7 +14,12 @@ export const Route = createFileRoute("/_app/jobs/history")({
 function formatDate(dateStr: string) {
   try {
     const d = new Date(dateStr);
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   } catch {
     return dateStr;
   }
@@ -49,7 +54,10 @@ function History() {
             <Button variant="outline" size="sm" onClick={fetchHistory} disabled={loading}>
               {loading ? "Refreshing..." : "Refresh"}
             </Button>
-            <Link to="/jobs/import" className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background ring-1 ring-foreground hover:bg-foreground/90">
+            <Link
+              to="/jobs/import"
+              className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background ring-1 ring-foreground hover:bg-foreground/90"
+            >
               New import
             </Link>
           </div>
@@ -64,13 +72,22 @@ function History() {
         ) : error ? (
           <div className="px-4 py-8 text-center">
             <div className="text-sm text-destructive">{error}</div>
-            <Button variant="outline" size="sm" className="mt-3" onClick={fetchHistory}>Retry</Button>
+            <Button variant="outline" size="sm" className="mt-3" onClick={fetchHistory}>
+              Retry
+            </Button>
           </div>
         ) : history.length === 0 ? (
           <EmptyState
             title="No imports yet"
             body="Import jobs from URLs or paste descriptions to build your history."
-            action={<Link to="/jobs/import" className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background ring-1 ring-foreground">Import jobs</Link>}
+            action={
+              <Link
+                to="/jobs/import"
+                className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background ring-1 ring-foreground"
+              >
+                Import jobs
+              </Link>
+            }
           />
         ) : (
           <table className="w-full text-left text-sm">
@@ -90,15 +107,27 @@ function History() {
                 <tr key={h.id} className="hover:bg-muted/30">
                   <td className="px-4 py-3 font-medium capitalize">{h.source}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{h.total_found}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-[color:var(--success)]">{h.ok_count}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-destructive">{h.fail_count}</td>
-                  <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground tabular-nums">{formatDate(h.created_at)}</td>
-                  <td className="px-4 py-3"><StatusPill status={h.status} /></td>
+                  <td className="px-4 py-3 text-right tabular-nums text-[color:var(--success)]">
+                    {h.ok_count}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums text-destructive">
+                    {h.fail_count}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground tabular-nums">
+                    {formatDate(h.created_at)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <StatusPill status={h.status} />
+                  </td>
                   <td className="px-4 py-3 text-right">
                     {h.status === "failed" ? (
-                      <Button variant="outline" size="sm">Reprocess</Button>
+                      <Button variant="outline" size="sm">
+                        Reprocess
+                      </Button>
                     ) : h.fail_count > 0 ? (
-                      <Button variant="outline" size="sm">Review</Button>
+                      <Button variant="outline" size="sm">
+                        Review
+                      </Button>
                     ) : (
                       <span className="text-[11px] text-muted-foreground">—</span>
                     )}

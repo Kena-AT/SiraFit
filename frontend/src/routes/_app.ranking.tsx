@@ -31,7 +31,9 @@ function OpportunityRanking() {
         let score: JobMatchScore | null = null;
         try {
           score = await getMatchScore(job.id);
-        } catch { /* no score */ }
+        } catch {
+          /* no score */
+        }
         withScores.push({ job, score });
       }
       withScores.sort((a, b) => (b.score?.score ?? 0) - (a.score?.score ?? 0));
@@ -66,7 +68,11 @@ function OpportunityRanking() {
   if (error) {
     return (
       <PageBody>
-        <PageHeader eyebrow="Intelligence" title="Opportunity ranking" description="Deterministic priorities, you decide what to apply to." />
+        <PageHeader
+          eyebrow="Intelligence"
+          title="Opportunity ranking"
+          description="Deterministic priorities, you decide what to apply to."
+        />
         <div className="px-4 py-8 text-sm text-destructive">{error}</div>
       </PageBody>
     );
@@ -86,7 +92,9 @@ function OpportunityRanking() {
       />
       <Panel>
         {items.length === 0 ? (
-          <div className="p-4 text-xs text-muted-foreground">No jobs imported. Import some jobs first.</div>
+          <div className="p-4 text-xs text-muted-foreground">
+            No jobs imported. Import some jobs first.
+          </div>
         ) : (
           <ol className="divide-y divide-border">
             {items.map(({ job, score }, i) => (
@@ -95,7 +103,11 @@ function OpportunityRanking() {
                   #{String(i + 1).padStart(2, "0")}
                 </span>
                 <div className="flex-1">
-                  <Link to="/jobs/$jobId" params={{ jobId: job.id }} className="text-sm font-semibold hover:underline">
+                  <Link
+                    to="/jobs/$jobId"
+                    params={{ jobId: job.id }}
+                    className="text-sm font-semibold hover:underline"
+                  >
                     {job.company} &mdash; {job.title}
                   </Link>
                   <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
@@ -107,9 +119,16 @@ function OpportunityRanking() {
                   </div>
                 </div>
                 <div className="w-40">
-                  {score ? <ScoreMeter value={score.score} /> : <span className="text-[11px] text-muted-foreground">No score</span>}
+                  {score ? (
+                    <ScoreMeter value={score.score} />
+                  ) : (
+                    <span className="text-[11px] text-muted-foreground">No score</span>
+                  )}
                 </div>
-                <Link to="/resumes/builder" className="text-xs font-medium text-[color:var(--brand)] hover:underline">
+                <Link
+                  to="/resumes/builder"
+                  className="text-xs font-medium text-[color:var(--brand)] hover:underline"
+                >
                   Tailor &rarr;
                 </Link>
               </li>

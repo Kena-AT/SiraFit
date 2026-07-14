@@ -1,4 +1,9 @@
-import type { CoverLetter, CoverLetterCreate, CoverLetterUpdate, CoverLetterGenerateRequest } from "@/types/cover-letter";
+import type {
+  CoverLetter,
+  CoverLetterCreate,
+  CoverLetterUpdate,
+  CoverLetterGenerateRequest,
+} from "@/types/cover-letter";
 import { apiFetch } from "./client";
 
 // --- Cover Letters ---
@@ -32,7 +37,10 @@ export const createCoverLetter = async (data: CoverLetterCreate): Promise<CoverL
   return response.json();
 };
 
-export const updateCoverLetter = async (id: string, data: CoverLetterUpdate): Promise<CoverLetter> => {
+export const updateCoverLetter = async (
+  id: string,
+  data: CoverLetterUpdate,
+): Promise<CoverLetter> => {
   const response = await apiFetch(`/api/v1/cover-letters/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -57,7 +65,7 @@ export const deleteCoverLetter = async (id: string): Promise<void> => {
 // --- Generation ---
 
 export const generateCoverLetter = async (
-  data: CoverLetterGenerateRequest
+  data: CoverLetterGenerateRequest,
 ): Promise<{ cover_letter_id: string; status: string; message: string }> => {
   const response = await apiFetch(`/api/v1/cover-letters/generate`, {
     method: "POST",
@@ -73,7 +81,7 @@ export const generateCoverLetter = async (
 
 export const regenerateCoverLetter = async (
   letterId: string,
-  data: CoverLetterGenerateRequest
+  data: CoverLetterGenerateRequest,
 ): Promise<{ cover_letter_id: string; status: string; message: string }> => {
   const response = await apiFetch(`/api/v1/cover-letters/${letterId}/generate`, {
     method: "POST",
@@ -81,7 +89,9 @@ export const regenerateCoverLetter = async (
     body: JSON.stringify(data),
   });
   if (!response.ok) {
-    const err = await response.json().catch(() => ({ detail: "Failed to regenerate cover letter" }));
+    const err = await response
+      .json()
+      .catch(() => ({ detail: "Failed to regenerate cover letter" }));
     throw new Error(err.detail || "Failed to regenerate cover letter");
   }
   return response.json();

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { AuthShell } from "@/components/sirafit/shell";
 import { Button } from "@/components/ui/button";
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 export const Route = createFileRoute("/verify-email")({
   head: () => ({ meta: [{ title: "Verify email · SiraFit" }] }),
@@ -11,7 +11,6 @@ export const Route = createFileRoute("/verify-email")({
 });
 
 function VerifyEmailPage() {
-
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
@@ -24,7 +23,9 @@ function VerifyEmailPage() {
         credentials: "include",
       });
       if (!response.ok) {
-        const err = await response.json().catch(() => ({ detail: "Failed to resend verification" }));
+        const err = await response
+          .json()
+          .catch(() => ({ detail: "Failed to resend verification" }));
         throw new Error(err.detail || "Failed to resend verification");
       }
       const data = await response.json();
@@ -42,7 +43,7 @@ function VerifyEmailPage() {
       subtitle="We sent a verification link to your email."
       footer={
         <>
-          Didn't get it?{' '}
+          Didn't get it?{" "}
           <button
             type="button"
             className="font-medium text-foreground hover:underline"

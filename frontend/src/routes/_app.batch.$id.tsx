@@ -15,7 +15,11 @@ function BatchDetailPage() {
   const { id } = Route.useParams();
   const queryClient = useQueryClient();
 
-  const { data: batchJob, isLoading, refetch } = useQuery({
+  const {
+    data: batchJob,
+    isLoading,
+    refetch,
+  } = useQuery({
     queryKey: ["batch-job", id],
     queryFn: () => getBatchJob(id),
   });

@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
-import Input from './Input';
-import Textarea from './Textarea';
+import { useState } from "react";
+import { Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import Input from "./Input";
+import Textarea from "./Textarea";
 
 interface ArrayItemProps<T extends object> {
   item: T;
@@ -15,18 +15,18 @@ interface ArrayItemProps<T extends object> {
     name: keyof T;
     required?: boolean;
     maxLength?: number;
-    type?: 'text' | 'email' | 'date' | 'checkbox' | 'textarea';
+    type?: "text" | "email" | "date" | "checkbox" | "textarea";
     rows?: number;
     placeholder?: string;
   }>;
 }
 
-export default function ArrayItem<T extends object>({ 
-  item, 
-  index, 
-  onChange, 
+export default function ArrayItem<T extends object>({
+  item,
+  index,
+  onChange,
   onRemove,
-  fields 
+  fields,
 }: ArrayItemProps<T>) {
   const [isOpen, setIsOpen] = useState(true);
 
@@ -50,19 +50,19 @@ export default function ArrayItem<T extends object>({
           <Trash2 size={18} />
         </button>
       </div>
-      
+
       {isOpen && (
         <div className="p-4 bg-background-primary">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {fields.map((field) => {
               const value = item[field.name] as any;
-              
-              if (field.type === 'textarea') {
+
+              if (field.type === "textarea") {
                 return (
                   <div key={field.name as string} className="md:col-span-2">
                     <Textarea
                       label={field.label}
-                      value={value || ''}
+                      value={value || ""}
                       onChange={(newValue) => onChange(field.name, newValue)}
                       required={field.required}
                       maxLength={field.maxLength}
@@ -72,8 +72,8 @@ export default function ArrayItem<T extends object>({
                   </div>
                 );
               }
-              
-              if (field.type === 'checkbox') {
+
+              if (field.type === "checkbox") {
                 return (
                   <div key={field.name as string} className="md:col-span-2">
                     <label className="flex items-center gap-2">
@@ -83,20 +83,18 @@ export default function ArrayItem<T extends object>({
                         onChange={(e) => onChange(field.name, e.target.checked)}
                         className="rounded border-border text-brand focus:ring-brand"
                       />
-                      <span className="text-sm font-medium text-text-primary">
-                        {field.label}
-                      </span>
+                      <span className="text-sm font-medium text-text-primary">{field.label}</span>
                     </label>
                   </div>
                 );
               }
-              
+
               return (
                 <div key={field.name as string}>
                   <Input
                     label={field.label}
-                    type={field.type || 'text'}
-                    value={value || ''}
+                    type={field.type || "text"}
+                    value={value || ""}
                     onChange={(newValue) => onChange(field.name, newValue)}
                     required={field.required}
                     maxLength={field.maxLength}

@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { AlertTriangle, XCircle } from 'lucide-react';
+import { AlertTriangle, XCircle } from "lucide-react";
 
 interface ValidationDisplayProps {
   errors: Record<string, string>;
@@ -39,9 +39,7 @@ export default function ValidationDisplay({ errors, onClear }: ValidationDisplay
           </li>
         ))}
       </ul>
-      <p className="mt-3 text-sm text-red-600">
-        Please fix the errors above before saving.
-      </p>
+      <p className="mt-3 text-sm text-red-600">Please fix the errors above before saving.</p>
     </div>
   );
 }

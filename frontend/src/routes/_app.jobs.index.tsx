@@ -16,7 +16,7 @@ function JobsExplorer() {
   const [data, setData] = useState<JobListResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Search and filter state
   const [searchTerm, setSearchTerm] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
@@ -26,25 +26,25 @@ function JobsExplorer() {
   const [page, setPage] = useState(0);
   const [sortBy, setSortBy] = useState("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  
+
   const limit = 50;
 
   const fetchJobs = async () => {
     setLoading(true);
     setError(null);
-    
+
     const params: JobSearchParams = {
       skip: page * limit,
       limit,
       sort_by: sortBy,
       sort_order: sortOrder,
     };
-    
+
     if (activeSearch) params.search = activeSearch;
     if (companyFilter) params.company = companyFilter;
     if (locationFilter) params.location = locationFilter;
     if (sourceFilter) params.source = sourceFilter;
-    
+
     try {
       const result = await getJobs(params);
       setData(result);
@@ -92,7 +92,7 @@ function JobsExplorer() {
       const diffMs = now.getTime() - d.getTime();
       const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
       const diffDays = Math.floor(diffHours / 24);
-      
+
       if (diffHours < 24) return `${diffHours}h ago`;
       if (diffDays < 7) return `${diffDays}d ago`;
       return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -106,11 +106,25 @@ function JobsExplorer() {
       <PageHeader
         eyebrow="Pipeline"
         title="Jobs Explorer"
-        description={data ? `${data.total} jobs imported. Filter, search, and triage.` : "Browse and manage imported jobs"}
+        description={
+          data
+            ? `${data.total} jobs imported. Filter, search, and triage.`
+            : "Browse and manage imported jobs"
+        }
         actions={
           <>
-            <Link to="/jobs/history" className="rounded-md bg-card px-3 py-1.5 text-sm font-medium ring-1 ring-border hover:bg-muted">Import history</Link>
-            <Link to="/jobs/import" className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background ring-1 ring-foreground hover:bg-foreground/90">Import jobs</Link>
+            <Link
+              to="/jobs/history"
+              className="rounded-md bg-card px-3 py-1.5 text-sm font-medium ring-1 ring-border hover:bg-muted"
+            >
+              Import history
+            </Link>
+            <Link
+              to="/jobs/import"
+              className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background ring-1 ring-foreground hover:bg-foreground/90"
+            >
+              Import jobs
+            </Link>
           </>
         }
       />
@@ -118,9 +132,9 @@ function JobsExplorer() {
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex max-w-md flex-1 gap-2">
-            <Input 
-              placeholder="Search role, company, description…" 
-              className="h-9 bg-card" 
+            <Input
+              placeholder="Search role, company, description…"
+              className="h-9 bg-card"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -141,22 +155,31 @@ function JobsExplorer() {
 
         {/* Quick Filters */}
         <div className="flex flex-wrap gap-2">
-          <Input 
-            placeholder="Company" 
-            className="h-8 w-40 bg-card text-xs" 
+          <Input
+            placeholder="Company"
+            className="h-8 w-40 bg-card text-xs"
             value={companyFilter}
-            onChange={(e) => { setCompanyFilter(e.target.value); setPage(0); }}
+            onChange={(e) => {
+              setCompanyFilter(e.target.value);
+              setPage(0);
+            }}
           />
-          <Input 
-            placeholder="Location" 
-            className="h-8 w-40 bg-card text-xs" 
+          <Input
+            placeholder="Location"
+            className="h-8 w-40 bg-card text-xs"
             value={locationFilter}
-            onChange={(e) => { setLocationFilter(e.target.value); setPage(0); }}
+            onChange={(e) => {
+              setLocationFilter(e.target.value);
+              setPage(0);
+            }}
           />
-          <select 
+          <select
             className="h-8 rounded-md border border-border bg-card px-2 text-xs"
             value={sourceFilter}
-            onChange={(e) => { setSourceFilter(e.target.value); setPage(0); }}
+            onChange={(e) => {
+              setSourceFilter(e.target.value);
+              setPage(0);
+            }}
           >
             <option value="">All sources</option>
             <option value="linkedin">LinkedIn</option>
@@ -167,7 +190,7 @@ function JobsExplorer() {
             <option value="description">Description</option>
             <option value="url">URL</option>
           </select>
-          <select 
+          <select
             className="h-8 rounded-md border border-border bg-card px-2 text-xs"
             value={`${sortBy}-${sortOrder}`}
             onChange={(e) => {
@@ -195,13 +218,22 @@ function JobsExplorer() {
         ) : error ? (
           <div className="px-4 py-8 text-center">
             <div className="text-sm text-destructive">{error}</div>
-            <Button variant="outline" size="sm" className="mt-3" onClick={fetchJobs}>Retry</Button>
+            <Button variant="outline" size="sm" className="mt-3" onClick={fetchJobs}>
+              Retry
+            </Button>
           </div>
         ) : !data || data.jobs.length === 0 ? (
           <EmptyState
             title="No jobs found"
             body={hasFilters ? "Try adjusting your filters" : "Import some jobs to get started"}
-            action={<Link to="/jobs/import" className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background">Import jobs</Link>}
+            action={
+              <Link
+                to="/jobs/import"
+                className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background"
+              >
+                Import jobs
+              </Link>
+            }
           />
         ) : (
           <>
@@ -227,20 +259,28 @@ function JobsExplorer() {
                       </td>
                       <td className="px-4 py-3 font-medium">{j.company}</td>
                       <td className="px-4 py-3">
-                        <Link 
-                          to="/jobs/$jobId" 
-                          params={{ jobId: j.id }} 
+                        <Link
+                          to="/jobs/$jobId"
+                          params={{ jobId: j.id }}
                           className="text-muted-foreground hover:text-foreground hover:underline"
                         >
                           {j.title}
                         </Link>
                       </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">{j.location || "—"}</td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground tabular-nums">{formatSalary(j)}</td>
-                      <td className="px-4 py-3"><Tag>{j.source}</Tag></td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                        {j.location || "—"}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground tabular-nums">
+                        {formatSalary(j)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Tag>{j.source}</Tag>
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
-                          {j.tags.slice(0, 3).map((t) => (<Tag key={t}>{t}</Tag>))}
+                          {j.tags.slice(0, 3).map((t) => (
+                            <Tag key={t}>{t}</Tag>
+                          ))}
                           {j.tags.length > 3 && <Tag>+{j.tags.length - 3}</Tag>}
                         </div>
                       </td>
@@ -254,20 +294,23 @@ function JobsExplorer() {
             </div>
             <footer className="flex items-center justify-between border-t border-border bg-muted/30 px-4 py-2 text-[11px] text-muted-foreground">
               <div>
-                Showing {page * limit + 1}–{Math.min((page + 1) * limit, data.total)} of {data.total}
+                Showing {page * limit + 1}–{Math.min((page + 1) * limit, data.total)} of{" "}
+                {data.total}
               </div>
               <div className="flex gap-1.5">
-                <button 
+                <button
                   className="rounded border border-border bg-card px-2 py-0.5 hover:bg-muted disabled:opacity-50"
-                  onClick={() => setPage(p => Math.max(0, p - 1))}
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
                   disabled={page === 0}
                 >
                   ←
                 </button>
-                <span className="px-2">Page {page + 1} of {Math.ceil(data.total / limit)}</span>
-                <button 
+                <span className="px-2">
+                  Page {page + 1} of {Math.ceil(data.total / limit)}
+                </span>
+                <button
                   className="rounded border border-border bg-card px-2 py-0.5 hover:bg-muted disabled:opacity-50"
-                  onClick={() => setPage(p => p + 1)}
+                  onClick={() => setPage((p) => p + 1)}
                   disabled={(page + 1) * limit >= data.total}
                 >
                   →

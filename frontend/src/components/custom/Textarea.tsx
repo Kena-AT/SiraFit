@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 interface TextareaProps {
   label: string;
@@ -23,7 +23,7 @@ export default function Textarea({
   disabled = false,
   error,
 }: TextareaProps) {
-  const textareaId = `textarea-${label.replace(/\s+/g, '-').toLowerCase()}`;
+  const textareaId = `textarea-${label.replace(/\s+/g, "-").toLowerCase()}`;
 
   return (
     <div className="space-y-1">
@@ -44,9 +44,10 @@ export default function Textarea({
           w-full px-3 py-2 border rounded-md transition-colors resize-y
           focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent
           disabled:bg-background-secondary disabled:text-text-secondary disabled:cursor-not-allowed
-          ${error 
-            ? 'border-red-600 bg-red-50' 
-            : 'border-border bg-background-primary text-text-primary'
+          ${
+            error
+              ? "border-red-600 bg-red-50"
+              : "border-border bg-background-primary text-text-primary"
           }
         `}
       />
@@ -56,9 +57,7 @@ export default function Textarea({
             {value.length} / {maxLength}
           </span>
         )}
-        {error && (
-          <span className="text-xs text-red-600">{error}</span>
-        )}
+        {error && <span className="text-xs text-red-600">{error}</span>}
       </div>
     </div>
   );

@@ -34,21 +34,27 @@ function LoginPage() {
   };
 
   return (
-    <AuthShell 
-      title="Welcome back" 
-      subtitle="Log in to your SiraFit dashboard." 
+    <AuthShell
+      title="Welcome back"
+      subtitle="Log in to your SiraFit dashboard."
       footer={
-        <>No account? <Link to="/register" className="font-medium text-foreground hover:underline">Create one</Link>.</>
+        <>
+          No account?{" "}
+          <Link to="/register" className="font-medium text-foreground hover:underline">
+            Create one
+          </Link>
+          .
+        </>
       }
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && <div className="text-red-500 text-sm mb-4">{error}</div>}
         <div className="space-y-1.5">
           <Label htmlFor="email">Email</Label>
-          <Input 
-            id="email" 
-            type="email" 
-            placeholder="alex@rivera.dev" 
+          <Input
+            id="email"
+            type="email"
+            placeholder="alex@rivera.dev"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -57,12 +63,17 @@ function LoginPage() {
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <Label htmlFor="pwd">Password</Label>
-            <Link to="/forgot-password" className="text-[11px] text-muted-foreground hover:text-foreground">Forgot?</Link>
+            <Link
+              to="/forgot-password"
+              className="text-[11px] text-muted-foreground hover:text-foreground"
+            >
+              Forgot?
+            </Link>
           </div>
-          <Input 
-            id="pwd" 
-            type="password" 
-            placeholder="••••••••" 
+          <Input
+            id="pwd"
+            type="password"
+            placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -71,7 +82,9 @@ function LoginPage() {
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading ? "Logging in..." : "Log in"}
         </Button>
-        <div className="text-center text-[11px] text-muted-foreground">Protected by device-based auth tokens.</div>
+        <div className="text-center text-[11px] text-muted-foreground">
+          Protected by device-based auth tokens.
+        </div>
       </form>
     </AuthShell>
   );

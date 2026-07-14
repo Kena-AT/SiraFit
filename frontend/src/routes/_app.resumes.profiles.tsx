@@ -57,9 +57,9 @@ function ResumeProfilesPage() {
               <div className="h-full bg-[color:var(--brand)]" style={{ width: `100%` }} />
             </div>
             <div className="mt-4 flex flex-wrap gap-1.5">
-              {profile.skills?.slice(0, 3).map((s) => (
-                <Tag key={s.id}>{s.name}</Tag>
-              )) || <Tag>No skills added</Tag>}
+              {profile.skills?.slice(0, 3).map((s) => <Tag key={s.id}>{s.name}</Tag>) || (
+                <Tag>No skills added</Tag>
+              )}
             </div>
             <div className="mt-4 flex items-center justify-between">
               <Link

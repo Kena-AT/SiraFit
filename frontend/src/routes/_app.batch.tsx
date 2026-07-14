@@ -1,14 +1,13 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, StatusPill, EmptyState } from "@/components/sirafit/bits";
 import { Plus, RefreshCw } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getBatchJobs, createBatchJob, cancelBatchJob, type BatchJobCreateInput, type BatchOperationType } from "@/lib/api/batch";
 import { getJobs } from "@/lib/api/jobs";
-import { BatchCreateModal } from "@/components/sirafit/batch/BatchCreateModal";
 import { useState } from "react";
 
 export const Route = createFileRoute("/_app/batch")({
@@ -73,12 +72,6 @@ function BatchCenter() {
       />
       <div className="space-y-4">
         <Panel title="Create batch job" className="border-border/50">
-          <BatchCreateModal
-            isOpen={modalOpen}
-            onClose={() => setModalOpen(false)}
-            onSubmit={handleCreate}
-            availableJobs={jobs}
-          />
           <Button variant="outline" onClick={() => setModalOpen(true)} className="w-full">
             <Plus className="w-4 h-4 mr-2" /> Start new batch operation
           </Button>
@@ -87,7 +80,7 @@ function BatchCenter() {
         <Panel title="Recent batches">
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <Input placeholder="Filter batches..." className="w-64" />
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <Select value={filterStatus} onChange={setFilterStatus}>
               <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All statuses</SelectItem>
@@ -99,7 +92,7 @@ function BatchCenter() {
                 <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filterOp} onValueChange={setFilterOp}>
+            <Select value={filterOp} onChange={setFilterOp}>
               <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All operations</SelectItem>

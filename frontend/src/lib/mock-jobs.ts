@@ -32,7 +32,7 @@ export const jobs = [
     responsibilities: ["Develop full stack features", "Database design"],
     required: ["3+ years Node.js", "React experience"],
     preferred: ["AWS", "Docker"],
-  }
+  },
 ];
 
 export function getJob(id: string) {

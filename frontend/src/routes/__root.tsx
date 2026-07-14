@@ -79,10 +79,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "SiraFit — Career operations for engineers" },
-      { name: "description", content: "Deterministic career operations: ATS scraping, structured resume tailoring, and application tracking for junior engineers." },
+      {
+        name: "description",
+        content:
+          "Deterministic career operations: ATS scraping, structured resume tailoring, and application tracking for junior engineers.",
+      },
       { name: "author", content: "SiraFit" },
       { property: "og:title", content: "SiraFit — Career operations for engineers" },
-      { property: "og:description", content: "Deterministic career operations: ATS scraping, structured resume tailoring, and application tracking for junior engineers." },
+      {
+        property: "og:description",
+        content:
+          "Deterministic career operations: ATS scraping, structured resume tailoring, and application tracking for junior engineers.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@SiraFit" },

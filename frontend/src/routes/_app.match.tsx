@@ -32,7 +32,9 @@ function MatchAnalysis() {
           let score: JobMatchScore | null = null;
           try {
             score = await getMatchScore(job.id);
-          } catch { /* no score */ }
+          } catch {
+            /* no score */
+          }
           withScores.push({ job, score });
         }
         withScores.sort((a, b) => (b.score?.score ?? 0) - (a.score?.score ?? 0));
@@ -77,7 +79,11 @@ function MatchAnalysis() {
   if (error) {
     return (
       <PageBody>
-        <PageHeader eyebrow="Intelligence" title="Match analysis" description="Deterministic fit between your master profile and every job in pipeline." />
+        <PageHeader
+          eyebrow="Intelligence"
+          title="Match analysis"
+          description="Deterministic fit between your master profile and every job in pipeline."
+        />
         <div className="px-4 py-8 text-sm text-destructive">{error}</div>
       </PageBody>
     );
@@ -85,7 +91,11 @@ function MatchAnalysis() {
 
   return (
     <PageBody>
-      <PageHeader eyebrow="Intelligence" title="Match analysis" description="Deterministic fit between your master profile and every job in pipeline." />
+      <PageHeader
+        eyebrow="Intelligence"
+        title="Match analysis"
+        description="Deterministic fit between your master profile and every job in pipeline."
+      />
       <div className="grid gap-4 lg:grid-cols-3">
         <Panel title="Skill gap" className="lg:col-span-1">
           {topGaps.length === 0 ? (
@@ -109,7 +119,11 @@ function MatchAnalysis() {
               {topItems.map(({ job, score }) => (
                 <li key={job.id} className="space-y-2 px-4 py-3">
                   <div className="flex items-center justify-between">
-                    <Link to="/jobs/$jobId" params={{ jobId: job.id }} className="text-sm font-semibold hover:underline">
+                    <Link
+                      to="/jobs/$jobId"
+                      params={{ jobId: job.id }}
+                      className="text-sm font-semibold hover:underline"
+                    >
                       {job.company} &mdash; {job.title}
                     </Link>
                     {score && <ScoreMeter value={score.score} />}
@@ -118,7 +132,9 @@ function MatchAnalysis() {
                     {score?.explanation || "No match score computed yet."}
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {(job.tags || []).map((t) => <Tag key={t}>{t}</Tag>)}
+                    {(job.tags || []).map((t) => (
+                      <Tag key={t}>{t}</Tag>
+                    ))}
                   </div>
                 </li>
               ))}
