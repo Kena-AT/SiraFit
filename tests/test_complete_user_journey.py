@@ -26,7 +26,6 @@ from app.models.notification import Notification
 from app.models.profile import Profile
 from app.models.cover_letter import CoverLetter
 from app.models.batch import BatchJob
-from app.models.analytics import AnalyticsEvent
 from app.services.notification import (
     create_notification,
     get_notifications,

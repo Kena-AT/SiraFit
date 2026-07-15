@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Panel, AgentDot } from "@/components/sirafit/bits";
 import { Input } from "@/components/ui/input";
@@ -25,7 +26,6 @@ function AISettings() {
   const [openrouterKey, setOpenrouterKey] = useState("");
   const [provider, setProvider] = useState("gemini");
   const [activeModel, setActiveModel] = useState("gemini-1.5-pro");
-  const [message, setMessage] = useState("");
 
   const { data: config, isLoading } = useQuery({
     queryKey: ["ai-config"],
@@ -58,14 +58,13 @@ function AISettings() {
       return res.json();
     },
     onSuccess: () => {
-      setMessage("Settings saved securely.");
+      toast.success("Settings saved securely.");
       setGeminiKey("");
       setOpenrouterKey("");
       queryClient.invalidateQueries({ queryKey: ["ai-config"] });
-      setTimeout(() => setMessage(""), 3000);
     },
     onError: (err: Error) => {
-      setMessage(`Error: ${err.message}`);
+      toast.error(`Error: ${err.message}`);
     },
   });
 
@@ -168,13 +167,6 @@ function AISettings() {
               <Button variant="outline" onClick={handleClear} disabled={isPending}>
                 Clear Keys
               </Button>
-            )}
-            {message && (
-              <span
-                className={`text-xs font-medium ${message.startsWith("Error") ? "text-red-500" : "text-[color:var(--success)]"}`}
-              >
-                {message}
-              </span>
             )}
           </div>
         </div>

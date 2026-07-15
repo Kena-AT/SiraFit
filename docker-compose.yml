@@ -14,11 +14,13 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       - SECRET_KEY=${SECRET_KEY}
       - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - PYTHONPATH=/app
     depends_on:
       - postgres
       - redis
     volumes:
       - ./backend:/app/backend
+      - ./tests:/app/tests
     restart: unless-stopped
     networks:
       - sirafit-network

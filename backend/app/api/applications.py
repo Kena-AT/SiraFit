@@ -260,9 +260,21 @@ def transition_status(
 ) -> Any:
     """Transition an application to a new status (deterministic workflow)."""
     try:
-        return transition_application(db, app_id, current_user.id, req.to_status)
+        application = transition_application(db, app_id, current_user.id, req.to_status)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+    db.add(
+        AuditLog(
+            user_id=current_user.id,
+            action="application_status_change",
+            entity_type="application",
+            entity_id=app_id,
+            details={"to_status": req.to_status},
+        )
+    )
+    db.commit()
+    return application
 
 
 # --- Sprint 9: Timeline Events (per-application) ---

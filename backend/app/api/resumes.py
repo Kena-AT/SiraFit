@@ -135,6 +135,15 @@ def delete_resume(
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
 
+    db.add(
+        AuditLog(
+            user_id=current_user.id,
+            action="deleted_resume",
+            entity_type="resume",
+            entity_id=resume_id,
+            details={"title": resume.title},
+        )
+    )
     db.delete(resume)
     db.commit()
 
