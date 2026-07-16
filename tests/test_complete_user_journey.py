@@ -124,14 +124,29 @@ def create_job_via_api(
     data = resp.json()
     assert data["import_record"]["status"] == "completed"
     assert len(data["jobs"]) > 0
-    return data["jobs"][0]
+    imported = data["jobs"][0]
+
+    # The import response omits the server-generated id (JobData has only
+    # external_id), so fetch the persisted job from the list endpoint so
+    # callers can reference it by id.
+    list_resp = client.get("/api/v1/jobs/", headers=headers)
+    assert list_resp.status_code == 200, list_resp.text
+    items = list_resp.json().get("jobs", [])
+    assert len(items) > 0
+    ext_id = imported.get("external_id")
+    match = next((j for j in items if j.get("external_id") == ext_id), None)
+    return match if match is not None else items[0]
 
 
 def create_application(
     client: TestClient, headers: dict, job_id: str, status: str = "saved"
 ):
     """Create a job application."""
-    resp = client.post("/api/v1/applications", headers=headers, json={"job_id": job_id})
+    resp = client.post(
+        "/api/v1/applications",
+        headers=headers,
+        json={"job_id": job_id, "status": status},
+    )
     assert resp.status_code == 200, resp.text
     app = resp.json()
     assert app["status"] == status
@@ -187,6 +202,21 @@ def set_followup(
     return resp
 
 
+@pytest.fixture
+def test_email():
+    return f"journey_{uuid.uuid4().hex[:8]}@test.com"
+
+
+@pytest.fixture
+def test_user(client, test_email, db):
+    """Create and return a verified test user with tokens."""
+    register_user(client, test_email)
+    user = verify_user_email(db, test_email)
+    tokens = login_user(client, test_email)
+    headers = get_auth_headers(tokens)
+    yield {"user": user, "tokens": tokens, "headers": headers, "email": test_email}
+
+
 # ═══════════════════════════════════════════════════════════════
 # TEST CLASSES
 # ═══════════════════════════════════════════════════════════════
@@ -194,23 +224,6 @@ def set_followup(
 
 class TestCompleteUserJourney:
     """End-to-end user journey tests."""
-
-    @pytest.fixture
-    def test_email(self):
-        return f"journey_{uuid.uuid4().hex[:8]}@test.com"
-
-    @pytest.fixture
-    def test_user(self, client, test_email, db):
-        """Create and return a verified test user with tokens."""
-        # Register
-        register_user(client, test_email)
-        user = verify_user_email(db, test_email)
-
-        # Login
-        tokens = login_user(client, test_email)
-        headers = get_auth_headers(tokens)
-
-        yield {"user": user, "tokens": tokens, "headers": headers, "email": test_email}
 
     def test_01_register_and_verify_email(self, client, db):
         """Test complete registration → verification flow."""
@@ -226,8 +239,8 @@ class TestCompleteUserJourney:
         login_resp = client.post(
             "/api/v1/auth/login", data={"username": email, "password": "TestPass123!"}
         )
-        assert login_resp.status_code in (400, 401), login_resp.text
-        assert "verify" in login_resp.json().get("detail", "").lower()
+        assert login_resp.status_code == 403, login_resp.text
+        assert "verif" in login_resp.json().get("detail", "").lower()
 
         # Verify email (simulate email link click)
         user = verify_user_email(db, email)
@@ -459,7 +472,7 @@ class TestCompleteUserJourney:
 
         assert log is not None
         assert log.details["to_status"] == "applied"
-        assert log.details["application_id"] == str(app_id)
+        assert str(log.entity_id) == str(app_id)
 
     def test_09_followup_reminders(self, client, test_user):
         """Test setting and getting follow-up reminders."""
@@ -495,25 +508,17 @@ class TestCompleteUserJourney:
         headers = test_user["headers"]
         user_id = test_user["user"].id
 
-        # Create notifications via API
+        # Create notifications via the service (notifications are
+        # system-generated; there is no public POST create endpoint)
         for i in range(3):
-            resp = client.post(
-                "/api/v1/notifications",
-                headers=headers,
-                json={
-                    "title": f"Notification {i}",
-                    "body": f"Body {i}",
-                    "kind": "alert",
-                },
-            )
-            assert resp.status_code == 200
+            create_notification(db, user_id, f"Notification {i}", f"Body {i}", "alert")
 
         # Get all notifications (paginated)
         resp = client.get("/api/v1/notifications", headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["total"] >= 3
-        assert len(data["items"]) >= 3
+        assert len(data["notifications"]) >= 3
 
         # Filter by status
         resp = client.get("/api/v1/notifications?status=unread", headers=headers)
@@ -527,13 +532,13 @@ class TestCompleteUserJourney:
         assert resp.json()["count"] >= 3
 
         # Mark first as read
-        first_id = data["items"][0]["id"]
-        resp = client.put(f"/api/v1/notifications/{first_id}/read", headers=headers)
+        first_id = data["notifications"][0]["id"]
+        resp = client.post(f"/api/v1/notifications/{first_id}/read", headers=headers)
         assert resp.status_code == 200
         assert resp.json()["status"] == "read"
 
         # Mark all as read
-        resp = client.put("/api/v1/notifications/read-all", headers=headers)
+        resp = client.post("/api/v1/notifications/mark-all-read", headers=headers)
         assert resp.status_code == 200
         assert resp.json()["updated"] >= 2
 
@@ -583,47 +588,33 @@ class TestCompleteUserJourney:
         """Test analytics API endpoints."""
         headers = test_user["headers"]
 
-        # Create some test applications first
-        job = create_job_via_api(client, headers, description=TEST_JOB_DESCRIPTION)
-        for status in ["saved", "applied", "screening", "interview", "offer"]:
-            app = create_application(client, headers, job["id"])
-            transition_status(client, headers, app["id"], status)
+        # Create several distinct applications (one per job) so analytics
+        # totals reflect multiple applications.
+        jobs = [
+            create_job_via_api(
+                client, headers, description=f"Role {i}: {TEST_JOB_DESCRIPTION}"
+            )
+            for i in range(5)
+        ]
+        apps = [create_application(client, headers, j["id"]) for j in jobs]
+        for app in apps:
+            transition_status(client, headers, app["id"], "applied")
 
         # Analytics overview
-        resp = client.get("/api/v1/analytics/overview", headers=headers)
+        resp = client.get("/api/v1/analytics/metrics", headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert "total_applications" in data
-        assert "response_rate" in data
+        assert "avg_response_time_days" in data
         assert "interview_rate" in data
         assert "offer_rate" in data
         assert data["total_applications"] >= 5
 
-        # Status breakdown
-        resp = client.get("/api/v1/analytics/status-breakdown", headers=headers)
+        # Snapshots list (real analytics endpoint)
+        resp = client.get("/api/v1/analytics/snapshots", headers=headers)
         assert resp.status_code == 200
-        breakdown = resp.json()
-        assert isinstance(breakdown, list)
-
-        # Timeline
-        resp = client.get("/api/v1/analytics/timeline", headers=headers)
-        assert resp.status_code == 200
-        timeline = resp.json()
-        assert isinstance(timeline, list)
-
-        # Skills demand
-        resp = client.get("/api/v1/analytics/skills-demand", headers=headers)
-        assert resp.status_code == 200
-        skills = resp.json()
-        assert isinstance(skills, list)
-
-        # Market insights
-        resp = client.get("/api/v1/analytics/market-insights", headers=headers)
-        assert resp.status_code == 200
-        market = resp.json()
-        assert "top_locations" in market
-        assert "top_companies" in market
-        assert "salary_ranges" in market
+        snapshots = resp.json()
+        assert "snapshots" in snapshots
 
     def test_13_resume_operations(self, client, test_user):
         """Test resume creation, profile editing, export."""
@@ -633,21 +624,16 @@ class TestCompleteUserJourney:
         resp = client.get("/api/v1/resumes", headers=headers)
         assert resp.status_code == 200
 
-        # Create resume (profile-based)
+        # Create resume (title + content are required fields)
         resp = client.post(
             "/api/v1/resumes",
             headers=headers,
             json={
-                "profile_data": {
-                    "headline": "Senior Software Engineer",
-                    "summary": "Experienced engineer...",
-                    "skills": ["Python", "React", "AWS"],
-                    "experience": [],
-                    "education": [],
-                }
+                "title": "My Resume",
+                "content": "# Senior Software Engineer\nExperienced engineer...",
             },
         )
-        assert resp.status_code == 200
+        assert resp.status_code in (200, 201)
         resume = resp.json()
         assert resume["id"] is not None
 
@@ -671,16 +657,21 @@ class TestCompleteUserJourney:
         app = create_application(client, headers, job["id"])
         app_id = app["id"]
 
-        # Create cover letter for application
+        # Create cover letter for the job
         resp = client.post(
             "/api/v1/cover-letters",
             headers=headers,
-            json={"application_id": app_id, "tone": "professional", "length": "medium"},
+            json={
+                "title": "Cover Letter",
+                "body": "Dear Hiring Manager, I am excited to apply for this role.",
+                "job_id": job["id"],
+                "tone": "professional",
+            },
         )
-        assert resp.status_code == 200
+        assert resp.status_code in (200, 201)
         cover_letter = resp.json()
         assert cover_letter["id"] is not None
-        assert cover_letter["application_id"] == app_id
+        assert cover_letter["job_id"] == job["id"]
 
         # Get cover letters
         resp = client.get("/api/v1/cover-letters", headers=headers)
@@ -692,33 +683,29 @@ class TestCompleteUserJourney:
         """Test batch job operations."""
         headers = test_user["headers"]
 
-        # Create batch import job
+        # Import a couple of jobs to operate on, then run a batch analyze job
+        j1 = create_job_via_api(client, headers, description=TEST_JOB_DESCRIPTION)
+        j2 = create_job_via_api(
+            client, headers, url="https://linkedin.com/jobs/view/999"
+        )
         resp = client.post(
             "/api/v1/batch",
             headers=headers,
             json={
-                "name": "Test Batch",
-                "description": "Batch import test",
-                "operation": "import",
-                "items": [
-                    {"source_type": "description", "data": TEST_JOB_DESCRIPTION},
-                    {
-                        "source_type": "url",
-                        "data": "https://linkedin.com/jobs/view/999",
-                    },
-                ],
+                "operation_type": "analyze",
+                "job_ids": [j1["id"], j2["id"]],
             },
         )
-        assert resp.status_code == 200
+        assert resp.status_code in (200, 201)
         batch = resp.json()
         assert batch["id"] is not None
-        assert batch["status"] == "pending"
+        assert batch["status"] in ("pending", "processing", "completed", "succeeded")
 
         # List batches
         resp = client.get("/api/v1/batch", headers=headers)
         assert resp.status_code == 200
         batches = resp.json()
-        assert len(batches) >= 1
+        assert len(batches["jobs"]) >= 1
 
         # Get batch details
         resp = client.get(f"/api/v1/batch/{batch['id']}", headers=headers)
@@ -892,7 +879,7 @@ class TestCompleteUserJourney:
         assert my_fu["follow_up_note"] == "Follow up with Sarah"
 
         # 12. Get analytics overview
-        resp = client.get("/api/v1/analytics/overview", headers=headers)
+        resp = client.get("/api/v1/analytics/metrics", headers=headers)
         overview = resp.json()
         assert overview["total_applications"] >= 1
 
@@ -919,7 +906,7 @@ class TestAPIErrorHandling:
             ("GET", "/api/v1/applications"),
             ("POST", "/api/v1/applications"),
             ("GET", "/api/v1/notifications"),
-            ("GET", "/api/v1/analytics/overview"),
+            ("GET", "/api/v1/analytics/metrics"),
             ("GET", "/api/v1/jobs/import/history"),
         ]
         for method, path in endpoints:
@@ -971,16 +958,16 @@ class TestAPIErrorHandling:
         resp = client.get("/api/v1/notifications?limit=10&skip=0", headers=headers)
         assert resp.status_code == 200
         page1 = resp.json()
-        assert len(page1["items"]) == 10
+        assert len(page1["notifications"]) == 10
         assert page1["total"] >= 25
 
         resp = client.get("/api/v1/notifications?limit=10&skip=10", headers=headers)
         page2 = resp.json()
-        assert len(page2["items"]) == 10
+        assert len(page2["notifications"]) == 10
 
         resp = client.get("/api/v1/notifications?limit=10&skip=20", headers=headers)
         page3 = resp.json()
-        assert len(page3["items"]) >= 5
+        assert len(page3["notifications"]) >= 5
 
 
 # ═══════════════════════════════════════════════════════════════

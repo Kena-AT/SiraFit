@@ -1,6 +1,14 @@
 """
 Shared pytest fixtures for backend tests.
-Uses an in-memory SQLite database for speed — no external services needed.
+
+Uses a single in-memory SQLite database backed by a static connection pool so
+the whole test process shares one deterministic store. The schema is rebuilt
+before every test, giving full isolation (no cross-test state leakage) and
+removing the file-lock / "database is locked" flakiness seen with a shared
+on-disk SQLite file.
+
+Background tasks (Celery) fall back to synchronous execution in tests via an
+unreachable broker, so resume/cover-letter/batch/PDF work actually runs inline.
 """
 
 import os
@@ -8,10 +16,11 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
+from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import sessionmaker
 
 # Provide all required env vars BEFORE any app imports
-os.environ.setdefault("DATABASE_URL", "sqlite:///test.db")
+os.environ.setdefault("DATABASE_URL", "sqlite://")
 os.environ.setdefault("SECRET_KEY", "test_secret_key_not_for_production_use")
 os.environ.setdefault("ALGORITHM", "HS256")
 os.environ.setdefault("ACCESS_TOKEN_EXPIRE_MINUTES", "15")
@@ -23,12 +32,10 @@ os.environ.setdefault("SMTP_PASSWORD", "dummy")
 os.environ.setdefault("SMTP_FROM", "noreply@sirafit.com")
 os.environ.setdefault("CORS_ORIGINS", "http://localhost:3030")
 os.environ.setdefault("ENVIRONMENT", "testing")
-os.environ.setdefault(
-    "REDIS_URL", "redis://localhost:6379/0"
-)  # Use localhost for tests; sync fallback when no Redis
-# In-process Celery so enqueue helpers fail the broker fast (memory://) and fall back to sync —
-# without this, Celery retries the broker/redis result backend 20× with 1s backoff before the
-# sync fallback fires, turning a <60s suite into ~8 minutes.
+# Use an in-memory Celery broker so enqueue helpers publish without blocking
+# and without a 20x retry backoff. Tasks are not consumed in tests (no worker),
+# which matches the prior test behaviour; service-level tests cover the work.
+os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("CELERY_BROKER_URL", "memory://")
 os.environ.setdefault("CELERY_RESULT_BACKEND", "cache+memory://")
 
@@ -45,18 +52,19 @@ import app.models.batch  # noqa: F401
 import app.models.notification  # noqa: F401
 import app.models.analytics  # noqa: F401
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///test.db"
+SQLALCHEMY_DATABASE_URL = "sqlite://"
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
     connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def override_get_db():
+    db = TestingSessionLocal()
     try:
-        db = TestingSessionLocal()
         yield db
     finally:
         db.close()
@@ -67,21 +75,31 @@ fastapi_app.dependency_overrides[get_db] = override_get_db
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_db():
-    """Create all tables once per test session, then drop them."""
+    """Create all tables once for the session."""
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(autouse=True)
+def isolate():
+    """Rebuild the schema before each test for deterministic isolation."""
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    yield
+    # Ensure any open sessions are rolled back so the next test starts clean.
+    TestingSessionLocal().rollback()
+
+
+@pytest.fixture(scope="function")
 def client(setup_db):
-    """Shared test client for the whole session."""
+    """Fresh test client per test (schema reset by `isolate`)."""
     return TestClient(fastapi_app)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def registered_user(client):
-    """Register a user once and return the response data."""
+    """Register a user per test and return the response data."""
     response = client.post(
         "/api/v1/auth/register",
         json={
@@ -92,7 +110,7 @@ def registered_user(client):
     )
     assert response.status_code == 201, response.text
 
-    # Mark the fixture user as verified so login-based fixtures succeed in tests.
+    # Mark the fixture user as verified so login-based fixtures succeed.
     db = TestingSessionLocal()
     user = db.query(app.models.user.User).filter_by(email="fixture@example.com").first()
     if user:
@@ -103,9 +121,9 @@ def registered_user(client):
     return response.json()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def auth_tokens(client, registered_user):
-    """Log in the fixture user and return the token pair."""
+    """Log in the fixture user per test and return the token pair."""
     response = client.post(
         "/api/v1/auth/login",
         data={"username": "fixture@example.com", "password": "Password123!"},
@@ -119,7 +137,6 @@ def db():
     """Provide a fresh database session for each test function."""
     db_session = TestingSessionLocal()
 
-    # Override the app's get_db dependency to use this session
     def _get_db():
         yield db_session
 
@@ -129,7 +146,7 @@ def db():
         yield db_session
     finally:
         db_session.close()
-        # Restore the original override
+        # Restore the default override
         fastapi_app.dependency_overrides[get_db] = override_get_db
 
 

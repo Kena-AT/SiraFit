@@ -62,7 +62,7 @@ def generate_analytics_metrics(db: Session, user_id: uuid.UUID) -> Dict[str, Any
             for a in applications
             if a.status == status or (status == "applied" and a.status == "applied")
         )
-        funnel.append([label, count])
+        funnel.append({"stage": label, "count": count})
 
     # 3. Rejection stages
     rejection_stages = [
@@ -74,7 +74,7 @@ def generate_analytics_metrics(db: Session, user_id: uuid.UUID) -> Dict[str, Any
     rejections = []
     for label, status in rejection_stages:
         count = sum(1 for a in applications if a.status == status)
-        rejections.append([label, count])
+        rejections.append({"stage": label, "count": count})
 
     # 4. Skill coverage vs market demand
     # Get user skills
@@ -193,9 +193,8 @@ def generate_analytics_metrics(db: Session, user_id: uuid.UUID) -> Dict[str, Any
         "conversion_funnel": funnel,
         "rejection_stages": rejections,
         "skill_coverage": skill_coverage,
-        "market_roles": market_roles,
-        "top_technologies": top_technologies,
-        "salary_medians": salary_medians,
+        "market_demand": market_roles,
+        "generated_at": datetime.now(timezone.utc),
     }
 
 
