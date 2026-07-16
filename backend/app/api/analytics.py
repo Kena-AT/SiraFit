@@ -16,8 +16,11 @@ from app.schemas.notification import (
     AnalyticsSnapshotListResponse,
     MetricsResponse,
 )
+from app.core.cache import cache_get, cache_set, cache_delete
 
 router = APIRouter()
+
+_METRICS_TTL = 60
 
 
 @router.get("/metrics", response_model=MetricsResponse)
@@ -25,8 +28,13 @@ def get_metrics(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Any:
-    """Get current analytics metrics for the user."""
+    """Get current analytics metrics for the user (cached for 60s)."""
+    cache_key = f"analytics:metrics:{current_user.id}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
     metrics = generate_analytics_metrics(db, current_user.id)
+    cache_set(cache_key, metrics, ttl=_METRICS_TTL)
     return metrics
 
 
@@ -37,6 +45,8 @@ def create_snapshot(
 ) -> Any:
     """Create a new analytics snapshot."""
     snapshot = create_analytics_snapshot(db, current_user.id)
+    # Invalidate the cached metrics so the next read reflects fresh data.
+    cache_delete(f"analytics:metrics:{current_user.id}")
     return snapshot
 
 

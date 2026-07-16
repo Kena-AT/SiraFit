@@ -63,6 +63,15 @@ celery_app.conf.update(
     },
 )
 
+# Dead-letter queue: tasks that exhaust their configured retries are routed
+# here by the BaseRetryTask.on_failure hook for later inspection/replay.
+DLQ_QUEUE = "sirafit_dlq"
+celery_app.conf.task_routes.update(
+    {"app.worker.tasks.handle_dead_letter": {"queue": DLQ_QUEUE}}
+)
+celery_app.conf.task_acks_late = True
+celery_app.conf.task_reject_on_worker_lost = True
+
 celery_app.autodiscover_tasks(["app.worker"])
 
 

@@ -26,6 +26,9 @@ fastapi-mail==1.4.1
 redis==5.2.0
 celery==5.4.0
 
+# Observability
+prometheus-client==0.24.1
+
 # Structured Logging
 structlog==24.4.0
 

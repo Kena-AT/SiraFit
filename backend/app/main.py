@@ -8,6 +8,8 @@ from app.api.router import api_router
 from app.core.health import router as health_router
 from app.core.logging import configure_logging
 from app.core.middleware import RequestTimingMiddleware
+from app.core.rate_limiting import RateLimitMiddleware
+from app.core.metrics import router as metrics_router, MetricsMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
 # Configure structured logging
@@ -85,6 +87,9 @@ app.add_middleware(RequestTimingMiddleware)
 # Rate limit header middleware
 app.add_middleware(RateLimitHeaderMiddleware)
 
+# Redis-backed rate limiting (no-op outside production)
+app.add_middleware(RateLimitMiddleware)
+
 # CORS middleware (added last = outermost — must be first to handle OPTIONS preflights)
 app.add_middleware(
     CORSMiddleware,
@@ -97,8 +102,14 @@ app.add_middleware(
 # Security headers (HSTS/CSP/etc.)
 app.add_middleware(SecurityHeadersMiddleware)
 
+# Prometheus metrics (outermost so it counts every request)
+app.add_middleware(MetricsMiddleware)
+
 # Include health checks
 app.include_router(health_router, prefix="/health", tags=["health"])
+
+# Include Prometheus metrics endpoint
+app.include_router(metrics_router, tags=["metrics"])
 
 # Include API routes
 app.include_router(api_router, prefix=settings.API_V1_STR, tags=["api"])

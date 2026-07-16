@@ -32,6 +32,49 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
+# Dead-letter queue base task
+# ---------------------------------------------------------------------------
+
+
+def _define_base_task():
+    """Build a Celery base Task that routes exhausted retries to a DLQ."""
+    try:
+        from app.worker.celery_app import celery_app as _celery
+
+        class _BaseRetryTask(_celery.Task):
+            abstract = True
+            max_retries = 3
+            default_retry_delay = 30
+
+            def on_failure(self, exc, task_id, args, kwargs, einfo):
+                # Only dead-letter once retries are actually exhausted.
+                if self.request.retries >= self.max_retries:
+                    try:
+                        _celery.send_task(
+                            "app.worker.tasks.handle_dead_letter",
+                            kwargs={
+                                "task_name": self.name,
+                                "args": list(args),
+                                "kwargs": kwargs,
+                                "error": str(exc),
+                            },
+                        )
+                    except Exception:
+                        logger.warning(
+                            "dlq_dispatch_failed",
+                            extra={"task": self.name, "error": str(exc)},
+                        )
+
+        return _BaseRetryTask
+    except Exception:
+        logger.warning("celery_base_task_unavailable")
+        return None
+
+
+BaseRetryTask = _define_base_task()
+
+
+# ---------------------------------------------------------------------------
 # Storage helper for rendered PDFs
 # ---------------------------------------------------------------------------
 
@@ -337,6 +380,7 @@ try:
     @celery_app.task(
         name="app.worker.tasks.generate_resume_task",
         bind=True,
+        base=BaseRetryTask,
         max_retries=3,
         default_retry_delay=10,
         acks_late=True,
@@ -362,6 +406,7 @@ try:
     @celery_app.task(
         name="app.worker.tasks.render_resume_pdf_task",
         bind=True,
+        base=BaseRetryTask,
         max_retries=2,
         default_retry_delay=5,
         acks_late=True,
@@ -374,6 +419,7 @@ try:
     @celery_app.task(
         name="app.worker.tasks.render_cover_letter_pdf_task",
         bind=True,
+        base=BaseRetryTask,
         max_retries=2,
         default_retry_delay=5,
         acks_late=True,
@@ -401,6 +447,7 @@ try:
     @celery_app.task(
         name="app.worker.tasks.process_batch_job",
         bind=True,
+        base=BaseRetryTask,
         max_retries=3,
         default_retry_delay=30,
         acks_late=True,
@@ -424,6 +471,7 @@ try:
     @celery_app.task(
         name="app.worker.tasks.send_notification_task",
         bind=True,
+        base=BaseRetryTask,
         max_retries=3,
         default_retry_delay=60,
         acks_late=True,
@@ -438,6 +486,7 @@ try:
     @celery_app.task(
         name="app.worker.tasks.check_reminders_task",
         bind=True,
+        base=BaseRetryTask,
         max_retries=0,
         acks_late=True,
     )
@@ -452,6 +501,30 @@ except Exception as exc:  # pragma: no cover - import-time broker failure
     logger.warning(
         "celery_task_registration_skipped_notifications", extra={"error": str(exc)}
     )
+
+
+try:
+    from app.worker.celery_app import celery_app
+
+    @celery_app.task(
+        name="app.worker.tasks.handle_dead_letter", bind=True, max_retries=0
+    )
+    def handle_dead_letter(
+        self, task_name=None, args=None, kwargs=None, error=None
+    ) -> dict:
+        """Dead-letter collector: records permanently failed tasks for inspection."""
+        logger.error(
+            "task_dead_lettered",
+            extra={
+                "task_name": task_name,
+                "args": args,
+                "kwargs": kwargs,
+                "error": error,
+            },
+        )
+        return {"dead_lettered": task_name}
+except Exception as exc:  # pragma: no cover - import-time broker failure
+    logger.warning("celery_dlq_task_unavailable", extra={"error": str(exc)})
 
 
 __all__ = [

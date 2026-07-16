@@ -1,207 +1,235 @@
 """
-Rate limiting middleware and utilities for API endpoints.
-Implements token bucket algorithm with Redis backend for distributed systems.
-Falls back to in-memory storage for development.
+Rate limiting for API endpoints.
+
+Implemented as a FastAPI middleware that applies a fixed-window limit per
+client. The counter lives in Redis when Redis is reachable (so limits are
+enforced across all API replicas), and falls back to an in-process counter
+when Redis is unavailable.
+
+Limits are keyed by authenticated user when a bearer token is present,
+otherwise by client IP. Rate limiting is disabled in the ``testing`` and
+``development`` environments so local dev and the test suite are never
+throttled.
 """
 
-from typing import Dict, Tuple, Optional
-from fastapi import Request, HTTPException, status
-from collections import defaultdict
+from __future__ import annotations
+
 import time
+from typing import Dict, Optional, Tuple
+
+from fastapi import Request, Response, status
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.config import settings
+from app.core.redis_client import get_redis_client
+from app.core.security import decode_token
+
+# ---------------------------------------------------------------------------
+# In-memory fallback limiter (used when Redis is unreachable)
+# ---------------------------------------------------------------------------
 
 
 class RateLimiter:
-    """
-    Token bucket rate limiter with sliding window.
-    Supports per-IP and per-user rate limiting.
-    """
+    """Sliding-window token bucket kept in process memory."""
 
     def __init__(self):
-        # In-memory storage: {key: (tokens, last_update)}
         self.buckets: Dict[str, Tuple[float, float]] = {}
-        self.request_history: Dict[str, list] = defaultdict(list)
 
-    def _get_tokens(
-        self, key: str, max_tokens: int, refill_rate: float, current_time: float
-    ) -> Tuple[float, float]:
-        """
-        Get current token count for a key, refilling based on time elapsed.
-
-        Args:
-            key: Unique identifier (IP or user ID)
-            max_tokens: Maximum tokens in bucket
-            refill_rate: Tokens added per second
-            current_time: Current timestamp
-
-        Returns:
-            Tuple of (current_tokens, last_update_time)
-        """
+    def _refill(self, key, max_tokens, refill_rate, now):
         if key not in self.buckets:
-            return max_tokens, current_time
+            return max_tokens, now
+        tokens, last = self.buckets[key]
+        tokens = min(max_tokens, tokens + (now - last) * refill_rate)
+        return tokens, now
 
-        tokens, last_update = self.buckets[key]
-
-        # Calculate tokens to add based on time elapsed
-        time_passed = current_time - last_update
-        tokens_to_add = time_passed * refill_rate
-        new_tokens = min(max_tokens, tokens + tokens_to_add)
-
-        return new_tokens, current_time
-
-    def check_rate_limit(
-        self, key: str, max_requests: int, window_seconds: int, cost: int = 1
-    ) -> Tuple[bool, Optional[int]]:
-        """
-        Check if request should be allowed.
-
-        Args:
-            key: Unique identifier for rate limiting
-            max_requests: Maximum requests allowed in window
-            window_seconds: Time window in seconds
-            cost: Number of tokens this request costs (default 1)
-
-        Returns:
-            Tuple of (is_allowed, retry_after_seconds)
-        """
-        current_time = time.time()
+    def check(self, key, max_requests, window_seconds) -> Tuple[bool, Optional[int]]:
+        now = time.time()
         refill_rate = max_requests / window_seconds
-
-        # Get current tokens
-        tokens, _ = self._get_tokens(key, max_requests, refill_rate, current_time)
-
-        # Check if enough tokens available
-        if tokens >= cost:
-            # Consume tokens
-            self.buckets[key] = (tokens - cost, current_time)
+        tokens, _ = self._refill(key, max_requests, refill_rate, now)
+        if tokens >= 1:
+            self.buckets[key] = (tokens - 1, now)
             return True, None
-        else:
-            # Calculate retry-after time
-            tokens_needed = cost - tokens
-            retry_after = int(tokens_needed / refill_rate) + 1
-            return False, retry_after
+        retry_after = int((1 - tokens) / refill_rate) + 1
+        return False, retry_after
 
-    def get_remaining(self, key: str, max_requests: int, window_seconds: int) -> int:
-        """Get remaining requests for a key."""
-        current_time = time.time()
+    def remaining(self, key, max_requests, window_seconds) -> int:
+        now = time.time()
         refill_rate = max_requests / window_seconds
-        tokens, _ = self._get_tokens(key, max_requests, refill_rate, current_time)
+        tokens, _ = self._refill(key, max_requests, refill_rate, now)
         return int(tokens)
 
-    def reset(self, key: str):
-        """Reset rate limit for a key (for testing or admin purposes)."""
-        if key in self.buckets:
-            del self.buckets[key]
-        if key in self.request_history:
-            del self.request_history[key]
 
-    def cleanup_old_entries(self, max_age_seconds: int = 3600):
-        """Remove entries older than max_age to prevent memory leaks."""
-        current_time = time.time()
-        keys_to_remove = []
-
-        for key, (_, last_update) in self.buckets.items():
-            if current_time - last_update > max_age_seconds:
-                keys_to_remove.append(key)
-
-        for key in keys_to_remove:
-            del self.buckets[key]
-            if key in self.request_history:
-                del self.request_history[key]
-
-
-# Global rate limiter instance
 rate_limiter = RateLimiter()
 
+# ---------------------------------------------------------------------------
+# Limit configuration
+# ---------------------------------------------------------------------------
 
-# Rate limit configurations for different endpoint types
-RATE_LIMITS = {
-    "auth_login": (5, 300),  # 5 requests per 5 minutes
-    "auth_register": (3, 3600),  # 3 requests per hour
-    "auth_forgot_password": (3, 3600),  # 3 requests per hour
-    "auth_verify_email": (5, 300),  # 5 requests per 5 minutes
-    "auth_refresh": (10, 60),  # 10 requests per minute
-    "api_read": (100, 60),  # 100 requests per minute
-    "api_write": (30, 60),  # 30 requests per minute
-    "api_import": (10, 60),  # 10 imports per minute
+# (max_requests, window_seconds)
+RATE_LIMITS: Dict[str, Tuple[int, int]] = {
+    "auth_login": (5, 300),
+    "auth_register": (3, 3600),
+    "auth_verify_email": (5, 300),
+    "auth_forgot_password": (3, 3600),
+    "auth_refresh": (10, 60),
+    "api_read": (100, 60),
+    "api_write": (30, 60),
+    "api_import": (10, 60),
 }
 
 
 def get_client_ip(request: Request) -> str:
-    """
-    Extract client IP address from request.
-    Handles X-Forwarded-For and X-Real-IP headers for proxies.
-    """
-    # Check X-Forwarded-For header (load balancers, proxies)
-    forwarded_for = request.headers.get("X-Forwarded-For")
-    if forwarded_for:
-        # Take the first IP in the chain
-        return forwarded_for.split(",")[0].strip()
-
-    # Check X-Real-IP header
+    """Best-effort client IP from proxy headers, falling back to peer."""
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
     real_ip = request.headers.get("X-Real-IP")
     if real_ip:
         return real_ip
-
-    # Fall back to direct client IP
     if request.client:
         return request.client.host
-
     return "unknown"
 
 
+def _limit_type_for(path: str, method: str) -> Optional[str]:
+    p = path.lower()
+    if "/auth/login" in p:
+        return "auth_login"
+    if "/auth/register" in p:
+        return "auth_register"
+    if "/auth/verify" in p:
+        return "auth_verify_email"
+    if "/auth/forgot" in p:
+        return "auth_forgot_password"
+    if "/auth/refresh" in p:
+        return "auth_refresh"
+    if method.upper() in ("POST", "PUT", "PATCH", "DELETE"):
+        return "api_write"
+    return "api_read"
+
+
+def _user_id_from_request(request: Request) -> Optional[str]:
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        try:
+            return decode_token(auth[7:]).get("sub")
+        except Exception:
+            return None
+    return None
+
+
 def check_rate_limit(
-    request: Request, limit_type: str = "api_read", user_id: Optional[str] = None
+    request: Request,
+    limit_type: str = "api_read",
+    user_id: Optional[str] = None,
 ) -> None:
-    """
-    Check rate limit and raise HTTPException if exceeded.
+    """Enforce the limit for ``limit_type``. Raises 429 when exceeded.
 
-    Args:
-        request: FastAPI request object
-        limit_type: Type of rate limit to apply (from RATE_LIMITS)
-        user_id: Optional user ID for per-user rate limiting
-
-    Raises:
-        HTTPException: 429 Too Many Requests if rate limit exceeded
+    No-op in ``testing``/``development``. Uses Redis when available, else the
+    in-memory fallback. On success it records header values on
+    ``request.state`` for the response-header middleware to emit.
     """
     if limit_type not in RATE_LIMITS:
         raise ValueError(f"Unknown rate limit type: {limit_type}")
 
-    # Bypass rate limiting in non-production environments (tests, local dev)
-    # so automated test suites and local development are never throttled.
     if settings.ENVIRONMENT in ("testing", "test", "development"):
         return
 
     max_requests, window_seconds = RATE_LIMITS[limit_type]
+    key_scope = f"user:{user_id}" if user_id else f"ip:{get_client_ip(request)}"
+    redis_key = f"ratelimit:{limit_type}:{key_scope}"
 
-    # Use user ID if available, otherwise use IP
-    key = f"user:{user_id}" if user_id else f"ip:{get_client_ip(request)}"
-    full_key = f"{limit_type}:{key}"
+    client = get_redis_client()
+    if client is not None:
+        try:
+            count = client.incr(redis_key)
+            if count == 1:
+                client.expire(redis_key, window_seconds)
+            ttl = client.ttl(redis_key)
+            if ttl is None or ttl < 0:
+                ttl = window_seconds
+            if count > max_requests:
+                retry_after = int(ttl) + 1
+                _record_headers(request, max_requests, 0, int(time.time() + ttl))
+                raise _too_many(retry_after)
+            _record_headers(
+                request, max_requests, max(0, max_requests - count), int(time.time() + ttl)
+            )
+            return
+        except Exception as exc:
+            if isinstance(exc, _RateLimitExceeded):
+                raise
+            # Redis hiccup mid-request: fall through to in-memory.
+    # In-memory fallback
+    allowed, retry_after = rate_limiter.check(redis_key, max_requests, window_seconds)
+    if not allowed:
+        _record_headers(request, max_requests, 0, int(time.time() + window_seconds))
+        raise _too_many(retry_after or window_seconds)
+    remaining = rate_limiter.remaining(redis_key, max_requests, window_seconds)
+    _record_headers(request, max_requests, remaining, int(time.time() + window_seconds))
 
-    # Check rate limit
-    is_allowed, retry_after = rate_limiter.check_rate_limit(
-        full_key, max_requests, window_seconds
+
+class _RateLimitExceeded(Exception):
+    pass
+
+
+def _too_many(retry_after: int) -> _RateLimitExceeded:
+    return _RateLimitExceeded()
+
+
+def _record_headers(request: Request, limit: int, remaining: int, reset: int) -> None:
+    request.state.rate_limit_limit = limit
+    request.state.rate_limit_remaining = remaining
+    request.state.rate_limit_reset = reset
+
+
+# Translate our internal sentinel into a FastAPI HTTPException.
+def _to_http_exception(retry_after: int) -> Exception:
+    return HTTPException(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        detail=f"Rate limit exceeded. Try again in {retry_after} seconds.",
+        headers={"Retry-After": str(retry_after)},
     )
 
-    if not is_allowed:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"Rate limit exceeded. Try again in {retry_after} seconds.",
-            headers={"Retry-After": str(retry_after)},
-        )
 
-    # Add rate limit headers to response (will be added by middleware)
-    remaining = rate_limiter.get_remaining(full_key, max_requests, window_seconds)
-    request.state.rate_limit_remaining = remaining
-    request.state.rate_limit_limit = max_requests
-    request.state.rate_limit_reset = int(time.time() + window_seconds)
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    """Global rate limiting for ``/api/v1`` routes.
 
+    Disabled outside production. Returns a 429 directly (with Retry-After and
+    rate-limit headers) when the client is over budget.
+    """
 
-def add_rate_limit_headers(request: Request, headers: dict) -> dict:
-    """Add rate limit headers to response."""
-    if hasattr(request.state, "rate_limit_remaining"):
-        headers["X-RateLimit-Limit"] = str(request.state.rate_limit_limit)
-        headers["X-RateLimit-Remaining"] = str(request.state.rate_limit_remaining)
-        headers["X-RateLimit-Reset"] = str(request.state.rate_limit_reset)
-    return headers
+    def __init__(self, app, api_prefix: str = "/api/v1"):
+        super().__init__(app)
+        self.api_prefix = api_prefix
+
+    async def dispatch(self, request: Request, call_next):
+        if settings.ENVIRONMENT in ("testing", "test", "development"):
+            return await call_next(request)
+        if not request.url.path.startswith(self.api_prefix):
+            return await call_next(request)
+
+        limit_type = _limit_type_for(request.url.path, request.method)
+        if limit_type is None:
+            return await call_next(request)
+
+        user_id = _user_id_from_request(request)
+        try:
+            check_rate_limit(request, limit_type, user_id)
+        except _RateLimitExceeded:
+            retry = getattr(request.state, "rate_limit_reset", None)
+            reset = int(time.time() + (retry or 60)) if retry else 60
+            return JSONResponse(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                content={"detail": "Rate limit exceeded. Please slow down."},
+                headers={
+                    "Retry-After": str(retry or 60),
+                    "X-RateLimit-Limit": str(
+                        getattr(request.state, "rate_limit_limit", "")
+                    ),
+                    "X-RateLimit-Remaining": "0",
+                    "X-RateLimit-Reset": str(reset),
+                },
+            )
+        return await call_next(request)
