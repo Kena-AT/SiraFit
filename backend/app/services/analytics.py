@@ -102,8 +102,8 @@ def generate_analytics_metrics(db: Session, user_id: uuid.UUID) -> Dict[str, Any
             }
         )
 
-    # 5. Market roles — aggregated from the actual jobs imported by this user
-    # Count applications per job title (normalised), take the top 10
+    # 5. Market demand — aggregated from the actual jobs imported by this user.
+    # Count applications per job title (normalised), take the top 8.
     from collections import Counter
 
     title_counter: Counter = Counter()
@@ -126,10 +126,10 @@ def generate_analytics_metrics(db: Session, user_id: uuid.UUID) -> Dict[str, Any
             title_counter[normalised] += 1
 
     top_roles = title_counter.most_common(8)
-    market_roles = []
+    market_demand = []
     for rank, (role, count) in enumerate(top_roles):
         demand = max(10, 100 - rank * 10)
-        market_roles.append(
+        market_demand.append(
             {
                 "role": role,
                 "demand": demand,
@@ -137,53 +137,6 @@ def generate_analytics_metrics(db: Session, user_id: uuid.UUID) -> Dict[str, Any
                 "change": "+0%",  # would need historical data
             }
         )
-
-    # 6. Top technologies — frequency count from all job tags
-    tag_counter: Counter = Counter()
-    for job in all_imported_jobs:
-        if job.tags:
-            for tag in job.tags:
-                tag_counter[tag.lower()] += 1
-
-    total_tags = sum(tag_counter.values()) or 1
-    top_technologies = [
-        [tag.title(), round(count / total_tags * 100)]
-        for tag, count in tag_counter.most_common(10)
-    ] or [["Python", 0], ["JavaScript", 0], ["React", 0], ["AWS", 0], ["Docker", 0]]
-
-    # 7. Salary medians — derived from imported jobs that have salary data
-    salary_data = [
-        (job.salary_min, job.salary_max, job.currency or "USD")
-        for job in all_imported_jobs
-        if job.salary_min or job.salary_max
-    ]
-
-    if salary_data:
-        import statistics
-
-        midpoints = [
-            ((s_min or 0) + (s_max or 0)) / (2 if s_min and s_max else 1)
-            for s_min, s_max, _ in salary_data
-            if (s_min or 0) + (s_max or 0) > 0
-        ]
-        if midpoints:
-            median_val = statistics.median(midpoints)
-            currency = salary_data[0][2]
-            salary_medians = [
-                ["Median (your imports)", f"{currency}{int(median_val / 1000)}k"],
-                [
-                    "25th percentile",
-                    f"{currency}{int(sorted(midpoints)[len(midpoints) // 4] / 1000)}k",
-                ],
-                [
-                    "75th percentile",
-                    f"{currency}{int(sorted(midpoints)[3 * len(midpoints) // 4] / 1000)}k",
-                ],
-            ]
-        else:
-            salary_medians = [["No salary data", "—"]]
-    else:
-        salary_medians = [["No salary data", "—"]]
 
     return {
         "total_applications": total_applications,
@@ -193,8 +146,8 @@ def generate_analytics_metrics(db: Session, user_id: uuid.UUID) -> Dict[str, Any
         "conversion_funnel": funnel,
         "rejection_stages": rejections,
         "skill_coverage": skill_coverage,
-        "market_demand": market_roles,
-        "generated_at": datetime.now(timezone.utc),
+        "market_demand": market_demand,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 

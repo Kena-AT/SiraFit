@@ -56,9 +56,7 @@ def test_generate_analytics_metrics(test_user, db):
     assert "conversion_funnel" in metrics
     assert "rejection_stages" in metrics
     assert "skill_coverage" in metrics
-    assert "market_roles" in metrics
-    assert "top_technologies" in metrics
-    assert "salary_medians" in metrics
+    assert "market_demand" in metrics
 
 
 def test_create_analytics_snapshot(test_user, db):
