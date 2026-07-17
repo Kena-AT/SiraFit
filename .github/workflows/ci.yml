@@ -50,6 +50,7 @@ jobs:
           REDIS_URL: redis://localhost:6379/0
           CELERY_BROKER_URL: memory://
           CELERY_RESULT_BACKEND: cache+memory://
+          PYTHONPATH: .
         run: |
           pytest ../tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term-missing
 
