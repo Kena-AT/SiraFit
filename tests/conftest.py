@@ -12,6 +12,12 @@ unreachable broker, so resume/cover-letter/batch/PDF work actually runs inline.
 """
 
 import os
+import sys
+
+# Ensure the backend directory is in the python path
+backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../backend"))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
 
 import pytest
 from fastapi.testclient import TestClient
