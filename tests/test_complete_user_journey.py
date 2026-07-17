@@ -14,18 +14,12 @@ Covers the full user lifecycle:
 
 import uuid
 from datetime import datetime, timedelta, timezone
-from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
 from app.models.user import User
-from app.models.job import Job, JobApplication
-from app.models.notification import Notification
-from app.models.profile import Profile
-from app.models.cover_letter import CoverLetter
-from app.models.batch import BatchJob
 from app.services.notification import (
     create_notification,
     get_notifications,
@@ -333,10 +327,10 @@ class TestCompleteUserJourney:
 
         # Create notes
         note1 = add_note(client, headers, app_id, "First conversation with recruiter")
-        note2 = add_note(
+        add_note(
             client, headers, app_id, "Technical interview scheduled", pinned=True
         )
-        note3 = add_note(client, headers, app_id, "Follow up by Friday")
+        add_note(client, headers, app_id, "Follow up by Friday")
 
         # List notes - pinned should come first
         resp = client.get(f"/api/v1/applications/{app_id}/notes", headers=headers)
@@ -383,7 +377,7 @@ class TestCompleteUserJourney:
             role="recruiter",
             is_primary=True,
         )
-        contact2 = add_contact(
+        add_contact(
             client,
             headers,
             app_id,
@@ -597,8 +591,8 @@ class TestCompleteUserJourney:
             for i in range(5)
         ]
         apps = [create_application(client, headers, j["id"]) for j in jobs]
-        for app in apps:
-            transition_status(client, headers, app["id"], "applied")
+        for application in apps:
+            transition_status(client, headers, application["id"], "applied")
 
         # Analytics overview
         resp = client.get("/api/v1/analytics/metrics", headers=headers)
@@ -654,8 +648,7 @@ class TestCompleteUserJourney:
 
         # Create job and application
         job = create_job_via_api(client, headers, description=TEST_JOB_DESCRIPTION)
-        app = create_application(client, headers, job["id"])
-        app_id = app["id"]
+        create_application(client, headers, job["id"])
 
         # Create cover letter for the job
         resp = client.post(
@@ -716,7 +709,6 @@ class TestCompleteUserJourney:
     def test_16_user_isolation(self, client, test_user, db):
         """Test that users cannot access each other's data."""
         headers = test_user["headers"]
-        user_id = test_user["user"].id
 
         # Create another user
         other_email = f"other_{uuid.uuid4().hex[:8]}@test.com"
@@ -939,7 +931,6 @@ class TestAPIErrorHandling:
                 json={"source_type": "description", "data": TEST_JOB_DESCRIPTION},
             )
             assert resp.status_code == 200
-            data = resp.json()
             # Second import should be marked as duplicate
             # (Implementation may vary - just ensure it doesn't error)
 

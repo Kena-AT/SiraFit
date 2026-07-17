@@ -19,11 +19,11 @@ backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../backen
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
-import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.pool import StaticPool
-from sqlalchemy.orm import sessionmaker
+import pytest  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+from sqlalchemy import create_engine  # noqa: E402
+from sqlalchemy.pool import StaticPool  # noqa: E402
+from sqlalchemy.orm import sessionmaker  # noqa: E402
 
 # Provide all required env vars BEFORE any app imports
 os.environ.setdefault("DATABASE_URL", "sqlite://")
@@ -46,17 +46,17 @@ os.environ.setdefault("CELERY_BROKER_URL", "memory://")
 os.environ.setdefault("CELERY_RESULT_BACKEND", "cache+memory://")
 
 # Now import after env is set
-from app.main import app as fastapi_app
-from app.core.database import Base, get_db
+from app.main import app as fastapi_app  # noqa: E402
+from app.core.database import Base, get_db  # noqa: E402
 
 # Import ALL models so SQLite creates every table
-import app.models.user  # noqa: F401
-import app.models.job  # noqa: F401
-import app.models.profile  # noqa: F401
-import app.models.cover_letter  # noqa: F401
-import app.models.batch  # noqa: F401
-import app.models.notification  # noqa: F401
-import app.models.analytics  # noqa: F401
+import app.models.user  # noqa: F401, E402
+import app.models.job  # noqa: F401, E402
+import app.models.profile  # noqa: F401, E402
+import app.models.cover_letter  # noqa: F401, E402
+import app.models.batch  # noqa: F401, E402
+import app.models.notification  # noqa: F401, E402
+import app.models.analytics  # noqa: F401, E402
 
 SQLALCHEMY_DATABASE_URL = "sqlite://"
 

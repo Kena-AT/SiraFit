@@ -17,7 +17,7 @@ from __future__ import annotations
 import time
 from typing import Dict, Optional, Tuple
 
-from fastapi import Request, Response, status
+from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -184,13 +184,6 @@ def _record_headers(request: Request, limit: int, remaining: int, reset: int) ->
     request.state.rate_limit_reset = reset
 
 
-# Translate our internal sentinel into a FastAPI HTTPException.
-def _to_http_exception(retry_after: int) -> Exception:
-    return HTTPException(
-        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-        detail=f"Rate limit exceeded. Try again in {retry_after} seconds.",
-        headers={"Retry-After": str(retry_after)},
-    )
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
