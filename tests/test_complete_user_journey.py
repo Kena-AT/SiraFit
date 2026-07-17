@@ -20,6 +20,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.models.user import User
+from app.models.job import AuditLog  # noqa: F401
 from app.services.notification import (
     create_notification,
     get_notifications,
@@ -327,9 +328,7 @@ class TestCompleteUserJourney:
 
         # Create notes
         note1 = add_note(client, headers, app_id, "First conversation with recruiter")
-        add_note(
-            client, headers, app_id, "Technical interview scheduled", pinned=True
-        )
+        add_note(client, headers, app_id, "Technical interview scheduled", pinned=True)
         add_note(client, headers, app_id, "Follow up by Friday")
 
         # List notes - pinned should come first
@@ -445,7 +444,6 @@ class TestCompleteUserJourney:
 
     def test_08_audit_logging(self, client, test_user, db):
         """Test that status transitions create audit logs."""
-        from app.models.job import AuditLog
 
         headers = test_user["headers"]
         user_id = test_user["user"].id

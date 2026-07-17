@@ -50,13 +50,13 @@ from app.main import app as fastapi_app  # noqa: E402
 from app.core.database import Base, get_db  # noqa: E402
 
 # Import ALL models so SQLite creates every table
-import app.models.user  # noqa: F401, E402
-import app.models.job  # noqa: F401, E402
-import app.models.profile  # noqa: F401, E402
-import app.models.cover_letter  # noqa: F401, E402
-import app.models.batch  # noqa: F401, E402
-import app.models.notification  # noqa: F401, E402
-import app.models.analytics  # noqa: F401, E402
+import app.models.user  # noqa: E402, F401
+import app.models.job  # noqa: E402, F401
+import app.models.profile  # noqa: E402, F401
+import app.models.cover_letter  # noqa: E402, F401
+import app.models.batch  # noqa: E402, F401
+import app.models.notification  # noqa: E402, F401
+import app.models.analytics  # noqa: E402, F401
 
 SQLALCHEMY_DATABASE_URL = "sqlite://"
 

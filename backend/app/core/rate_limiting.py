@@ -154,7 +154,10 @@ def check_rate_limit(
                 _record_headers(request, max_requests, 0, int(time.time() + ttl))
                 raise _too_many(retry_after)
             _record_headers(
-                request, max_requests, max(0, max_requests - count), int(time.time() + ttl)
+                request,
+                max_requests,
+                max(0, max_requests - count),
+                int(time.time() + ttl),
             )
             return
         except Exception as exc:
@@ -182,8 +185,6 @@ def _record_headers(request: Request, limit: int, remaining: int, reset: int) ->
     request.state.rate_limit_limit = limit
     request.state.rate_limit_remaining = remaining
     request.state.rate_limit_reset = reset
-
-
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
