@@ -15,6 +15,9 @@
     "test:e2e:ci": "playwright test --config=playwright.config.ci.ts"
   },
   "dependencies": {
+    "@emnapi/core": "^1.11.2",
+    "@emnapi/runtime": "^1.11.2",
+    "@emnapi/wasi-threads": "^1.2.2",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
