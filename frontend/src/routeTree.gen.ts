@@ -9,92 +9,61 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as VerifyEmailRouteImport } from './routes/verify-email'
-import { Route as TermsRouteImport } from './routes/terms'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as RegisterRouteImport } from './routes/register'
-import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as LogoutRouteImport } from './routes/logout'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as HelpRouteImport } from './routes/help'
-import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
-import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AppSettingsRouteImport } from './routes/_app.settings'
-import { Route as AppResumesRouteImport } from './routes/_app.resumes'
-import { Route as AppRankingRouteImport } from './routes/_app.ranking'
-import { Route as AppNotificationsRouteImport } from './routes/_app.notifications'
-import { Route as AppMatchRouteImport } from './routes/_app.match'
-import { Route as AppJobsRouteImport } from './routes/_app.jobs'
-import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
-import { Route as AppCoverLettersRouteImport } from './routes/_app.cover-letters'
-import { Route as AppBatchRouteImport } from './routes/_app.batch'
-import { Route as AppApplicationsRouteImport } from './routes/_app.applications'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as HelpRouteImport } from './routes/help'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as LogoutRouteImport } from './routes/logout'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as RegisterRouteImport } from './routes/register'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as AppAnalyticsRouteImport } from './routes/_app.analytics'
-import { Route as AppSettingsIndexRouteImport } from './routes/_app.settings.index'
-import { Route as AppResumesIndexRouteImport } from './routes/_app.resumes.index'
-import { Route as AppJobsIndexRouteImport } from './routes/_app.jobs.index'
-import { Route as AppCoverLettersIndexRouteImport } from './routes/_app.cover-letters.index'
-import { Route as AppApplicationsIndexRouteImport } from './routes/_app.applications.index'
+import { Route as AppApplicationsRouteImport } from './routes/_app.applications'
+import { Route as AppBatchRouteImport } from './routes/_app.batch'
+import { Route as AppCoverLettersRouteImport } from './routes/_app.cover-letters'
+import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
+import { Route as AppJobsRouteImport } from './routes/_app.jobs'
+import { Route as AppMatchRouteImport } from './routes/_app.match'
+import { Route as AppNotificationsRouteImport } from './routes/_app.notifications'
+import { Route as AppRankingRouteImport } from './routes/_app.ranking'
+import { Route as AppResumesRouteImport } from './routes/_app.resumes'
+import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppAnalyticsIndexRouteImport } from './routes/_app.analytics.index'
-import { Route as AppSettingsResumeRouteImport } from './routes/_app.settings.resume'
-import { Route as AppSettingsPrivacyRouteImport } from './routes/_app.settings.privacy'
-import { Route as AppSettingsNotificationsRouteImport } from './routes/_app.settings.notifications'
-import { Route as AppSettingsAiRouteImport } from './routes/_app.settings.ai'
-import { Route as AppResumesProfilesRouteImport } from './routes/_app.resumes.profiles'
-import { Route as AppResumesProfileEditorRouteImport } from './routes/_app.resumes.profile-editor'
-import { Route as AppResumesBuilderRouteImport } from './routes/_app.resumes.builder'
-import { Route as AppResumesIdRouteImport } from './routes/_app.resumes.$id'
-import { Route as AppJobsImportRouteImport } from './routes/_app.jobs.import'
-import { Route as AppJobsHistoryRouteImport } from './routes/_app.jobs.history'
-import { Route as AppJobsJobIdRouteImport } from './routes/_app.jobs.$jobId'
-import { Route as AppCoverLettersBuilderRouteImport } from './routes/_app.cover-letters.builder'
-import { Route as AppBatchIdRouteImport } from './routes/_app.batch.$id'
-import { Route as AppApplicationsTimelineRouteImport } from './routes/_app.applications.timeline'
-import { Route as AppApplicationsFollowupsRouteImport } from './routes/_app.applications.followups'
-import { Route as AppApplicationsIdRouteImport } from './routes/_app.applications.$id'
-import { Route as AppAnalyticsSkillsRouteImport } from './routes/_app.analytics.skills'
 import { Route as AppAnalyticsMarketRouteImport } from './routes/_app.analytics.market'
+import { Route as AppAnalyticsSkillsRouteImport } from './routes/_app.analytics.skills'
+import { Route as AppApplicationsIndexRouteImport } from './routes/_app.applications.index'
+import { Route as AppApplicationsIdRouteImport } from './routes/_app.applications.$id'
+import { Route as AppApplicationsFollowupsRouteImport } from './routes/_app.applications.followups'
+import { Route as AppApplicationsTimelineRouteImport } from './routes/_app.applications.timeline'
+import { Route as AppBatchIdRouteImport } from './routes/_app.batch.$id'
+import { Route as AppCoverLettersIndexRouteImport } from './routes/_app.cover-letters.index'
+import { Route as AppCoverLettersBuilderRouteImport } from './routes/_app.cover-letters.builder'
+import { Route as AppJobsIndexRouteImport } from './routes/_app.jobs.index'
+import { Route as AppJobsJobIdRouteImport } from './routes/_app.jobs.$jobId'
+import { Route as AppJobsHistoryRouteImport } from './routes/_app.jobs.history'
+import { Route as AppJobsImportRouteImport } from './routes/_app.jobs.import'
+import { Route as AppResumesIndexRouteImport } from './routes/_app.resumes.index'
+import { Route as AppResumesIdRouteImport } from './routes/_app.resumes.$id'
+import { Route as AppResumesBuilderRouteImport } from './routes/_app.resumes.builder'
+import { Route as AppResumesProfileEditorRouteImport } from './routes/_app.resumes.profile-editor'
+import { Route as AppResumesProfilesRouteImport } from './routes/_app.resumes.profiles'
+import { Route as AppSettingsIndexRouteImport } from './routes/_app.settings.index'
+import { Route as AppSettingsAiRouteImport } from './routes/_app.settings.ai'
+import { Route as AppSettingsNotificationsRouteImport } from './routes/_app.settings.notifications'
+import { Route as AppSettingsPrivacyRouteImport } from './routes/_app.settings.privacy'
+import { Route as AppSettingsResumeRouteImport } from './routes/_app.settings.resume'
 import { Route as AppResumesIdEditorRouteImport } from './routes/_app.resumes.$id.editor'
 
-const VerifyEmailRoute = VerifyEmailRouteImport.update({
-  id: '/verify-email',
-  path: '/verify-email',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TermsRoute = TermsRouteImport.update({
-  id: '/terms',
-  path: '/terms',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RegisterRoute = RegisterRouteImport.update({
-  id: '/register',
-  path: '/register',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LogoutRoute = LogoutRouteImport.update({
-  id: '/logout',
-  path: '/logout',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HelpRoute = HelpRouteImport.update({
-  id: '/help',
-  path: '/help',
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -102,58 +71,49 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppRoute = AppRouteImport.update({
-  id: '/_app',
+const HelpRoute = HelpRouteImport.update({
+  id: '/help',
+  path: '/help',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppSettingsRoute = AppSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AppRoute,
+const LogoutRoute = LogoutRouteImport.update({
+  id: '/logout',
+  path: '/logout',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AppResumesRoute = AppResumesRouteImport.update({
-  id: '/resumes',
-  path: '/resumes',
-  getParentRoute: () => AppRoute,
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AppRankingRoute = AppRankingRouteImport.update({
-  id: '/ranking',
-  path: '/ranking',
-  getParentRoute: () => AppRoute,
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AppNotificationsRoute = AppNotificationsRouteImport.update({
-  id: '/notifications',
-  path: '/notifications',
-  getParentRoute: () => AppRoute,
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AppMatchRoute = AppMatchRouteImport.update({
-  id: '/match',
-  path: '/match',
-  getParentRoute: () => AppRoute,
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AppJobsRoute = AppJobsRouteImport.update({
-  id: '/jobs',
-  path: '/jobs',
-  getParentRoute: () => AppRoute,
+const VerifyEmailRoute = VerifyEmailRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AppDashboardRoute = AppDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppCoverLettersRoute = AppCoverLettersRouteImport.update({
-  id: '/cover-letters',
-  path: '/cover-letters',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppBatchRoute = AppBatchRouteImport.update({
-  id: '/batch',
-  path: '/batch',
+const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
   getParentRoute: () => AppRoute,
 } as any)
 const AppApplicationsRoute = AppApplicationsRouteImport.update({
@@ -161,110 +121,74 @@ const AppApplicationsRoute = AppApplicationsRouteImport.update({
   path: '/applications',
   getParentRoute: () => AppRoute,
 } as any)
-const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
-  id: '/analytics',
-  path: '/analytics',
+const AppBatchRoute = AppBatchRouteImport.update({
+  id: '/batch',
+  path: '/batch',
   getParentRoute: () => AppRoute,
 } as any)
-const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppSettingsRoute,
+const AppCoverLettersRoute = AppCoverLettersRouteImport.update({
+  id: '/cover-letters',
+  path: '/cover-letters',
+  getParentRoute: () => AppRoute,
 } as any)
-const AppResumesIndexRoute = AppResumesIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppResumesRoute,
+const AppDashboardRoute = AppDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AppRoute,
 } as any)
-const AppJobsIndexRoute = AppJobsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppJobsRoute,
+const AppJobsRoute = AppJobsRouteImport.update({
+  id: '/jobs',
+  path: '/jobs',
+  getParentRoute: () => AppRoute,
 } as any)
-const AppCoverLettersIndexRoute = AppCoverLettersIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppCoverLettersRoute,
+const AppMatchRoute = AppMatchRouteImport.update({
+  id: '/match',
+  path: '/match',
+  getParentRoute: () => AppRoute,
 } as any)
-const AppApplicationsIndexRoute = AppApplicationsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppApplicationsRoute,
+const AppNotificationsRoute = AppNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRankingRoute = AppRankingRouteImport.update({
+  id: '/ranking',
+  path: '/ranking',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppResumesRoute = AppResumesRouteImport.update({
+  id: '/resumes',
+  path: '/resumes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppAnalyticsIndexRoute = AppAnalyticsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppAnalyticsRoute,
 } as any)
-const AppSettingsResumeRoute = AppSettingsResumeRouteImport.update({
-  id: '/resume',
-  path: '/resume',
-  getParentRoute: () => AppSettingsRoute,
+const AppAnalyticsMarketRoute = AppAnalyticsMarketRouteImport.update({
+  id: '/market',
+  path: '/market',
+  getParentRoute: () => AppAnalyticsRoute,
 } as any)
-const AppSettingsPrivacyRoute = AppSettingsPrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => AppSettingsRoute,
+const AppAnalyticsSkillsRoute = AppAnalyticsSkillsRouteImport.update({
+  id: '/skills',
+  path: '/skills',
+  getParentRoute: () => AppAnalyticsRoute,
 } as any)
-const AppSettingsNotificationsRoute =
-  AppSettingsNotificationsRouteImport.update({
-    id: '/notifications',
-    path: '/notifications',
-    getParentRoute: () => AppSettingsRoute,
-  } as any)
-const AppSettingsAiRoute = AppSettingsAiRouteImport.update({
-  id: '/ai',
-  path: '/ai',
-  getParentRoute: () => AppSettingsRoute,
+const AppApplicationsIndexRoute = AppApplicationsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppApplicationsRoute,
 } as any)
-const AppResumesProfilesRoute = AppResumesProfilesRouteImport.update({
-  id: '/profiles',
-  path: '/profiles',
-  getParentRoute: () => AppResumesRoute,
-} as any)
-const AppResumesProfileEditorRoute = AppResumesProfileEditorRouteImport.update({
-  id: '/profile-editor',
-  path: '/profile-editor',
-  getParentRoute: () => AppResumesRoute,
-} as any)
-const AppResumesBuilderRoute = AppResumesBuilderRouteImport.update({
-  id: '/builder',
-  path: '/builder',
-  getParentRoute: () => AppResumesRoute,
-} as any)
-const AppResumesIdRoute = AppResumesIdRouteImport.update({
+const AppApplicationsIdRoute = AppApplicationsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
-  getParentRoute: () => AppResumesRoute,
-} as any)
-const AppJobsImportRoute = AppJobsImportRouteImport.update({
-  id: '/import',
-  path: '/import',
-  getParentRoute: () => AppJobsRoute,
-} as any)
-const AppJobsHistoryRoute = AppJobsHistoryRouteImport.update({
-  id: '/history',
-  path: '/history',
-  getParentRoute: () => AppJobsRoute,
-} as any)
-const AppJobsJobIdRoute = AppJobsJobIdRouteImport.update({
-  id: '/$jobId',
-  path: '/$jobId',
-  getParentRoute: () => AppJobsRoute,
-} as any)
-const AppCoverLettersBuilderRoute = AppCoverLettersBuilderRouteImport.update({
-  id: '/builder',
-  path: '/builder',
-  getParentRoute: () => AppCoverLettersRoute,
-} as any)
-const AppBatchIdRoute = AppBatchIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AppBatchRoute,
-} as any)
-const AppApplicationsTimelineRoute = AppApplicationsTimelineRouteImport.update({
-  id: '/timeline',
-  path: '/timeline',
   getParentRoute: () => AppApplicationsRoute,
 } as any)
 const AppApplicationsFollowupsRoute =
@@ -273,20 +197,96 @@ const AppApplicationsFollowupsRoute =
     path: '/followups',
     getParentRoute: () => AppApplicationsRoute,
   } as any)
-const AppApplicationsIdRoute = AppApplicationsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
+const AppApplicationsTimelineRoute = AppApplicationsTimelineRouteImport.update({
+  id: '/timeline',
+  path: '/timeline',
   getParentRoute: () => AppApplicationsRoute,
 } as any)
-const AppAnalyticsSkillsRoute = AppAnalyticsSkillsRouteImport.update({
-  id: '/skills',
-  path: '/skills',
-  getParentRoute: () => AppAnalyticsRoute,
+const AppBatchIdRoute = AppBatchIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppBatchRoute,
 } as any)
-const AppAnalyticsMarketRoute = AppAnalyticsMarketRouteImport.update({
-  id: '/market',
-  path: '/market',
-  getParentRoute: () => AppAnalyticsRoute,
+const AppCoverLettersIndexRoute = AppCoverLettersIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppCoverLettersRoute,
+} as any)
+const AppCoverLettersBuilderRoute = AppCoverLettersBuilderRouteImport.update({
+  id: '/builder',
+  path: '/builder',
+  getParentRoute: () => AppCoverLettersRoute,
+} as any)
+const AppJobsIndexRoute = AppJobsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppJobsRoute,
+} as any)
+const AppJobsJobIdRoute = AppJobsJobIdRouteImport.update({
+  id: '/$jobId',
+  path: '/$jobId',
+  getParentRoute: () => AppJobsRoute,
+} as any)
+const AppJobsHistoryRoute = AppJobsHistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => AppJobsRoute,
+} as any)
+const AppJobsImportRoute = AppJobsImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => AppJobsRoute,
+} as any)
+const AppResumesIndexRoute = AppResumesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppResumesRoute,
+} as any)
+const AppResumesIdRoute = AppResumesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppResumesRoute,
+} as any)
+const AppResumesBuilderRoute = AppResumesBuilderRouteImport.update({
+  id: '/builder',
+  path: '/builder',
+  getParentRoute: () => AppResumesRoute,
+} as any)
+const AppResumesProfileEditorRoute = AppResumesProfileEditorRouteImport.update({
+  id: '/profile-editor',
+  path: '/profile-editor',
+  getParentRoute: () => AppResumesRoute,
+} as any)
+const AppResumesProfilesRoute = AppResumesProfilesRouteImport.update({
+  id: '/profiles',
+  path: '/profiles',
+  getParentRoute: () => AppResumesRoute,
+} as any)
+const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
+const AppSettingsAiRoute = AppSettingsAiRouteImport.update({
+  id: '/ai',
+  path: '/ai',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
+const AppSettingsNotificationsRoute =
+  AppSettingsNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
+    getParentRoute: () => AppSettingsRoute,
+  } as any)
+const AppSettingsPrivacyRoute = AppSettingsPrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
+const AppSettingsResumeRoute = AppSettingsResumeRouteImport.update({
+  id: '/resume',
+  path: '/resume',
+  getParentRoute: () => AppSettingsRoute,
 } as any)
 const AppResumesIdEditorRoute = AppResumesIdEditorRouteImport.update({
   id: '/editor',
@@ -592,67 +592,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/verify-email': {
-      id: '/verify-email'
-      path: '/verify-email'
-      fullPath: '/verify-email'
-      preLoaderRoute: typeof VerifyEmailRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/terms': {
-      id: '/terms'
-      path: '/terms'
-      fullPath: '/terms'
-      preLoaderRoute: typeof TermsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/register': {
-      id: '/register'
-      path: '/register'
-      fullPath: '/register'
-      preLoaderRoute: typeof RegisterRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/logout': {
-      id: '/logout'
-      path: '/logout'
-      fullPath: '/logout'
-      preLoaderRoute: typeof LogoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/help': {
-      id: '/help'
-      path: '/help'
-      fullPath: '/help'
-      preLoaderRoute: typeof HelpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/forgot-password': {
-      id: '/forgot-password'
-      path: '/forgot-password'
-      fullPath: '/forgot-password'
-      preLoaderRoute: typeof ForgotPasswordRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app': {
@@ -662,74 +606,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app/settings': {
-      id: '/_app/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AppSettingsRouteImport
-      parentRoute: typeof AppRoute
+    '/help': {
+      id: '/help'
+      path: '/help'
+      fullPath: '/help'
+      preLoaderRoute: typeof HelpRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_app/resumes': {
-      id: '/_app/resumes'
-      path: '/resumes'
-      fullPath: '/resumes'
-      preLoaderRoute: typeof AppResumesRouteImport
-      parentRoute: typeof AppRoute
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_app/ranking': {
-      id: '/_app/ranking'
-      path: '/ranking'
-      fullPath: '/ranking'
-      preLoaderRoute: typeof AppRankingRouteImport
-      parentRoute: typeof AppRoute
+    '/logout': {
+      id: '/logout'
+      path: '/logout'
+      fullPath: '/logout'
+      preLoaderRoute: typeof LogoutRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_app/notifications': {
-      id: '/_app/notifications'
-      path: '/notifications'
-      fullPath: '/notifications'
-      preLoaderRoute: typeof AppNotificationsRouteImport
-      parentRoute: typeof AppRoute
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_app/match': {
-      id: '/_app/match'
-      path: '/match'
-      fullPath: '/match'
-      preLoaderRoute: typeof AppMatchRouteImport
-      parentRoute: typeof AppRoute
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_app/jobs': {
-      id: '/_app/jobs'
-      path: '/jobs'
-      fullPath: '/jobs'
-      preLoaderRoute: typeof AppJobsRouteImport
-      parentRoute: typeof AppRoute
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_app/dashboard': {
-      id: '/_app/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AppDashboardRouteImport
-      parentRoute: typeof AppRoute
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_app/cover-letters': {
-      id: '/_app/cover-letters'
-      path: '/cover-letters'
-      fullPath: '/cover-letters'
-      preLoaderRoute: typeof AppCoverLettersRouteImport
-      parentRoute: typeof AppRoute
+    '/verify-email': {
+      id: '/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof VerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_app/batch': {
-      id: '/_app/batch'
-      path: '/batch'
-      fullPath: '/batch'
-      preLoaderRoute: typeof AppBatchRouteImport
+    '/_app/analytics': {
+      id: '/_app/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof AppAnalyticsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/applications': {
@@ -739,47 +683,68 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppApplicationsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/analytics': {
-      id: '/_app/analytics'
-      path: '/analytics'
-      fullPath: '/analytics'
-      preLoaderRoute: typeof AppAnalyticsRouteImport
+    '/_app/batch': {
+      id: '/_app/batch'
+      path: '/batch'
+      fullPath: '/batch'
+      preLoaderRoute: typeof AppBatchRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/settings/': {
-      id: '/_app/settings/'
-      path: '/'
-      fullPath: '/settings/'
-      preLoaderRoute: typeof AppSettingsIndexRouteImport
-      parentRoute: typeof AppSettingsRoute
+    '/_app/cover-letters': {
+      id: '/_app/cover-letters'
+      path: '/cover-letters'
+      fullPath: '/cover-letters'
+      preLoaderRoute: typeof AppCoverLettersRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/_app/resumes/': {
-      id: '/_app/resumes/'
-      path: '/'
-      fullPath: '/resumes/'
-      preLoaderRoute: typeof AppResumesIndexRouteImport
-      parentRoute: typeof AppResumesRoute
+    '/_app/dashboard': {
+      id: '/_app/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/_app/jobs/': {
-      id: '/_app/jobs/'
-      path: '/'
-      fullPath: '/jobs/'
-      preLoaderRoute: typeof AppJobsIndexRouteImport
-      parentRoute: typeof AppJobsRoute
+    '/_app/jobs': {
+      id: '/_app/jobs'
+      path: '/jobs'
+      fullPath: '/jobs'
+      preLoaderRoute: typeof AppJobsRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/_app/cover-letters/': {
-      id: '/_app/cover-letters/'
-      path: '/'
-      fullPath: '/cover-letters/'
-      preLoaderRoute: typeof AppCoverLettersIndexRouteImport
-      parentRoute: typeof AppCoverLettersRoute
+    '/_app/match': {
+      id: '/_app/match'
+      path: '/match'
+      fullPath: '/match'
+      preLoaderRoute: typeof AppMatchRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/_app/applications/': {
-      id: '/_app/applications/'
-      path: '/'
-      fullPath: '/applications/'
-      preLoaderRoute: typeof AppApplicationsIndexRouteImport
-      parentRoute: typeof AppApplicationsRoute
+    '/_app/notifications': {
+      id: '/_app/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof AppNotificationsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/ranking': {
+      id: '/_app/ranking'
+      path: '/ranking'
+      fullPath: '/ranking'
+      preLoaderRoute: typeof AppRankingRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/resumes': {
+      id: '/_app/resumes'
+      path: '/resumes'
+      fullPath: '/resumes'
+      preLoaderRoute: typeof AppResumesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/analytics/': {
       id: '/_app/analytics/'
@@ -788,109 +753,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAnalyticsIndexRouteImport
       parentRoute: typeof AppAnalyticsRoute
     }
-    '/_app/settings/resume': {
-      id: '/_app/settings/resume'
-      path: '/resume'
-      fullPath: '/settings/resume'
-      preLoaderRoute: typeof AppSettingsResumeRouteImport
-      parentRoute: typeof AppSettingsRoute
+    '/_app/analytics/market': {
+      id: '/_app/analytics/market'
+      path: '/market'
+      fullPath: '/analytics/market'
+      preLoaderRoute: typeof AppAnalyticsMarketRouteImport
+      parentRoute: typeof AppAnalyticsRoute
     }
-    '/_app/settings/privacy': {
-      id: '/_app/settings/privacy'
-      path: '/privacy'
-      fullPath: '/settings/privacy'
-      preLoaderRoute: typeof AppSettingsPrivacyRouteImport
-      parentRoute: typeof AppSettingsRoute
+    '/_app/analytics/skills': {
+      id: '/_app/analytics/skills'
+      path: '/skills'
+      fullPath: '/analytics/skills'
+      preLoaderRoute: typeof AppAnalyticsSkillsRouteImport
+      parentRoute: typeof AppAnalyticsRoute
     }
-    '/_app/settings/notifications': {
-      id: '/_app/settings/notifications'
-      path: '/notifications'
-      fullPath: '/settings/notifications'
-      preLoaderRoute: typeof AppSettingsNotificationsRouteImport
-      parentRoute: typeof AppSettingsRoute
-    }
-    '/_app/settings/ai': {
-      id: '/_app/settings/ai'
-      path: '/ai'
-      fullPath: '/settings/ai'
-      preLoaderRoute: typeof AppSettingsAiRouteImport
-      parentRoute: typeof AppSettingsRoute
-    }
-    '/_app/resumes/profiles': {
-      id: '/_app/resumes/profiles'
-      path: '/profiles'
-      fullPath: '/resumes/profiles'
-      preLoaderRoute: typeof AppResumesProfilesRouteImport
-      parentRoute: typeof AppResumesRoute
-    }
-    '/_app/resumes/profile-editor': {
-      id: '/_app/resumes/profile-editor'
-      path: '/profile-editor'
-      fullPath: '/resumes/profile-editor'
-      preLoaderRoute: typeof AppResumesProfileEditorRouteImport
-      parentRoute: typeof AppResumesRoute
-    }
-    '/_app/resumes/builder': {
-      id: '/_app/resumes/builder'
-      path: '/builder'
-      fullPath: '/resumes/builder'
-      preLoaderRoute: typeof AppResumesBuilderRouteImport
-      parentRoute: typeof AppResumesRoute
-    }
-    '/_app/resumes/$id': {
-      id: '/_app/resumes/$id'
-      path: '/$id'
-      fullPath: '/resumes/$id'
-      preLoaderRoute: typeof AppResumesIdRouteImport
-      parentRoute: typeof AppResumesRoute
-    }
-    '/_app/jobs/import': {
-      id: '/_app/jobs/import'
-      path: '/import'
-      fullPath: '/jobs/import'
-      preLoaderRoute: typeof AppJobsImportRouteImport
-      parentRoute: typeof AppJobsRoute
-    }
-    '/_app/jobs/history': {
-      id: '/_app/jobs/history'
-      path: '/history'
-      fullPath: '/jobs/history'
-      preLoaderRoute: typeof AppJobsHistoryRouteImport
-      parentRoute: typeof AppJobsRoute
-    }
-    '/_app/jobs/$jobId': {
-      id: '/_app/jobs/$jobId'
-      path: '/$jobId'
-      fullPath: '/jobs/$jobId'
-      preLoaderRoute: typeof AppJobsJobIdRouteImport
-      parentRoute: typeof AppJobsRoute
-    }
-    '/_app/cover-letters/builder': {
-      id: '/_app/cover-letters/builder'
-      path: '/builder'
-      fullPath: '/cover-letters/builder'
-      preLoaderRoute: typeof AppCoverLettersBuilderRouteImport
-      parentRoute: typeof AppCoverLettersRoute
-    }
-    '/_app/batch/$id': {
-      id: '/_app/batch/$id'
-      path: '/$id'
-      fullPath: '/batch/$id'
-      preLoaderRoute: typeof AppBatchIdRouteImport
-      parentRoute: typeof AppBatchRoute
-    }
-    '/_app/applications/timeline': {
-      id: '/_app/applications/timeline'
-      path: '/timeline'
-      fullPath: '/applications/timeline'
-      preLoaderRoute: typeof AppApplicationsTimelineRouteImport
-      parentRoute: typeof AppApplicationsRoute
-    }
-    '/_app/applications/followups': {
-      id: '/_app/applications/followups'
-      path: '/followups'
-      fullPath: '/applications/followups'
-      preLoaderRoute: typeof AppApplicationsFollowupsRouteImport
+    '/_app/applications/': {
+      id: '/_app/applications/'
+      path: '/'
+      fullPath: '/applications/'
+      preLoaderRoute: typeof AppApplicationsIndexRouteImport
       parentRoute: typeof AppApplicationsRoute
     }
     '/_app/applications/$id': {
@@ -900,19 +781,138 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppApplicationsIdRouteImport
       parentRoute: typeof AppApplicationsRoute
     }
-    '/_app/analytics/skills': {
-      id: '/_app/analytics/skills'
-      path: '/skills'
-      fullPath: '/analytics/skills'
-      preLoaderRoute: typeof AppAnalyticsSkillsRouteImport
-      parentRoute: typeof AppAnalyticsRoute
+    '/_app/applications/followups': {
+      id: '/_app/applications/followups'
+      path: '/followups'
+      fullPath: '/applications/followups'
+      preLoaderRoute: typeof AppApplicationsFollowupsRouteImport
+      parentRoute: typeof AppApplicationsRoute
     }
-    '/_app/analytics/market': {
-      id: '/_app/analytics/market'
-      path: '/market'
-      fullPath: '/analytics/market'
-      preLoaderRoute: typeof AppAnalyticsMarketRouteImport
-      parentRoute: typeof AppAnalyticsRoute
+    '/_app/applications/timeline': {
+      id: '/_app/applications/timeline'
+      path: '/timeline'
+      fullPath: '/applications/timeline'
+      preLoaderRoute: typeof AppApplicationsTimelineRouteImport
+      parentRoute: typeof AppApplicationsRoute
+    }
+    '/_app/batch/$id': {
+      id: '/_app/batch/$id'
+      path: '/$id'
+      fullPath: '/batch/$id'
+      preLoaderRoute: typeof AppBatchIdRouteImport
+      parentRoute: typeof AppBatchRoute
+    }
+    '/_app/cover-letters/': {
+      id: '/_app/cover-letters/'
+      path: '/'
+      fullPath: '/cover-letters/'
+      preLoaderRoute: typeof AppCoverLettersIndexRouteImport
+      parentRoute: typeof AppCoverLettersRoute
+    }
+    '/_app/cover-letters/builder': {
+      id: '/_app/cover-letters/builder'
+      path: '/builder'
+      fullPath: '/cover-letters/builder'
+      preLoaderRoute: typeof AppCoverLettersBuilderRouteImport
+      parentRoute: typeof AppCoverLettersRoute
+    }
+    '/_app/jobs/': {
+      id: '/_app/jobs/'
+      path: '/'
+      fullPath: '/jobs/'
+      preLoaderRoute: typeof AppJobsIndexRouteImport
+      parentRoute: typeof AppJobsRoute
+    }
+    '/_app/jobs/$jobId': {
+      id: '/_app/jobs/$jobId'
+      path: '/$jobId'
+      fullPath: '/jobs/$jobId'
+      preLoaderRoute: typeof AppJobsJobIdRouteImport
+      parentRoute: typeof AppJobsRoute
+    }
+    '/_app/jobs/history': {
+      id: '/_app/jobs/history'
+      path: '/history'
+      fullPath: '/jobs/history'
+      preLoaderRoute: typeof AppJobsHistoryRouteImport
+      parentRoute: typeof AppJobsRoute
+    }
+    '/_app/jobs/import': {
+      id: '/_app/jobs/import'
+      path: '/import'
+      fullPath: '/jobs/import'
+      preLoaderRoute: typeof AppJobsImportRouteImport
+      parentRoute: typeof AppJobsRoute
+    }
+    '/_app/resumes/': {
+      id: '/_app/resumes/'
+      path: '/'
+      fullPath: '/resumes/'
+      preLoaderRoute: typeof AppResumesIndexRouteImport
+      parentRoute: typeof AppResumesRoute
+    }
+    '/_app/resumes/$id': {
+      id: '/_app/resumes/$id'
+      path: '/$id'
+      fullPath: '/resumes/$id'
+      preLoaderRoute: typeof AppResumesIdRouteImport
+      parentRoute: typeof AppResumesRoute
+    }
+    '/_app/resumes/builder': {
+      id: '/_app/resumes/builder'
+      path: '/builder'
+      fullPath: '/resumes/builder'
+      preLoaderRoute: typeof AppResumesBuilderRouteImport
+      parentRoute: typeof AppResumesRoute
+    }
+    '/_app/resumes/profile-editor': {
+      id: '/_app/resumes/profile-editor'
+      path: '/profile-editor'
+      fullPath: '/resumes/profile-editor'
+      preLoaderRoute: typeof AppResumesProfileEditorRouteImport
+      parentRoute: typeof AppResumesRoute
+    }
+    '/_app/resumes/profiles': {
+      id: '/_app/resumes/profiles'
+      path: '/profiles'
+      fullPath: '/resumes/profiles'
+      preLoaderRoute: typeof AppResumesProfilesRouteImport
+      parentRoute: typeof AppResumesRoute
+    }
+    '/_app/settings/': {
+      id: '/_app/settings/'
+      path: '/'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof AppSettingsIndexRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/_app/settings/ai': {
+      id: '/_app/settings/ai'
+      path: '/ai'
+      fullPath: '/settings/ai'
+      preLoaderRoute: typeof AppSettingsAiRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/_app/settings/notifications': {
+      id: '/_app/settings/notifications'
+      path: '/notifications'
+      fullPath: '/settings/notifications'
+      preLoaderRoute: typeof AppSettingsNotificationsRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/_app/settings/privacy': {
+      id: '/_app/settings/privacy'
+      path: '/privacy'
+      fullPath: '/settings/privacy'
+      preLoaderRoute: typeof AppSettingsPrivacyRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/_app/settings/resume': {
+      id: '/_app/settings/resume'
+      path: '/resume'
+      fullPath: '/settings/resume'
+      preLoaderRoute: typeof AppSettingsResumeRouteImport
+      parentRoute: typeof AppSettingsRoute
     }
     '/_app/resumes/$id/editor': {
       id: '/_app/resumes/$id/editor'
