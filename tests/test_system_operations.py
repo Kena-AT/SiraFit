@@ -661,6 +661,8 @@ class TestEnqueueCoverLetterPdfRender:
 # FROM FILE: test_notifications.py
 # ========================================
 
+import uuid
+
 from app.services.notification import (
     create_notification,
     get_notifications,
@@ -792,6 +794,8 @@ def test_get_unread_count(test_user, db):
 Simple script to test email configuration
 Run: python test_email.py
 """
+
+import os
 
 from dotenv import load_dotenv
 from app.services.email import email_service

@@ -7,9 +7,10 @@ QA tests for Sprint 9 — Application tracking (status machine, timeline, notes,
 """
 
 import uuid
-
-
-# --- Status Machine Tests ---
+from app.services.application import validate_transition
+from app.models.job import Job, JobApplication, AuditLog
+from app.models.user import User
+from app.core.security import get_password_hash
 
 VALID_STATUSES = [
     "saved",
@@ -503,8 +504,10 @@ def test_cannot_access_other_users_notes(client, auth_headers, db):
 
 """Tests for resume generation service."""
 
-import pytest
 import json
+import uuid
+
+import pytest
 
 from app.services.resume_generation import (
     _parse_ai_response,
@@ -514,6 +517,7 @@ from app.services.resume_generation import (
     _serialize_profile,
     _serialize_job,
 )
+from app.models.job import Job
 
 
 # ---------------------------------------------------------------------------
@@ -866,9 +870,13 @@ class TestSerializeJob:
 
 """Tests for resume export service (HTML, DOCX, PDF)."""
 
+import json
+import uuid
 from io import BytesIO
+import zipfile
 
 from app.models.job import ResumeVersion
+from app.services.resume_export import export_resume_html, export_resume_pdf, export_resume_docx
 
 
 def make_version(
@@ -1153,6 +1161,7 @@ class TestExportResumeDocx:
 
 """Tests for PDF rendering service."""
 
+from io import BytesIO
 
 from app.services.pdf_rendering import render_html_to_pdf_bytes, render_html_to_pdf
 
@@ -1376,14 +1385,18 @@ class TestPdfRendering:
 
 """Tests for cover letter generation service."""
 
+import uuid
+
 import pytest
+
+from app.models.profile import Profile, Experience, Skill
+from app.models.job import Job
+from app.services.cover_letter_generation import _serialize_profile, _serialize_job, render_cover_letter_html
 
 
 @pytest.fixture
 def mock_profile():
     """Create a mock Profile for testing."""
-    from app.models.profile import Profile
-
     profile = Profile(
         id=uuid.uuid4(),
         user_id=uuid.uuid4(),
