@@ -76,6 +76,7 @@ RATE_LIMITS: Dict[str, Tuple[int, int]] = {
     "api_read": (100, 60),
     "api_write": (30, 60),
     "api_import": (10, 60),
+    "api_export": (10, 60),  # Stricter limit for file downloads
 }
 
 
@@ -104,6 +105,8 @@ def _limit_type_for(path: str, method: str) -> Optional[str]:
         return "auth_forgot_password"
     if "/auth/refresh" in p:
         return "auth_refresh"
+    if "/resumes/" in p and "/export" in p:
+        return "api_export"
     if method.upper() in ("POST", "PUT", "PATCH", "DELETE"):
         return "api_write"
     return "api_read"
