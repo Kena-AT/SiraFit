@@ -3,6 +3,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi_csrf_protect import CsrfProtect
+from fastapi_csrf_protect.exceptions import CsrfProtectError
+from fastapi_csrf_protect import CsrfProtectConfig
 from app.core.config import settings
 from app.api.router import api_router
 from app.core.health import router as health_router
@@ -46,11 +49,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Review against the real production origin before relying on it.
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "img-src 'self' data: https:; "
+            "img-src 'self' data: https://*.sirafit.com; "
             "style-src 'self' 'unsafe-inline'; "
-            "script-src 'self'; "
-            "connect-src 'self' https:; "
-            "frame-ancestors 'none'"
+            "script-src 'self' https://*.sirafit.com; "
+            "connect-src 'self' https://*.sirafit.com https://api.sirafit.com; "
+            "frame-ancestors 'none'; "
+            "form-action 'self'; "
+            "object-src 'none'"
         )
         if settings.ENVIRONMENT == "production":
             response.headers["Strict-Transport-Security"] = (
@@ -72,6 +77,19 @@ async def lifespan(app: FastAPI):
     logger.info("app_started", event_type="startup")
     yield
     logger.info("app_stopped", event_type="shutdown")
+
+
+@CsrfProtect.load_config
+async def get_csrf_config():
+    return CsrfProtectConfig(
+        secret_key=settings.SECRET_KEY,
+        cookie_samesite="lax",
+        cookie_secure=settings.ENVIRONMENT == "production",
+    )
+
+
+# Initialize CSRF protection
+csrf = CsrfProtect()
 
 
 app = FastAPI(
@@ -99,6 +117,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# CSRF protection
+app.add_middleware(
+    CsrfProtect,
+    config=get_csrf_config,
+)
+
 # Security headers (HSTS/CSP/etc.)
 app.add_middleware(SecurityHeadersMiddleware)
 
@@ -115,6 +139,21 @@ app.include_router(metrics_router, tags=["metrics"])
 app.include_router(api_router, prefix=settings.API_V1_STR, tags=["api"])
 
 
+@app.exception_handler(CsrfProtectError)
+async def csrf_protect_exception_handler(request: Request, exc: CsrfProtectError):
+    """Handle CSRF protection errors."""
+    logger.warning(
+        "csrf_protect_error",
+        path=request.url.path,
+        method=request.method,
+        error=str(exc),
+    )
+    return JSONResponse(
+        status_code=403,
+        content={"detail": "CSRF token validation failed."},
+    )
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Global exception handler to mask internal errors."""
@@ -123,6 +162,7 @@ async def global_exception_handler(request: Request, exc: Exception):
         path=request.url.path,
         method=request.method,
         error=str(exc),
+        exc_info=True,
     )
     return JSONResponse(
         status_code=500,
