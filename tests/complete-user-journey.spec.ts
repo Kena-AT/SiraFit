@@ -14,7 +14,7 @@ import { test, expect } from "@playwright/test";
  */
 
 const TEST_EMAIL = `testuser.${Date.now()}@example.com`;
-const TEST_PASSWORD = "TestPassword123!";
+const TEST_PASSWORD = process.env.TEST_PASSWORD || "TestPassword123!";
 const TEST_NAME = "Test User";
 
 // Test data
