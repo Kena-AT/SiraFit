@@ -12,7 +12,7 @@ starlette==0.38.6
 gitpython==3.1.53
 sqlalchemy==2.0.31
 python-dotenv==1.2.2
-pytest==8.3.2
+pytest==8.4.0
 pytest-asyncio==1.4.0
 httpx==0.28.1
 pytest-cov==7.1.0

@@ -197,9 +197,14 @@ export function PageBody({ children, className }: { children: ReactNode; classNa
 export function MarketingShell({ children }: { children: ReactNode }) {
   return (
     <div
-      className="min-h-screen bg-background text-foreground"
+      className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 text-foreground relative overflow-x-hidden"
       style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
     >
+      <div className="absolute inset-0 pointer-events-none -z-10">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-brand/5 to-transparent rounded-full filter blur-3xl opacity-50 dark:from-brand/10" />
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr from-blue-300/30 to-transparent rounded-full filter blur-2xl opacity-30 dark:from-blue-500/20" />
+        <div className="absolute top-1/2 right-1/4 w-60 h-60 bg-gradient-to-bl from-purple-200/20 to-transparent rounded-full filter blur-25 opacity-40 dark:from-purple-300/15" />
+      </div>
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <Link to="/">
