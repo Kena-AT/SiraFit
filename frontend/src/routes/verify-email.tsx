@@ -1,37 +1,212 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { AuthShell } from "@/components/sirafit/shell";
 import { Button } from "@/components/ui/button";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
+type VerifyEmailSearch = {
+  token?: string;
+  email?: string;
+};
+
 export const Route = createFileRoute("/verify-email")({
   head: () => ({ meta: [{ title: "Verify email · SiraFit" }] }),
+  validateSearch: (search: Record<string, unknown>): VerifyEmailSearch => {
+    return {
+      token: typeof search.token === "string" ? search.token : undefined,
+      email: typeof search.email === "string" ? search.email : undefined,
+    };
+  },
   component: VerifyEmailPage,
 });
 
+type VerifyState = "idle" | "loading" | "success" | "error";
+
 function VerifyEmailPage() {
+  const search = Route.useSearch();
+  const navigate = useNavigate();
+
+  // ── Token flow: user clicked the link from email ─────────────────────────
+  const [verifyState, setVerifyState] = useState<VerifyState>(
+    search.token ? "loading" : "idle",
+  );
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!search.token) return;
+
+    const verify = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/v1/auth/verify-email`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: search.token }),
+          credentials: "include",
+        });
+
+        if (res.ok) {
+          setVerifyState("success");
+        } else {
+          const data = await res.json().catch(() => ({}));
+          setErrorMessage(
+            data.detail || "The verification link is invalid or has expired.",
+          );
+          setVerifyState("error");
+        }
+      } catch {
+        setErrorMessage("Could not connect to the server. Please try again.");
+        setVerifyState("error");
+      }
+    };
+
+    verify();
+  }, [search.token]);
+
+  // ── Success screen ────────────────────────────────────────────────────────
+  if (verifyState === "success") {
+    return (
+      <AuthShell title="Email verified!">
+        <div className="flex flex-col items-center gap-6 text-center">
+          {/* Animated checkmark circle */}
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50 ring-8 ring-emerald-50 dark:bg-emerald-950/30 dark:ring-emerald-950/30">
+            <svg
+              className="h-10 w-10 text-emerald-500"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M20 6 9 17l-5-5" />
+            </svg>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Your email address has been verified successfully. Your account is
+              now fully active and ready to use.
+            </p>
+          </div>
+
+          <div className="flex w-full flex-col gap-3">
+            <Button
+              className="w-full"
+              onClick={() => navigate({ to: "/login" })}
+            >
+              Continue to login
+            </Button>
+            <Button variant="outline" className="w-full" asChild>
+              <Link to="/dashboard">Go to dashboard</Link>
+            </Button>
+          </div>
+        </div>
+      </AuthShell>
+    );
+  }
+
+  // ── Error screen ──────────────────────────────────────────────────────────
+  if (verifyState === "error") {
+    return (
+      <AuthShell
+        title="Verification failed"
+        subtitle={errorMessage ?? "Something went wrong."}
+      >
+        <div className="flex flex-col items-center gap-6 text-center">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-50 ring-8 ring-red-50 dark:bg-red-950/30 dark:ring-red-950/30">
+            <svg
+              className="h-10 w-10 text-red-500"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <path d="m15 9-6 6M9 9l6 6" />
+            </svg>
+          </div>
+
+          <div className="flex w-full flex-col gap-3">
+            <Button
+              className="w-full"
+              onClick={() =>
+                navigate({ to: "/verify-email", search: { email: "" } })
+              }
+            >
+              Request a new link
+            </Button>
+            <Button variant="outline" className="w-full" asChild>
+              <Link to="/login">Back to login</Link>
+            </Button>
+          </div>
+        </div>
+      </AuthShell>
+    );
+  }
+
+  // ── Loading screen (token present, verifying…) ────────────────────────────
+  if (verifyState === "loading") {
+    return (
+      <AuthShell title="Verifying your email…" subtitle="Just a moment.">
+        <div className="flex justify-center py-8">
+          <svg
+            className="h-10 w-10 animate-spin text-muted-foreground"
+            viewBox="0 0 24 24"
+            fill="none"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8v4l3-3-3-3V0a12 12 0 100 24v-4l-3 3 3 3v4A12 12 0 014 12z"
+            />
+          </svg>
+        </div>
+      </AuthShell>
+    );
+  }
+
+  // ── Idle: "check your inbox" screen ──────────────────────────────────────
+  return <WaitingForVerification email={search.email} />;
+}
+
+function WaitingForVerification({ email }: { email?: string }) {
+  const [inputEmail, setInputEmail] = useState(email || "");
   const [isLoading, setIsLoading] = useState(false);
-  const [status, setStatus] = useState<string | null>(null);
+  const [status, setStatus] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const handleResend = async () => {
+    if (!inputEmail) {
+      setStatus({ type: "error", text: "Please enter your email address." });
+      return;
+    }
     setIsLoading(true);
     setStatus(null);
     try {
-      const response = await fetch(`${API_URL}/api/v1/auth/resend-verification`, {
+      const res = await fetch(`${API_URL}/api/v1/auth/resend-verification`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: inputEmail }),
         credentials: "include",
       });
-      if (!response.ok) {
-        const err = await response
-          .json()
-          .catch(() => ({ detail: "Failed to resend verification" }));
-        throw new Error(err.detail || "Failed to resend verification");
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setStatus({ type: "success", text: data.detail || "Verification email sent!" });
+      } else {
+        setStatus({ type: "error", text: data.detail || "Failed to resend." });
       }
-      const data = await response.json();
-      setStatus(data.detail || "Verification email resent");
-    } catch (err: any) {
-      setStatus(err.message || "Error resending verification email");
+    } catch {
+      setStatus({ type: "error", text: "Network error. Please try again." });
     } finally {
       setIsLoading(false);
     }
@@ -40,7 +215,11 @@ function VerifyEmailPage() {
   return (
     <AuthShell
       title="Verify your email"
-      subtitle="We sent a verification link to your email."
+      subtitle={
+        email
+          ? `We sent a verification link to ${email}.`
+          : "We sent a verification link to your email."
+      }
       footer={
         <>
           Didn't get it?{" "}
@@ -50,18 +229,56 @@ function VerifyEmailPage() {
             onClick={handleResend}
             disabled={isLoading}
           >
-            {isLoading ? "Resending..." : "Resend"}
+            {isLoading ? "Resending…" : "Resend"}
           </button>
         </>
       }
     >
       <div className="space-y-4">
-        {status && (
-          <div className={status.includes("error") ? "text-red-500" : "text-green-600"}>
-            {status}
+        {/* Envelope illustration */}
+        <div className="flex justify-center py-4">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted ring-8 ring-muted">
+            <svg
+              className="h-8 w-8 text-muted-foreground"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect width="20" height="16" x="2" y="4" rx="2" />
+              <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+            </svg>
+          </div>
+        </div>
+
+        {/* Show email input only if the email wasn't passed in the URL */}
+        {!email && (
+          <div className="flex flex-col space-y-2">
+            <label htmlFor="email" className="text-sm font-medium">
+              Email Address
+            </label>
+            <input
+              id="email"
+              type="email"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              value={inputEmail}
+              onChange={(e) => setInputEmail(e.target.value)}
+              placeholder="Enter your email"
+            />
           </div>
         )}
-        <Button asChild variant="link">
+
+        {status && (
+          <p
+            className={`text-sm ${status.type === "error" ? "text-red-500" : "text-emerald-600"}`}
+          >
+            {status.text}
+          </p>
+        )}
+
+        <Button variant="outline" className="w-full" asChild>
           <Link to="/login">Back to login</Link>
         </Button>
       </div>

@@ -71,8 +71,9 @@ function RegisterPage() {
       );
       if (response.ok) {
         setMessage({ type: "success", text: "Registration successful! Please verify your email." });
+        const registeredEmail = formData.email.trim().toLowerCase();
         setFormData({ full_name: "", email: "", password: "", confirmPassword: "" });
-        setTimeout(() => navigate({ to: "/verify-email" }), 2000);
+        setTimeout(() => navigate({ to: "/verify-email", search: { email: registeredEmail } }), 2000);
       } else {
         const errorData = await response.json();
         setMessage({ type: "error", text: errorData.detail || "Registration failed" });

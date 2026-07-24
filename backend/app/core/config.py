@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    # Frontend URL (used for verification/reset links in emails)
+    FRONTEND_URL: str = "http://localhost:8080"
+
     # Celery (optional)
     CELERY_BROKER_URL: str | None = None
     CELERY_RESULT_BACKEND: str | None = None

@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { MarketingShell } from "@/components/sirafit/shell";
 import { AgentDot, ScorePill, StatusPill, Tag } from "@/components/sirafit/bits";
+import { ParticleField } from "@/components/sirafit/particle-field";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -25,8 +26,13 @@ export const Route = createFileRoute("/")({
 function Landing() {
   return (
     <MarketingShell>
-      <section className="border-b border-border">
-        <div className="mx-auto max-w-5xl px-6 py-20 text-center">
+      <section className="relative border-b border-border overflow-hidden">
+        <ParticleField />
+        {/* Soft gradient overlay so text stays readable */}
+        <div className="absolute inset-0 bg-gradient-to-b from-background/20 via-background/5 to-background/40 pointer-events-none" style={{ zIndex: 1 }} />
+        {/* Fade out at the bottom so particles blend into the next section */}
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent pointer-events-none" style={{ zIndex: 1 }} />
+        <div className="relative mx-auto max-w-5xl px-6 py-20 text-center" style={{ zIndex: 2 }}>
           <div className="inline-flex items-center gap-2 rounded-full bg-card px-3 py-1 text-[11px] font-medium text-muted-foreground ring-1 ring-border">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-[color:var(--brand)]" />
             v0.8.2 · Local agent in private beta

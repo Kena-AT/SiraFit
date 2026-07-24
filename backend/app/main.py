@@ -5,7 +5,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi_csrf_protect import CsrfProtect
 from fastapi_csrf_protect.exceptions import CsrfProtectError
-from fastapi_csrf_protect import CsrfProtectConfig
 from app.core.config import settings
 from app.api.router import api_router
 from app.core.health import router as health_router
@@ -79,17 +78,16 @@ async def lifespan(app: FastAPI):
     logger.info("app_stopped", event_type="shutdown")
 
 
+from pydantic import BaseModel
+
+class CsrfSettings(BaseModel):
+    secret_key: str = settings.SECRET_KEY
+    cookie_samesite: str = "lax"
+    cookie_secure: bool = settings.ENVIRONMENT == "production"
+
 @CsrfProtect.load_config
-async def get_csrf_config():
-    return CsrfProtectConfig(
-        secret_key=settings.SECRET_KEY,
-        cookie_samesite="lax",
-        cookie_secure=settings.ENVIRONMENT == "production",
-    )
-
-
-# Initialize CSRF protection
-csrf = CsrfProtect()
+def get_csrf_config():
+    return CsrfSettings()
 
 
 app = FastAPI(
@@ -117,11 +115,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# CSRF protection
-app.add_middleware(
-    CsrfProtect,
-    config=get_csrf_config,
-)
 
 # Security headers (HSTS/CSP/etc.)
 app.add_middleware(SecurityHeadersMiddleware)

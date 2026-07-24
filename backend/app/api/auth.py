@@ -23,6 +23,7 @@ from app.schemas.auth import (
     VerifyEmailRequest,
     RefreshTokenRequest,
     LogoutRequest,
+    ResendVerificationRequest,
 )
 
 from app.core.config import settings
@@ -170,19 +171,25 @@ def register_user(
 
 @router.post("/resend-verification", status_code=200)
 def resend_verification(
-    response: Response,
-    current_user: User = Depends(get_current_user),
+    body: ResendVerificationRequest,
     db: Session = Depends(get_db),
 ) -> Any:
-    """Resend a verification link to the currently logged‑in user.
+    """Resend a verification link.
     The endpoint generates a fresh verification token and sends the email in the
     background, returning a simple success message.
     """
-    verification_token = create_access_token(current_user.id, token_type="verification")
+    user = db.query(User).filter(User.email == body.email).first()
+    if not user:
+        return {"detail": "If the email is registered and not verified, a verification link has been sent."}
+        
+    if user.is_verified:
+        return {"detail": "Email is already verified."}
+
+    verification_token = create_access_token(user.id, token_type="verification")
     _email_executor.submit(
-        email_service.send_verification_email, current_user.email, verification_token
+        email_service.send_verification_email, user.email, verification_token
     )
-    return {"detail": "Verification email resent"}
+    return {"detail": "If the email is registered and not verified, a verification link has been sent."}
 
 
 @router.post("/verify-email")

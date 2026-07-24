@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     if (response.ok) {
-      navigate({ to: "/verify-email" });
+      navigate({ to: "/verify-email", search: { email } });
     } else {
       const errorData = await response.json();
       throw new Error(errorData.detail || "Registration failed");

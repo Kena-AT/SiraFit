@@ -44,7 +44,7 @@ function AnalyticsDashboard() {
   }
 
   const funnel = metrics?.conversion_funnel || [];
-  const maxFunnel = Math.max(...funnel.map(([, n]) => n), 1);
+  const maxFunnel = Math.max(...funnel.map((f: any) => f.count), 1);
   const rejectionStages = metrics?.rejection_stages || [];
 
   return (
@@ -94,17 +94,17 @@ function AnalyticsDashboard() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel title="Conversion funnel">
           <div className="space-y-2.5 p-4">
-            {funnel.map(([k, n]) => (
-              <div key={k} className="flex items-center gap-3">
-                <div className="w-36 text-[12px]">{k}</div>
+            {funnel.map((f: any) => (
+              <div key={f.stage} className="flex items-center gap-3">
+                <div className="w-36 text-[12px]">{f.stage}</div>
                 <div className="relative h-6 flex-1 overflow-hidden rounded bg-muted">
                   <div
                     className="absolute inset-y-0 left-0 bg-[color:var(--brand)]/40"
-                    style={{ width: `${(n / maxFunnel) * 100}%` }}
+                    style={{ width: `${(f.count / maxFunnel) * 100}%` }}
                   />
                 </div>
                 <div className="w-8 text-right font-mono text-[11px] font-semibold tabular-nums">
-                  {n}
+                  {f.count}
                 </div>
               </div>
             ))}
@@ -112,10 +112,10 @@ function AnalyticsDashboard() {
         </Panel>
         <Panel title="Rejection stages">
           <ul className="divide-y divide-border text-sm">
-            {rejectionStages.map((r) => (
-              <li key={r[0] as string} className="flex items-center justify-between px-4 py-2.5">
-                <span>{r[0]}</span>
-                <span className="font-mono tabular-nums">{r[1]}</span>
+            {rejectionStages.map((r: any) => (
+              <li key={r.stage} className="flex items-center justify-between px-4 py-2.5">
+                <span>{r.stage}</span>
+                <span className="font-mono tabular-nums">{r.count}</span>
               </li>
             ))}
           </ul>
