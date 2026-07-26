@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(userData);
         }
       } catch {
-        // Session expired or network error — user stays null
+        // Session expired or network error - user stays null
       } finally {
         setIsLoading(false);
       }
@@ -70,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await apiFetch("/api/v1/auth/logout", { method: "POST" });
     } catch {
-      // Best-effort — clear state regardless
+      // Best-effort - clear state regardless
     } finally {
       setUser(null);
       navigate({ to: "/login" });

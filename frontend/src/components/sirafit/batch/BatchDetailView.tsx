@@ -119,11 +119,11 @@ export function BatchDetailView({ batchJob, onRefetch }: BatchDetailViewProps) {
           <div className="grid grid-cols-4 gap-4 text-sm">
             <div>
               <span className="text-muted-foreground">Started:</span>{" "}
-              {displayJob.started_at ? new Date(displayJob.started_at).toLocaleString() : "—"}
+              {displayJob.started_at ? new Date(displayJob.started_at).toLocaleString() : "-"}
             </div>
             <div>
               <span className="text-muted-foreground">Completed:</span>{" "}
-              {displayJob.completed_at ? new Date(displayJob.completed_at).toLocaleString() : "—"}
+              {displayJob.completed_at ? new Date(displayJob.completed_at).toLocaleString() : "-"}
             </div>
             <div>
               <span className="text-muted-foreground">Status:</span>{" "}

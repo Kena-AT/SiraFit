@@ -301,7 +301,7 @@ export function AuthShell({
             </div>
             <p className="mt-3 max-w-md text-[15px] leading-relaxed text-foreground">
               A career operations layer for engineers. Deterministic scoring, ATS-normalized data,
-              and structured resume tailoring — without the autonomous-agent nonsense.
+              and structured resume tailoring - without the autonomous-agent nonsense.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
