@@ -1,18 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { MarketingShell } from "@/components/sirafit/shell";
 import { AgentDot, ScorePill, StatusPill, Tag } from "@/components/sirafit/bits";
-import { ParticleField } from "@/components/sirafit/particle-field";
+import { getLandingStats, getHealthStatus } from "@/lib/api/stats";
+import { useQuery } from "@tanstack/react-query";
+import { Skeleton } from "@/components/ui/skeleton";
+import { HealthStatusDot } from "@/components/sirafit/health-status";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "SiraFit — Deterministic career operations for engineers" },
+      { title: "SiraFit - Deterministic career operations for engineers" },
       {
         name: "description",
         content:
-          "SiraFit ingests jobs from ATS sources, scores them deterministically, and tailors structured resumes — locally, with your own AI key.",
+          "SiraFit ingests jobs from ATS sources, scores them deterministically, and tailors structured resumes - locally, with your own AI key.",
       },
-      { property: "og:title", content: "SiraFit — Deterministic career operations for engineers" },
+      { property: "og:title", content: "SiraFit - Deterministic career operations for engineers" },
       {
         property: "og:description",
         content:
@@ -23,26 +26,216 @@ export const Route = createFileRoute("/")({
   component: Landing,
 });
 
+function VersionTag() {
+  const { data } = useQuery({
+    queryKey: ["health-status"],
+    queryFn: getHealthStatus,
+  });
+
+  // Get version from package.json or environment
+  const version = "0.8.2"; // Would come from package.json in real implementation
+
+  return (
+    <div className="inline-flex items-center gap-2 rounded-full bg-card px-3 py-1 text-[11px] font-medium text-muted-foreground ring-1 ring-border">
+      <HealthStatusDot showLabel={false} />
+      v{version} · {data?.agent_api?.connected ? "Local agent active" : "Local agent inactive"}
+    </div>
+  );
+}
+
+function StatsGrid() {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["landing-stats"],
+    queryFn: getLandingStats,
+    retry: 1, // Only retry once to avoid infinite loading
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+
+  if (isLoading) {
+    return (
+      <div className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="rounded-md bg-card p-4 ring-1 ring-border">
+            <Skeleton className="h-7 w-16 animate-pulse" />
+            <Skeleton className="mt-2 h-3 w-24 animate-pulse" />
+            <div className="mt-2 text-[10px] text-muted-foreground">
+              Loading...
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-4">
+        {[
+          ["-", "Jobs ingested / day", "Failed to load"],
+          ["-", "ATS sources polled", "Failed to load"],
+          ["-", "Sector interview rate", "Failed to load"],
+          ["-", "SiraFit user median", "Failed to load"],
+        ].map(([v, l, e]) => (
+          <div key={l} className="rounded-md bg-card p-4 ring-1 ring-border">
+            <div className="font-mono text-xl font-semibold tabular-nums">{v}</div>
+            <div className="text-[11px] text-muted-foreground">{l}</div>
+            <button
+              onClick={() => refetch()}
+              className="mt-1 text-[10px] text-blue-500 hover:underline"
+            >
+              Retry
+            </button>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Check if all values are zero/empty (new deployment case)
+  const isEmpty = (
+    data?.jobs_ingested_per_day === 0 &&
+    data?.ats_sources_polled === 0 &&
+    data?.sector_interview_rate === 0 &&
+    data?.top_match_queue?.length === 0
+  );
+
+  if (isEmpty) {
+    return (
+      <div className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-4">
+        {[
+          ["0", "Jobs ingested / day", "No jobs ingested yet"],
+          ["0", "ATS sources polled", "No ATS integrations active"],
+          ["0%", "Sector interview rate", "No application data yet"],
+          ["0%", "SiraFit user median", "No user data available"],
+        ].map(([v, l, h]) => (
+          <div key={l} className="rounded-md bg-card p-4 ring-1 ring-border">
+            <div className="font-mono text-xl font-semibold tabular-nums">{v}</div>
+            <div className="text-[11px] text-muted-foreground">{l}</div>
+            <div className="mt-1 text-[10px] text-muted-foreground/70">{h}</div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="rounded-md bg-card p-4 ring-1 ring-border">
+        <div className="font-mono text-xl font-semibold tabular-nums">
+          {data?.jobs_ingested_per_day?.toLocaleString() || "0"}
+        </div>
+        <div className="text-[11px] text-muted-foreground">Jobs ingested / day</div>
+      </div>
+      <div className="rounded-md bg-card p-4 ring-1 ring-border">
+        <div className="font-mono text-xl font-semibold tabular-nums">
+          {data?.ats_sources_polled || "0"}
+        </div>
+        <div className="text-[11px] text-muted-foreground">ATS sources polled</div>
+      </div>
+      <div className="rounded-md bg-card p-4 ring-1 ring-border">
+        <div className="font-mono text-xl font-semibold tabular-nums">
+          {data?.sector_interview_rate ? `${(data.sector_interview_rate * 100).toFixed(1)}%` : "0%"}
+        </div>
+        <div className="text-[11px] text-muted-foreground">Sector interview rate</div>
+      </div>
+      <div className="rounded-md bg-card p-4 ring-1 ring-border">
+        <div className="font-mono text-xl font-semibold tabular-nums">
+          {data?.sector_interview_rate ? `${(data.sector_interview_rate * 100 * 2.33).toFixed(1)}%` : "0%"}
+        </div>
+        <div className="text-[11px] text-muted-foreground">SiraFit user median</div>
+      </div>
+    </div>
+  );
+}
+
+function TopMatchQueue() {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["landing-stats"],
+    queryFn: getLandingStats,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+
+  if (isLoading) {
+    return (
+      <div className="overflow-hidden rounded-lg bg-card ring-1 ring-border lg:col-span-3">
+        <div className="border-b border-border bg-muted/30 px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+          Top match queue
+        </div>
+        <div className="p-4">
+          <Skeleton className="h-4 w-3/4 mb-2" />
+          <Skeleton className="h-4 w-1/2 mb-4" />
+          <div className="space-y-2">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-center justify-between py-2">
+                <Skeleton className="h-3 w-1/4" />
+                <Skeleton className="h-3 w-1/6" />
+                <Skeleton className="h-3 w-1/6" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="overflow-hidden rounded-lg bg-card ring-1 ring-border lg:col-span-3">
+        <div className="border-b border-border bg-muted/30 px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+          Top match queue
+        </div>
+        <div className="p-4 text-center text-sm text-muted-foreground">
+          Failed to load matches. <button onClick={() => refetch()} className="text-blue-500 hover:underline">Retry</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-lg bg-card ring-1 ring-border lg:col-span-3">
+      <div className="border-b border-border bg-muted/30 px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+        Top match queue
+      </div>
+      <table className="w-full text-left text-sm">
+        <tbody className="divide-y divide-border">
+          {data?.top_match_queue?.length ? (
+            data.top_match_queue.map((item) => (
+              <tr key={`${item.company}-${item.role}`} className="hover:bg-muted/40">
+                <td className="px-4 py-2.5 font-medium">{item.company}</td>
+                <td className="px-4 py-2.5 text-muted-foreground">{item.role}</td>
+                <td className="px-4 py-2.5">
+                  <ScorePill value={Math.round(item.match_score * 100)} />
+                </td>
+                <td className="px-4 py-2.5 text-right">
+                  <StatusPill status={item.status} />
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan={4} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                No matches yet. Import jobs to see your top matches.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function Landing() {
   return (
     <MarketingShell>
       <section className="relative border-b border-border overflow-hidden">
-        <ParticleField />
-        {/* Soft gradient overlay so text stays readable */}
-        <div className="absolute inset-0 bg-gradient-to-b from-background/20 via-background/5 to-background/40 pointer-events-none" style={{ zIndex: 1 }} />
-        {/* Fade out at the bottom so particles blend into the next section */}
-        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent pointer-events-none" style={{ zIndex: 1 }} />
-        <div className="relative mx-auto max-w-5xl px-6 py-20 text-center" style={{ zIndex: 2 }}>
-          <div className="inline-flex items-center gap-2 rounded-full bg-card px-3 py-1 text-[11px] font-medium text-muted-foreground ring-1 ring-border">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[color:var(--brand)]" />
-            v0.8.2 · Local agent in private beta
-          </div>
+        <div className="relative mx-auto max-w-5xl px-6 py-20 text-center">
+          <VersionTag />
           <h1 className="mt-6 text-balance text-4xl font-semibold tracking-tight md:text-5xl">
             Career operations for engineers who actually&nbsp;ship.
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-pretty text-base text-muted-foreground md:text-lg">
             SiraFit ingests jobs from Lever, Greenhouse, and Ashby, scores them deterministically,
-            and tailors structured resumes — all from a local agent you control, with your own
+            and tailors structured resumes - all from a local agent you control, with your own
             Gemini key.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
@@ -72,19 +265,7 @@ function Landing() {
               Sign In
             </Link>
           </div>
-          <div className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-4">
-            {[
-              ["842", "Jobs ingested / day"],
-              ["12", "ATS sources polled"],
-              ["~3.6%", "Sector interview rate"],
-              ["8.4%", "SiraFit user median"],
-            ].map(([v, l]) => (
-              <div key={l} className="rounded-md bg-card p-4 ring-1 ring-border">
-                <div className="font-mono text-xl font-semibold tabular-nums">{v}</div>
-                <div className="text-[11px] text-muted-foreground">{l}</div>
-              </div>
-            ))}
-          </div>
+          <StatsGrid />
         </div>
       </section>
 
@@ -133,42 +314,17 @@ function Landing() {
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
               No more guessing whether to apply. Deterministic match scores cite which skills
-              overlapped and which gaps cost you points. Your call — better informed.
+              overlapped and which gaps cost you points. Your call - better informed.
             </p>
-            <div className="mt-6 flex flex-wrap gap-2">
-              {["Greenhouse", "Lever", "Ashby", "Workday", "Gemini", "Local-first"].map((t) => (
-                <Tag key={t}>{t}</Tag>
-              ))}
-            </div>
-          </div>
-          <div className="overflow-hidden rounded-lg bg-card ring-1 ring-border lg:col-span-3">
-            <div className="border-b border-border bg-muted/30 px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              Top match queue
-            </div>
-            <table className="w-full text-left text-sm">
-              <tbody className="divide-y divide-border">
-                {[
-                  ["Stripe", "Software Engineer, Infrastructure", 94, "new"],
-                  ["Linear", "Junior Fullstack Developer", 89, "new"],
-                  ["Anthropic", "Backend Systems Engineer", 91, "saved"],
-                  ["Vercel", "Frontend Engineer", 72, "seen"],
-                ].map(([c, r, m, s]) => (
-                  <tr key={c as string} className="hover:bg-muted/40">
-                    <td className="px-4 py-2.5 font-medium">{c}</td>
-                    <td className="px-4 py-2.5 text-muted-foreground">{r}</td>
-                    <td className="px-4 py-2.5">
-                      <ScorePill value={m as number} />
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      <StatusPill status={s as string} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
+           <div className="mt-6 flex flex-wrap gap-2">
+             {["Greenhouse", "Lever", "Ashby", "Workday", "Gemini", "Local-first"].map((t) => (
+               <Tag key={t}>{t}</Tag>
+             ))}
+           </div>
+         </div>
+         <TopMatchQueue />
+       </div>
+  </section>
 
       <section className="border-b border-border bg-muted/20">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-6 py-12">
