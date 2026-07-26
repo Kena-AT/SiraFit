@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
+import { HealthStatusDot } from "./health-status";
 
 export function ScoreMeter({ value, className }: { value: number; className?: string }) {
   const tone =
@@ -207,15 +208,9 @@ export function Stat({
   );
 }
 
-export function AgentDot({ label = "Local agent active" }: { label?: string }) {
+export function AgentDot({ label }: { label?: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-      <span className="relative inline-flex h-1.5 w-1.5">
-        <span className="absolute inset-0 animate-ping rounded-full bg-[color:var(--brand)] opacity-60" />
-        <span className="relative inline-block h-1.5 w-1.5 rounded-full bg-[color:var(--brand)]" />
-      </span>
-      {label}
-    </span>
+    <HealthStatusDot showLabel={true} className="text-muted-foreground" />
   );
 }
 
