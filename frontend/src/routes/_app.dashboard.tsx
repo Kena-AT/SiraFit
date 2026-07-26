@@ -57,15 +57,20 @@ function Dashboard() {
               </div>
             </Link>
 
-            <div className="rounded-lg border border-dashed border-border p-4 opacity-50">
+            <Link
+              to="/match"
+              className="block rounded-lg border border-border p-4 hover:bg-muted/40 transition-colors"
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-medium">Match & Score Jobs</h3>
-                  <p className="text-sm text-muted-foreground mt-1">Coming in Sprint 4</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    See how your profile matches your saved jobs
+                  </p>
                 </div>
-                <span className="text-sm text-muted-foreground">🔜</span>
+                <span className="text-sm text-muted-foreground">→</span>
               </div>
-            </div>
+            </Link>
           </div>
         </Panel>
 
