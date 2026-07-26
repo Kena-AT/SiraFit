@@ -12,6 +12,7 @@ from app.api import (
     batch,
     notifications,
     analytics,
+    stats,
 )
 
 api_router = APIRouter()
@@ -34,3 +35,4 @@ api_router.include_router(
     notifications.router, prefix="/notifications", tags=["notifications"]
 )
 api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
+api_router.include_router(stats.router, prefix="/stats", tags=["stats"])
