@@ -130,7 +130,7 @@ function Builder() {
         setLetter(updated);
       } else {
         const created = await createCoverLetter({
-          title: title || `Cover letter — ${new Date().toLocaleDateString()}`,
+          title: title || `Cover letter - ${new Date().toLocaleDateString()}`,
           body,
           tone,
           template,

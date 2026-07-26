@@ -242,7 +242,7 @@ function AppDetails() {
             <ul className="divide-y divide-border text-sm">
               {application.resumes?.map((resume: any) => (
                 <li key={resume.id} className="flex items-center justify-between px-4 py-2.5">
-                  <span>Resume — {resume.title}</span>
+                  <span>Resume - {resume.title}</span>
                   <Link
                     to="/resumes/$id"
                     params={{ id: resume.id }}

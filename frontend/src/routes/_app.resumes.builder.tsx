@@ -258,7 +258,7 @@ function SafeResumePreview({ content }: { content: string }) {
   } catch {
     return (
       <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
-        Unable to preview — invalid resume content.
+        Unable to preview - invalid resume content.
       </div>
     );
   }

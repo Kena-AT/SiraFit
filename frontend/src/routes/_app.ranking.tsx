@@ -113,7 +113,7 @@ function OpportunityRanking() {
                   <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
                     <span>{job.location || "Remote"}</span>
                     <span>&middot;</span>
-                    <span>{job.salary_min ? `$${job.salary_min}k` : "—"}</span>
+                    <span>{job.salary_min ? `$${job.salary_min}k` : "-"}</span>
                     <span>&middot;</span>
                     <Tag>{job.source}</Tag>
                   </div>

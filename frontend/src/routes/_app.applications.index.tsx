@@ -73,7 +73,7 @@ function Board() {
       <PageHeader
         eyebrow="Pipeline"
         title="Applications board"
-        description="Drag through the hiring lifecycle. Status transitions are deterministic — no AI auto-moves."
+        description="Drag through the hiring lifecycle. Status transitions are deterministic - no AI auto-moves."
         actions={
           <>
             <Link

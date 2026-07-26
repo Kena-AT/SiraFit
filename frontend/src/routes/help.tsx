@@ -24,7 +24,7 @@ export const Route = createFileRoute("/help")({
             ["Build a resume profile", "Structured JSON beats PDF editing every time."],
             [
               "Understand match scores",
-              "Skill overlap, seniority alignment, domain relevance — explained.",
+              "Skill overlap, seniority alignment, domain relevance - explained.",
             ],
             ["Track applications", "Move cards through Saved → Applied → Interview → Offer."],
           ].map(([t, d]) => (

@@ -169,7 +169,7 @@ function ResumePreviewPage() {
                 {selectedVersion?.score !== null && selectedVersion?.score !== undefined ? (
                   <ScorePill value={selectedVersion.score} />
                 ) : (
-                  <span className="text-muted-foreground">—</span>
+                  <span className="text-muted-foreground">-</span>
                 )}
               </div>
               <div className="flex items-center justify-between">

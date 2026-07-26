@@ -76,7 +76,7 @@ function JobsExplorer() {
   const hasFilters = activeSearch || companyFilter || locationFilter || sourceFilter;
 
   const formatSalary = (job: any) => {
-    if (!job.salary_min && !job.salary_max) return "—";
+    if (!job.salary_min && !job.salary_max) return "-";
     const currency = job.currency || "$";
     if (job.salary_min && job.salary_max) {
       return `${currency}${(job.salary_min / 1000).toFixed(0)}k–${(job.salary_max / 1000).toFixed(0)}k`;
@@ -149,7 +149,7 @@ function JobsExplorer() {
             </Button>
           )}
           <div className="ml-auto font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-            {data ? `${data.jobs.length} showing` : "—"}
+            {data ? `${data.jobs.length} showing` : "-"}
           </div>
         </div>
 
@@ -268,7 +268,7 @@ function JobsExplorer() {
                         </Link>
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {j.location || "—"}
+                        {j.location || "-"}
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground tabular-nums">
                         {formatSalary(j)}
