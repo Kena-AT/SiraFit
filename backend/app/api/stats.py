@@ -132,22 +132,22 @@ def _get_sector_interview_rate(db: Session) -> float:
         thirty_days_ago = datetime.utcnow() - timedelta(days=30)
 
         interview_stages = ["interview_scheduled", "interviewing", "offer", "hired"]
-        total, interview = db.query(
+
+        total, interview_count = db.query(
             func.count(JobApplication.id),
-            func.count(
-                func.nullif(
-                    (~JobApplication.status.in_(interview_stages)).cast(None),
-                    True,
+            func.sum(
+                case(
+                    (JobApplication.status.in_(interview_stages), 1),
+                    else_=0,
                 )
             ),
         ).filter(
             JobApplication.created_at >= thirty_days_ago,
         ).one()
-        # The conditional-count above is non-portable across dialects; fall
-        # back to the portable form (sum of a boolean expression).
+
         if total is None or total == 0:
             return 0.0
-        return (interview or 0) / total
+        return (interview_count or 0) / total
     except Exception:
         return 0.0  # Return 0 if query fails
 
