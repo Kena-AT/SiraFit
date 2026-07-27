@@ -35,7 +35,7 @@ class Job(Base):
     url = Column(Text, nullable=True)
     source = Column(String(50), default="manual")  # manual, linkedin, indeed, etc.
 
-    created_at = Column(DateTime, default=_utcnow)
+    created_at = Column(DateTime, default=_utcnow, index=True)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
     applications = relationship(
@@ -66,7 +66,7 @@ class JobApplication(Base):
     follow_up_at = Column(DateTime, nullable=True)  # Optional follow-up reminder date
     follow_up_note = Column(String(500), nullable=True)  # Brief label for the reminder
 
-    created_at = Column(DateTime, default=_utcnow)
+    created_at = Column(DateTime, default=_utcnow, index=True)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
     user = relationship("User", back_populates="applications")

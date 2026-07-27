@@ -22,10 +22,14 @@ def get_redis_client():
     try:
         import redis
 
+        # ponytail: 200ms probe. The cache is a perf optimization, not a
+        # hard dependency — when Redis is down (common in local dev/CI) we
+        # must not stall the landing page for 2s on every cold path. Fall
+        # back to the in-memory cache fast.
         client = redis.Redis.from_url(
             settings.REDIS_URL,
-            socket_connect_timeout=2,
-            socket_timeout=2,
+            socket_connect_timeout=0.2,
+            socket_timeout=0.5,
             decode_responses=True,
         )
         client.ping()

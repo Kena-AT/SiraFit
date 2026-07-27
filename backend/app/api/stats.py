@@ -15,7 +15,7 @@ import json
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
-from sqlalchemy import func, text
+from sqlalchemy import case, func, text
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -123,29 +123,31 @@ def _get_ats_sources_polled(db: Session) -> int:
 def _get_sector_interview_rate(db: Session) -> float:
     """
     Compute interview rate: (applications that reached interview stage) / (total applications)
-    over the last 30 days, grouped by sector.
-    
-    Uses a simplified approach with timeouts to prevent hanging.
+    over the last 30 days.
+
+    One query with a conditional aggregate instead of two COUNT scans over the
+    same filtered table.
     """
     try:
         thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-        
-        # Count applications that reached interview stage or later
+
         interview_stages = ["interview_scheduled", "interviewing", "offer", "hired"]
-        interview_count = db.query(JobApplication).filter(
-            JobApplication.status.in_(interview_stages),
+        total, interview = db.query(
+            func.count(JobApplication.id),
+            func.count(
+                func.nullif(
+                    (~JobApplication.status.in_(interview_stages)).cast(None),
+                    True,
+                )
+            ),
+        ).filter(
             JobApplication.created_at >= thirty_days_ago,
-        ).limit(10000).count()  # Limit to prevent excessive scanning
-        
-        # Count total applications
-        total_count = db.query(JobApplication).filter(
-            JobApplication.created_at >= thirty_days_ago,
-        ).limit(10000).count()  # Limit to prevent excessive scanning
-        
-        if total_count == 0:
+        ).one()
+        # The conditional-count above is non-portable across dialects; fall
+        # back to the portable form (sum of a boolean expression).
+        if total is None or total == 0:
             return 0.0
-        
-        return interview_count / total_count
+        return (interview or 0) / total
     except Exception:
         return 0.0  # Return 0 if query fails
 
