@@ -4,7 +4,7 @@ from app.models.job import Job
 
 # AI imports are optional - only used if API keys are configured
 try:
-    from app.services.ai import analyze_job_match_gemini, analyze_job_match_openrouter
+    from app.services.ai import analyze_job
 
     AI_AVAILABLE = True
 except ImportError:
@@ -31,21 +31,44 @@ async def analyze_match_score(
     actual_key = req_api_key
 
     if not actual_key:
-        # Try to get from settings, but handle if they don't exist
         from app.core.config import settings
+        
+        # Map provider to settings field
+        setting_fields = {
+            "gemini": "GEMINI_API_KEY",
+            "openrouter": "OPENROUTER_API_KEY",
+            "anthropic": "ANTHROPIC_API_KEY",
+            "openai": "OPENAI_API_KEY",
+            "grok": "GROK_API_KEY",
+            "mistral": "MISTRAL_API_KEY",
+            "nvidia": "NVIDIA_API_KEY",
+        }
+        
+        if actual_provider in setting_fields:
+            actual_key = getattr(settings, setting_fields[actual_provider], None)
+        
+        # If still no key and no provider was specified, try to find ANY available key
+        if not actual_key and not actual_provider:
+            for prov, field in setting_fields.items():
+                key = getattr(settings, field, None)
+                if key:
+                    actual_key = key
+                    actual_provider = prov
+                    break
+        elif not actual_key and actual_provider:
+            # If provider was specified but no key found, we can't proceed with AI
+            return _keyword_match_score(profile, job)
 
-        if actual_provider == "openrouter":
-            actual_key = getattr(settings, "OPENROUTER_API_KEY", None)
-        else:
-            actual_key = getattr(settings, "GEMINI_API_KEY", None)
-            actual_provider = "gemini" if not actual_provider else actual_provider
-
-    if actual_key and actual_provider == "gemini" and AI_AVAILABLE:
-        return await analyze_job_match_gemini(profile, job, actual_key, actual_model)
-    elif actual_key and actual_provider == "openrouter" and AI_AVAILABLE:
-        return await analyze_job_match_openrouter(
-            profile, job, actual_key, actual_model
-        )
+    if actual_key and actual_provider and AI_AVAILABLE:
+        try:
+            # Build context for matching
+            context = f"Candidate Profile:\n{profile.summary or ''}\n\nJob Title: {job.title}\nJob Description: {job.description or ''}"
+            result = await analyze_job(context, actual_key, actual_provider, model=actual_model)
+            return result.score, result.summary
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"AI matching failed: {e}")
+            return _keyword_match_score(profile, job)
 
     # Fallback to existing keyword matcher
     return _keyword_match_score(profile, job)

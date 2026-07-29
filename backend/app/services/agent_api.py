@@ -1,183 +1,152 @@
 """
-Service for checking agent API connections (e.g., Anthropic, Gemini, etc.).
+Agent API connection check.
+
+Reports whether at least one AI provider is configured and reachable. Detection
+is by Settings field name (each provider has its own `*_API_KEY` field), not by
+key-prefix heuristics — the field name already identifies the provider.
+
+A lightweight authenticated `GET <provider>/models` (via httpx, 5s timeout) is
+used as the reachability probe. No provider SDKs are imported here; this module
+must stay cheap to import (it runs on every landing-page health check).
 """
 
-import os
+from __future__ import annotations
+
 from typing import Optional
 
+import httpx
 from pydantic import BaseModel
+
 from app.core.config import settings
 
 
 class AgentAPIStatus(BaseModel):
     connected: bool
     source: str  # "env" | "settings_ui" | "none"
-    provider: Optional[str] = None
+    provider: Optional[str] = None  # human label, e.g. "OpenRouter"
     error: Optional[str] = None
+
+
+# Provider registry — ordered. The first provider with a key that reaches its
+# API is the "active" one surfaced on the landing page. OpenRouter first (most
+# permissive / most likely configured), then the direct vendors.
+#   auth: "bearer"    -> `Authorization: Bearer <key>`
+#         "x-api-key" -> `x-api-key: <key>` (Anthropic)
+#         "query"     -> `?key=<key>` (Gemini)
+PROVIDERS: list[dict] = [
+    {
+        "id": "openrouter",
+        "label": "OpenRouter",
+        "attr": "OPENROUTER_API_KEY",
+        "url": "https://openrouter.ai/api/v1/models",
+        "auth": "bearer",
+    },
+    {
+        "id": "gemini",
+        "label": "Gemini",
+        "attr": "GEMINI_API_KEY",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models?key={key}",
+        "auth": "query",
+    },
+    {
+        "id": "anthropic",
+        "label": "Claude (Anthropic)",
+        "attr": "ANTHROPIC_API_KEY",
+        "url": "https://api.anthropic.com/v1/models",
+        "auth": "x-api-key",
+        "extra_headers": {"anthropic-version": "2023-06-01"},
+    },
+    {
+        "id": "openai",
+        "label": "OpenAI",
+        "attr": "OPENAI_API_KEY",
+        "url": "https://api.openai.com/v1/models",
+        "auth": "bearer",
+    },
+    {
+        "id": "grok",
+        "label": "Grok (xAI)",
+        "attr": "GROK_API_KEY",
+        "url": "https://api.x.ai/v1/models",
+        "auth": "bearer",
+    },
+    {
+        "id": "mistral",
+        "label": "Mistral AI",
+        "attr": "MISTRAL_API_KEY",
+        "url": "https://api.mistral.ai/v1/models",
+        "auth": "bearer",
+    },
+    {
+        "id": "nvidia",
+        "label": "Nvidia NIM",
+        "attr": "NVIDIA_API_KEY",
+        "url": "https://integrate.api.nvidia.com/v1/models",
+        "auth": "bearer",
+    },
+]
 
 
 def check_agent_api_connection() -> AgentAPIStatus:
     """
-    Check if the agent API is properly configured and reachable.
-    
-    Checks:
-    1. Is an API key configured (via env or settings UI)?
-    2. Can we make a lightweight authenticated call to the provider?
-    
-    Returns:
-        AgentAPIStatus: Status of the agent API connection
+    Check whether the agent API is configured and reachable.
+
+    Iterates configured providers in registry order; the first whose
+    authenticated `GET /models` returns 2xx is the active provider. On
+    failure, returns a professional, trace-free message.
     """
-    # Check if API keys are configured
-    env_key = _get_env_api_key()
-    settings_key = _get_settings_api_key()  # Would come from DB in real implementation
-    
-    # Determine which key to use (settings UI key takes precedence)
-    active_key = settings_key or env_key
-    source = "settings_ui" if settings_key else "env" if env_key else "none"
-    
-    if not active_key:
+    configured = [
+        (p, getattr(settings, p["attr"], None))
+        for p in PROVIDERS
+        if getattr(settings, p["attr"], None)
+    ]
+
+    if not configured:
         return AgentAPIStatus(
             connected=False,
             source="none",
-            error="No API key configured",
+            error="No AI provider API key is configured",
         )
-    
-    # Try to make a lightweight call to the provider
-    try:
-        provider = _determine_provider(active_key)
-        if provider == "anthropic":
-            return _check_anthropic_connection(active_key, source)
-        elif provider == "gemini":
-            return _check_gemini_connection(active_key, source)
-        elif provider == "openrouter":
-            return _check_openrouter_connection(active_key, source)
-        else:
+
+    for provider, key in configured:
+        if _ping(provider, key):
             return AgentAPIStatus(
-                connected=False,
-                source=source,
-                provider=provider,
-                error="Unknown API provider",
+                connected=True,
+                source="env",
+                provider=provider["label"],
             )
-    except Exception as e:
-        return AgentAPIStatus(
-            connected=False,
-            source=source,
-            error=f"API check failed: {str(e)}",
-        )
+
+    # Keys exist but none reached its API.
+    first_label = configured[0][0]["label"]
+    return AgentAPIStatus(
+        connected=False,
+        source="env",
+        provider=first_label,
+        error=f"{first_label} API key is set, but the connection check failed",
+    )
 
 
-def _get_env_api_key() -> Optional[str]:
-    """Get API key from environment variables."""
-    # Check for any of the supported API keys
-    if settings.ANTHROPIC_API_KEY:
-        return settings.ANTHROPIC_API_KEY
-    if settings.GEMINI_API_KEY:
-        return settings.GEMINI_API_KEY
-    if settings.OPENROUTER_API_KEY:
-        return settings.OPENROUTER_API_KEY
-    return None
+def _ping(provider: dict, key: str) -> bool:
+    """Return True if the provider's /models endpoint responds 2xx."""
+    url = provider["url"]
+    headers: dict[str, str] = {}
+    auth = provider["auth"]
 
+    if auth == "bearer":
+        headers["Authorization"] = f"Bearer {key}"
+    elif auth == "x-api-key":
+        headers["x-api-key"] = key
+        headers.update(provider.get("extra_headers", {}))
+    # "query": key is embedded in the URL template
 
-def _get_settings_api_key() -> Optional[str]:
-    """
-    Get API key from settings UI (stored in database).
-    
-    In a real implementation, this would query the database for user/org
-    specific API keys. For now, we'll return None.
-    """
-    return None
+    if auth == "query":
+        url = url.format(key=key)
 
-
-def _determine_provider(api_key: str) -> str:
-    """Determine which API provider the key is for."""
-    # This is a simplified heuristic - in production you'd want more robust detection
-    if api_key.startswith("sk-ant-"):
-        return "anthropic"
-    elif api_key.startswith("AIza"):
-        return "gemini"
-    elif "openrouter" in api_key.lower():
-        return "openrouter"
-    return "unknown"
-
-
-def _check_anthropic_connection(api_key: str, source: str) -> AgentAPIStatus:
-    """Check Anthropic API connection."""
     try:
-        # Import here to avoid requiring the dependency if not used
-        from anthropic import Anthropic
-        
-        # Create client with the API key
-        client = Anthropic(api_key=api_key)
-        
-        # Make a lightweight call (list models is usually cheap)
-        models = client.models.list()
-        
-        # If we get here, the connection is working
-        return AgentAPIStatus(
-            connected=True,
-            source=source,
-            provider="anthropic",
-        )
-        
-    except Exception as e:
-        return AgentAPIStatus(
-            connected=False,
-            source=source,
-            provider="anthropic",
-            error=f"Anthropic API error: {str(e)}",
-        )
+        response = httpx.get(url, headers=headers, timeout=5.0)
+        return 200 <= response.status_code < 300
+    except Exception:
+        return False
 
 
-def _check_gemini_connection(api_key: str, source: str) -> AgentAPIStatus:
-    """Check Gemini API connection."""
-    try:
-        # Import here to avoid requiring the dependency if not used
-        import google.generativeai as genai
-        
-        # Configure the API key
-        genai.configure(api_key=api_key)
-        
-        # Make a lightweight call
-        models = genai.list_models()
-        
-        return AgentAPIStatus(
-            connected=True,
-            source=source,
-            provider="gemini",
-        )
-        
-    except Exception as e:
-        return AgentAPIStatus(
-            connected=False,
-            source=source,
-            provider="gemini",
-            error=f"Gemini API error: {str(e)}",
-        )
-
-
-def _check_openrouter_connection(api_key: str, source: str) -> AgentAPIStatus:
-    """Check OpenRouter API connection."""
-    try:
-        import httpx
-        
-        # Make a lightweight call to OpenRouter API
-        response = httpx.get(
-            "https://openrouter.ai/api/v1/models",
-            headers={"Authorization": f"Bearer {api_key}"},
-            timeout=10.0,
-        )
-        response.raise_for_status()
-        
-        return AgentAPIStatus(
-            connected=True,
-            source=source,
-            provider="openrouter",
-        )
-        
-    except Exception as e:
-        return AgentAPIStatus(
-            connected=False,
-            source=source,
-            provider="openrouter",
-            error=f"OpenRouter API error: {str(e)}",
-        )
+__all__ = ["AgentAPIStatus", "check_agent_api_connection", "PROVIDERS"]

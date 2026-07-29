@@ -11,8 +11,7 @@ from sqlalchemy.orm import Session
 from app.models.job import Job, JobAnalysis
 from app.models.user import UserPreference
 from app.services.ai import (
-    analyze_job_gemini,
-    analyze_job_openrouter,
+    analyze_job,
     keyword_fallback,
     CURRENT_PROMPT_VERSION,
     AnalysisOutput,
@@ -115,21 +114,24 @@ async def run_job_analysis(
                         .first()
                     )
                     if prefs:
-                        if actual_provider == "openrouter":
-                            user_key = (
-                                decrypt_value(prefs.encrypted_openrouter_key)
-                                if prefs.encrypted_openrouter_key
-                                else None
-                            )
-                        else:
-                            user_key = (
-                                decrypt_value(prefs.encrypted_gemini_key)
-                                if prefs.encrypted_gemini_key
-                                else None
-                            )
-                        if user_key:
-                            api_key = user_key
-                            logger.info(f"Using user-stored API key for job {job.id}")
+                        # Map provider to preference field
+                        key_fields = {
+                            "openrouter": "encrypted_openrouter_key",
+                            "gemini": "encrypted_gemini_key",
+                            "anthropic": "encrypted_anthropic_key",
+                            "openai": "encrypted_openai_key",
+                            "grok": "encrypted_grok_key",
+                            "mistral": "encrypted_mistral_key",
+                            "nvidia": "encrypted_nvidia_key",
+                        }
+                        field_name = key_fields.get(actual_provider)
+                        if field_name and hasattr(prefs, field_name):
+                            encrypted_key = getattr(prefs, field_name)
+                            if encrypted_key:
+                                user_key = decrypt_value(encrypted_key)
+                                if user_key:
+                                    api_key = user_key
+                                    logger.info(f"Using user-stored API key for {actual_provider} on job {job.id}")
                 except Exception:
                     logger.warning(
                         f"Failed to decrypt user API key for user {user_id}",
@@ -139,21 +141,34 @@ async def run_job_analysis(
         # Fall back to server env
         if not api_key:
             from app.core.config import settings
+            
+            # Map provider to settings field
+            setting_fields = {
+                "gemini": "GEMINI_API_KEY",
+                "openrouter": "OPENROUTER_API_KEY",
+                "anthropic": "ANTHROPIC_API_KEY",
+                "openai": "OPENAI_API_KEY",
+                "grok": "GROK_API_KEY",
+                "mistral": "MISTRAL_API_KEY",
+                "nvidia": "NVIDIA_API_KEY",
+            }
+            
+            # If provider is specified, use its specific key
+            if actual_provider in setting_fields:
+                api_key = getattr(settings, setting_fields[actual_provider], None)
+            
+            # If still no key and no provider was specified, try to find ANY available key
+            if not api_key and not actual_provider:
+                for prov, field in setting_fields.items():
+                    key = getattr(settings, field, None)
+                    if key:
+                        api_key = key
+                        actual_provider = prov
+                        break
 
-            if actual_provider == "openrouter":
-                api_key = getattr(settings, "OPENROUTER_API_KEY", None)
-            else:
-                api_key = getattr(settings, "GEMINI_API_KEY", None)
-                if not actual_provider:
-                    actual_provider = "gemini"
-
-        if api_key and actual_provider == "openrouter":
-            result = await analyze_job_openrouter(
-                context, api_key, model=actual_model or "openai/gpt-4o-mini"
-            )
-        elif api_key:
-            result = await analyze_job_gemini(
-                context, api_key, model=actual_model or "gemini-1.5-flash"
+        if api_key and actual_provider:
+            result = await analyze_job(
+                context, api_key, actual_provider, model=actual_model
             )
         else:
             logger.info(f"No AI key configured for job {job.id}, using fallback")

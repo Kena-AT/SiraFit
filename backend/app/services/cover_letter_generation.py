@@ -92,52 +92,21 @@ def _serialize_job(job: Job) -> str:
 # ---------------------------------------------------------------------------
 
 
-async def _generate_with_gemini(
-    prompt: str, api_key: str, model: str = "gemini-1.5-flash"
+async def _generate_cover_letter_text(
+    prompt: str, api_key: str, provider: str, model: str
 ) -> str:
-    """Generate cover letter using Google Gemini."""
-    import google.generativeai as genai
+    """Generate cover letter via the shared multi-provider dispatcher in ai.py."""
+    from app.services.ai import complete
 
-    model_name = (
-        "models/gemini-1.5-pro" if "pro" in model.lower() else "models/gemini-1.5-flash"
+    text = await complete(
+        prompt,
+        api_key,
+        provider=provider,
+        model=model,
+        system="You are an expert cover letter writer. Return only plain text.",
+        max_tokens=2048,
     )
-    genai.configure(api_key=api_key)
-    gen_model = genai.GenerativeModel(model_name)
-    response = gen_model.generate_content(prompt)
-    return response.text.strip()
-
-
-async def _generate_with_openrouter(
-    prompt: str, api_key: str, model: str = "openai/gpt-4o-mini"
-) -> str:
-    """Generate cover letter using OpenRouter."""
-    import httpx
-
-    payload = {
-        "model": model,
-        "messages": [
-            {
-                "role": "system",
-                "content": "You are an expert cover letter writer. Return only plain text.",
-            },
-            {"role": "user", "content": prompt},
-        ],
-    }
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "HTTP-Referer": "https://sirafit.com",
-        "Content-Type": "application/json",
-    }
-
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        response = await client.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers=headers,
-            json=payload,
-        )
-        response.raise_for_status()
-        data = response.json()
-    return data["choices"][0]["message"]["content"].strip()
+    return text.strip()
 
 
 async def _with_retry(fn, max_attempts: int = 3):
@@ -165,6 +134,7 @@ async def generate_cover_letter(
     tone: str = "matching",
     api_key: Optional[str] = None,
     provider: Optional[str] = None,
+    model: Optional[str] = None,
 ) -> str:
     """
     Generate a tailored cover letter.
@@ -187,31 +157,41 @@ async def generate_cover_letter(
         tone=tone,
     )
 
+    # Full 7-provider resolution, matching resume_generation.py / job_analysis.py.
+    # ponytail: duplicated provider-key map; extract to a shared helper if a
+    # 3rd caller appears.
+    setting_fields = {
+        "gemini": "GEMINI_API_KEY",
+        "openrouter": "OPENROUTER_API_KEY",
+        "anthropic": "ANTHROPIC_API_KEY",
+        "openai": "OPENAI_API_KEY",
+        "grok": "GROK_API_KEY",
+        "mistral": "MISTRAL_API_KEY",
+        "nvidia": "NVIDIA_API_KEY",
+    }
     actual_provider = (provider or "").lower()
-    actual_model = ""
+    actual_model = model or ""
     actual_key = api_key
 
     if not actual_key:
-        if actual_provider == "openrouter":
-            actual_key = getattr(settings, "OPENROUTER_API_KEY", None)
-        else:
-            actual_key = getattr(settings, "GEMINI_API_KEY", None)
-            actual_provider = "gemini" if not actual_provider else actual_provider
+        if actual_provider in setting_fields:
+            actual_key = getattr(settings, setting_fields[actual_provider], None)
+        if not actual_key and not actual_provider:
+            for prov, field in setting_fields.items():
+                key = getattr(settings, field, None)
+                if key:
+                    actual_key = key
+                    actual_provider = prov
+                    break
 
-    if actual_key and actual_provider == "gemini":
-        body = await _with_retry(
-            lambda: _generate_with_gemini(
-                prompt, actual_key, actual_model or "gemini-1.5-flash"
-            ),
-        )
-    elif actual_key and actual_provider == "openrouter":
-        body = await _with_retry(
-            lambda: _generate_with_openrouter(
-                prompt, actual_key, actual_model or "openai/gpt-4o-mini"
-            ),
-        )
-    else:
+    if not actual_key or not actual_provider:
         raise ValueError("No AI API key configured for cover letter generation")
+
+    body = await _with_retry(
+        lambda: _generate_cover_letter_text(
+            prompt, actual_key, actual_provider, actual_model
+        ),
+    )
 
     return body
 

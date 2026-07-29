@@ -244,53 +244,20 @@ def _parse_ai_response(text: str) -> TailoredResume:
     return TailoredResume.model_validate(data)
 
 
-async def _generate_with_gemini(
-    prompt: str, api_key: str, model: str = "gemini-1.5-flash"
+async def _generate_resume_text(
+    prompt: str, api_key: str, provider: str, model: str
 ) -> TailoredResume:
-    """Generate resume using Google Gemini."""
-    import google.generativeai as genai
+    """Generate resume via the shared multi-provider dispatcher in ai.py."""
+    from app.services.ai import complete
 
-    model_name = (
-        "models/gemini-1.5-pro" if "pro" in model.lower() else "models/gemini-1.5-flash"
+    text = await complete(
+        prompt,
+        api_key,
+        provider=provider,
+        model=model,
+        system="You are an expert resume writer. Return only valid JSON.",
+        max_tokens=2048,
     )
-
-    genai.configure(api_key=api_key)
-    gen_model = genai.GenerativeModel(model_name)
-    response = gen_model.generate_content(prompt)
-    return _parse_ai_response(response.text)
-
-
-async def _generate_with_openrouter(
-    prompt: str, api_key: str, model: str = "openai/gpt-4o-mini"
-) -> TailoredResume:
-    """Generate resume using OpenRouter."""
-    import httpx
-
-    payload = {
-        "model": model,
-        "messages": [
-            {
-                "role": "system",
-                "content": "You are an expert resume writer. Return only valid JSON.",
-            },
-            {"role": "user", "content": prompt},
-        ],
-    }
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "HTTP-Referer": "https://sirafit.com",
-        "Content-Type": "application/json",
-    }
-
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        response = await client.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers=headers,
-            json=payload,
-        )
-        response.raise_for_status()
-        data = response.json()
-    text = data["choices"][0]["message"]["content"]
     return _parse_ai_response(text)
 
 
@@ -979,33 +946,41 @@ async def generate_tailored_resume(
         profile_data=profile_text, job_data=job_text
     )
 
-    # Determine provider and key
+    # Determine provider and key (full 7-provider resolution, matching
+    # job_analysis.py).
+    # ponytail: duplicated provider-key map; extract to a shared helper if a
+    # 3rd caller appears.
+    setting_fields = {
+        "gemini": "GEMINI_API_KEY",
+        "openrouter": "OPENROUTER_API_KEY",
+        "anthropic": "ANTHROPIC_API_KEY",
+        "openai": "OPENAI_API_KEY",
+        "grok": "GROK_API_KEY",
+        "mistral": "MISTRAL_API_KEY",
+        "nvidia": "NVIDIA_API_KEY",
+    }
     actual_provider = (provider or "").lower()
     actual_model = model or ""
     actual_key = api_key
 
     if not actual_key:
-        if actual_provider == "openrouter":
-            actual_key = getattr(settings, "OPENROUTER_API_KEY", None)
-        else:
-            actual_key = getattr(settings, "GEMINI_API_KEY", None)
-            actual_provider = "gemini" if not actual_provider else actual_provider
+        if actual_provider in setting_fields:
+            actual_key = getattr(settings, setting_fields[actual_provider], None)
+        # No provider specified → pick the first key that's set.
+        if not actual_key and not actual_provider:
+            for prov, field in setting_fields.items():
+                key = getattr(settings, field, None)
+                if key:
+                    actual_key = key
+                    actual_provider = prov
+                    break
 
-    # Generate resume data
-    if actual_key and actual_provider == "gemini":
-        tailored = await _with_retry(
-            lambda: _generate_with_gemini(
-                prompt, actual_key, actual_model or "gemini-1.5-flash"
-            )
-        )
-    elif actual_key and actual_provider == "openrouter":
-        tailored = await _with_retry(
-            lambda: _generate_with_openrouter(
-                prompt, actual_key, actual_model or "openai/gpt-4o-mini"
-            )
-        )
-    else:
+    if not actual_key or not actual_provider:
         raise ValueError("No AI API key configured for resume generation")
+
+    tailored = await _with_retry(
+        lambda: _generate_resume_text(prompt, actual_key, actual_provider, actual_model)
+    )
 
     resume_data = tailored.model_dump()
 
