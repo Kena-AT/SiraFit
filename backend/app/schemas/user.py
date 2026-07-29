@@ -32,3 +32,12 @@ class TokenPayload(BaseModel):
     exp: Optional[int] = None
     type: Optional[str] = None
     jti: Optional[str] = None
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str
+    new_password: str
+    confirm_password: str
+
+    class Config:
+        from_attributes = True
