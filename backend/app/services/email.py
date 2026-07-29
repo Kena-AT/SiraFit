@@ -277,3 +277,27 @@ Need help? Contact our support team at support@sirafit.com
 
 # Email service instance
 email_service = EmailService()
+
+
+# Module-level convenience function for import compatibility
+def send_email(
+    to: str,
+    subject: str,
+    body: str,
+    html_content: Optional[str] = None,
+    text_content: Optional[str] = None,
+) -> bool:
+    """Send an email. Wrapper function for email_service.send_email.
+    
+    Args:
+        to: Recipient email address
+        subject: Email subject line
+        body: Plain text body (used as HTML content if html_content not provided)
+        html_content: Optional HTML content (defaults to body if not provided)
+        text_content: Optional plain text content
+    """
+    # Use body as HTML content if html_content not provided
+    final_html = html_content if html_content else body
+    # Use body as text content if text_content not provided
+    final_text = text_content if text_content else body
+    return email_service.send_email(to, subject, final_html, final_text)
