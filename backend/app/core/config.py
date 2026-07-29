@@ -39,9 +39,20 @@ class Settings(BaseSettings):
     # Environment
     ENVIRONMENT: str = "development"
 
-    # AI Integration
+    # AI Integration — one field per supported provider. All optional; the
+    # agent connection check and generation dispatcher pick the first key set.
     GEMINI_API_KEY: str | None = None
     OPENROUTER_API_KEY: str | None = None
+    ANTHROPIC_API_KEY: str | None = None
+    OPENAI_API_KEY: str | None = None
+    GROK_API_KEY: str | None = None
+    MISTRAL_API_KEY: str | None = None
+    NVIDIA_API_KEY: str | None = None
+    ANTHROPIC_API_KEY: str | None = None
+    OPENAI_API_KEY: str | None = None
+    GROK_API_KEY: str | None = None
+    MISTRAL_API_KEY: str | None = None
+    NVIDIA_API_KEY: str | None = None
 
     # Data encryption for user-stored API keys (fall back to SECRET_KEY if not set)
     DATA_ENCRYPTION_KEY: str | None = None

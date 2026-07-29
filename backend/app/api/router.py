@@ -14,6 +14,7 @@ from app.api import (
     analytics,
     stats,
 )
+from app.core.health import router as health_router
 
 api_router = APIRouter()
 
@@ -36,3 +37,4 @@ api_router.include_router(
 )
 api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 api_router.include_router(stats.router, prefix="/stats", tags=["stats"])
+api_router.include_router(health_router, prefix="/health", tags=["health"])

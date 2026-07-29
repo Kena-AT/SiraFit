@@ -122,11 +122,13 @@ app.add_middleware(SecurityHeadersMiddleware)
 # Prometheus metrics (outermost so it counts every request)
 app.add_middleware(MetricsMiddleware)
 
-# Include health checks
-app.include_router(health_router, prefix="/health", tags=["health"])
-
 # Include Prometheus metrics endpoint
 app.include_router(metrics_router, tags=["metrics"])
+
+# Health checks at /health/* for Docker/k8s probes (live, ready) and the
+# same router also mounted under /api/v1/* via api_router for the SPA
+# (which calls /api/v1/health/status). Both prefixes share the same routes.
+app.include_router(health_router, prefix="/health", tags=["health"])
 
 # Include API routes
 app.include_router(api_router, prefix=settings.API_V1_STR, tags=["api"])
