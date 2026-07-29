@@ -1,12 +1,16 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { useState, useRef, useEffect, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { AgentDot } from "./bits";
 
 type NavItem = { label: string; to: string; badge?: string; match?: "exact" | "prefix" };
 type NavGroup = { header: string; items: NavItem[] };
 
+const MIN_SIDEBAR_WIDTH = 180;
+const MAX_SIDEBAR_WIDTH = 400;
+
 const NAV: NavGroup[] = [
+  // ... (unchanged)
   {
     header: "Operations",
     items: [
@@ -69,6 +73,40 @@ function Logo() {
 
 export function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [sidebarWidth, setSidebarWidth] = useState(240);
+  const isResizing = useRef(false);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing.current) return;
+      const newWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(e.clientX, MAX_SIDEBAR_WIDTH));
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      isResizing.current = false;
+      document.body.style.cursor = "default";
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    const startResizing = () => {
+      isResizing.current = true;
+      document.body.style.cursor = "col-resize";
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    };
+
+    const resizer = document.getElementById("sidebar-resizer");
+    if (resizer) {
+      resizer.addEventListener("mousedown", startResizing);
+    }
+    return () => {
+      if (resizer) {
+        resizer.removeEventListener("mousedown", startResizing);
+      }
+    };
+  }, []);
 
   return (
     <div
@@ -76,7 +114,10 @@ export function AppShell() {
       style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
     >
       {/* Sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-border bg-sidebar md:flex">
+      <aside 
+        className="sticky top-0 hidden h-screen shrink-0 flex-col border-r border-border bg-sidebar md:flex"
+        style={{ width: `${sidebarWidth}px` }}
+      >
         <div className="flex h-12 items-center justify-between border-b border-border px-4">
           <Link to="/dashboard">
             <Logo />
@@ -140,6 +181,12 @@ export function AppShell() {
           </div>
         </div>
       </aside>
+      
+      {/* Resizer */}
+      <div 
+        id="sidebar-resizer"
+        className="w-1 cursor-col-resize hover:bg-border transition-colors hidden md:block"
+      />
 
       {/* Main */}
       <div className="flex min-w-0 flex-1 flex-col">
@@ -151,6 +198,7 @@ export function AppShell() {
     </div>
   );
 }
+
 
 function TopBar({ pathname }: { pathname: string }) {
   const segs = pathname.split("/").filter(Boolean);

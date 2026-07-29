@@ -32,8 +32,7 @@ function VersionTag() {
     queryFn: getHealthStatus,
   });
 
-  // Get version from package.json or environment
-  const version = "0.8.2"; // Would come from package.json in real implementation
+  const version = "0.0.1";
 
   return (
     <div className="inline-flex items-center gap-2 rounded-full bg-card px-3 py-1 text-[11px] font-medium text-muted-foreground ring-1 ring-border">
