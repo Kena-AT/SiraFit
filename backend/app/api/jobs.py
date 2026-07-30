@@ -22,6 +22,8 @@ from app.schemas.job import (
     JobMatchScoreResponse,
     RankedJobResponse,
     RankedJobListResponse,
+    TopMatchItem,
+    TopMatchListResponse,
 )
 from app.services.job_import import process_import
 from app.services.job_analysis import run_job_analysis
@@ -127,6 +129,62 @@ def list_ranked_jobs(
         )
     items.sort(key=lambda r: r.match_score.score if r.match_score else 0, reverse=True)
     return RankedJobListResponse(jobs=items, total=len(items))
+
+
+# ---------------------------------------------------------------------------
+# Top Matches (personalized match queue)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/top-matches", response_model=TopMatchListResponse)
+def get_top_matches(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    limit: int = Query(4, ge=1, le=10),
+) -> Any:
+    """Get the user's top job matches based on profile scoring."""
+    profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
+    if not profile:
+        raise HTTPException(
+            status_code=404, detail="Profile not found. Create a profile first."
+        )
+
+    # Get job IDs the user has already applied to or saved
+    applied_job_ids = (
+        db.query(JobApplication.job_id)
+        .filter(JobApplication.user_id == current_user.id)
+        .subquery()
+    )
+
+    # Get candidate jobs not yet applied to
+    candidate_jobs = (
+        db.query(Job)
+        .filter(Job.id.notin_(applied_job_ids))
+        .order_by(Job.created_at.desc())
+        .limit(50)
+        .all()
+    )
+
+    # Score each job and filter by threshold
+    scored_matches = []
+    for job in candidate_jobs:
+        score_data = calculate_match_score(profile, job)
+        if score_data["score"] >= 30:  # minimum threshold
+            scored_matches.append(
+                TopMatchItem(
+                    job_id=job.id,
+                    company=job.company,
+                    role=job.title,
+                    match_score=score_data["score"],
+                    status="new",
+                )
+            )
+
+    # Sort by score descending and limit
+    scored_matches.sort(key=lambda x: x.match_score, reverse=True)
+    top_matches = scored_matches[:limit]
+
+    return TopMatchListResponse(matches=top_matches, total=len(top_matches))
 
 
 # ---------------------------------------------------------------------------
@@ -335,8 +393,40 @@ def get_import_detail(
         raise HTTPException(status_code=404, detail="Import not found")
     if import_record.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized")
+
+    # Query jobs associated with this import batch
+    from app.models.job import JobApplication
+    applied_jobs = (
+        db.query(JobApplication)
+        .filter(
+            JobApplication.user_id == current_user.id,
+            JobApplication.created_at >= import_record.created_at,
+        )
+        .join(Job)
+        .all()
+    )
+
+    jobs_data = []
+    for app in applied_jobs:
+        job = app.job
+        if job:
+            jobs_data.append({
+                "id": str(job.id),
+                "title": job.title,
+                "company": job.company,
+                "location": job.location,
+                "salary_min": job.salary_min,
+                "salary_max": job.salary_max,
+                "currency": job.currency,
+                "tags": job.tags,
+                "url": job.url,
+                "source": job.source,
+                "created_at": job.created_at.isoformat() if job.created_at else None,
+                "is_duplicate": False,
+            })
+
     return ImportResultResponse(
         import_record=JobImportResponse.model_validate(import_record),
-        jobs=[],
+        jobs=[JobData(**job) for job in jobs_data],
         errors=[],
     )

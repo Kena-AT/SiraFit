@@ -181,6 +181,19 @@ class RankedJobListResponse(BaseModel):
     total: int
 
 
+class TopMatchItem(BaseModel):
+    job_id: uuid.UUID
+    company: str
+    role: str
+    match_score: int
+    status: str = "new"
+
+
+class TopMatchListResponse(BaseModel):
+    matches: List[TopMatchItem]
+    total: int
+
+
 class AnalysisRequest(BaseModel):
     force_refresh: bool = False
 
