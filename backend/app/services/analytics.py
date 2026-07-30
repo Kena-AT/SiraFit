@@ -64,16 +64,21 @@ def generate_analytics_metrics(db: Session, user_id: uuid.UUID) -> Dict[str, Any
         )
         funnel.append({"stage": label, "count": count})
 
-    # 3. Rejection stages
+    # 3. Rejection stages (now using rejection_stage column for accurate tracking)
     rejection_stages = [
-        ("Resume screen", "rejected"),
-        ("Recruiter call", "rejected"),
-        ("Tech screen", "rejected"),
-        ("Onsite", "rejected"),
+        ("Resume screen", "resume_screen"),
+        ("Recruiter call", "recruiter_call"),
+        ("Tech screen", "tech_screen"),
+        ("Onsite", "onsite"),
+        ("Offer declined", "offer_declined"),
     ]
     rejections = []
-    for label, status in rejection_stages:
-        count = sum(1 for a in applications if a.status == status)
+    for label, stage in rejection_stages:
+        count = sum(
+            1
+            for a in applications
+            if a.status == "rejected" and a.rejection_stage == stage
+        )
         rejections.append({"stage": label, "count": count})
 
     # 4. Skill coverage vs market demand
@@ -138,6 +143,59 @@ def generate_analytics_metrics(db: Session, user_id: uuid.UUID) -> Dict[str, Any
             }
         )
 
+    # 6. Top technologies (skills from applied jobs)
+    from collections import Counter as SkillCounter
+
+    skill_counter: SkillCounter = SkillCounter()
+    for app in applications:
+        if app.job and app.job.tags:
+            for tag in app.job.tags:
+                skill_counter[tag.lower()] += 1
+
+    top_technologies = [
+        {"skill": skill.title(), "count": count}
+        for skill, count in skill_counter.most_common(10)
+    ]
+
+    # 7. Salary medians by sector
+    from sqlalchemy import func as sql_func
+
+    salary_data = (
+        db.query(
+            Job.company,
+            sql_func.avg((Job.salary_min + Job.salary_max) / 2).label("median"),
+        )
+        .join(JobApplication)
+        .filter(
+            JobApplication.user_id == user_id,
+            Job.salary_min.isnot(None),
+            Job.salary_max.isnot(None),
+        )
+        .group_by(Job.company)
+        .all()
+    )
+
+    salary_medians = {company: float(median) for company, median in salary_data}
+
+    # 8. Skill gaps (user skills vs job requirements)
+    user_skills_set = set(s.name.lower() for s in profile.skills) if profile else set()
+    required_skills: SkillCounter = SkillCounter()
+    for app in applications:
+        if app.job and app.job.tags:
+            for tag in app.job.tags:
+                required_skills[tag.lower()] += 1
+
+    skill_gaps = []
+    for skill, freq in required_skills.most_common(10):
+        if skill not in user_skills_set:
+            skill_gaps.append(
+                {
+                    "skill": skill.title(),
+                    "demand_frequency": freq,
+                    "impact_score": min(freq * 10, 100),
+                }
+            )
+
     return {
         "total_applications": total_applications,
         "interview_rate": round(interview_rate, 1),
@@ -147,6 +205,9 @@ def generate_analytics_metrics(db: Session, user_id: uuid.UUID) -> Dict[str, Any
         "rejection_stages": rejections,
         "skill_coverage": skill_coverage,
         "market_demand": market_demand,
+        "top_technologies": top_technologies,
+        "salary_medians": salary_medians,
+        "skill_gaps": skill_gaps,
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 

@@ -58,6 +58,7 @@ class JobApplication(Base):
         String(50), default="saved"
     )  # saved, preparing, applied, screening, interview, final_round, offer, rejected, withdrawn, archived
     stage = Column(Integer, default=0)  # Application stage number
+    rejection_stage = Column(String(30), nullable=True)  # resume_screen, recruiter_call, tech_screen, onsite, offer_declined
     general_notes = Column(
         Text, nullable=True
     )  # General notes (legacy field, use ApplicationNote for rich notes)

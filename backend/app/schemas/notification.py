@@ -1,6 +1,6 @@
 from typing import List, Optional, Any, Dict
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 import uuid
 
 
@@ -43,6 +43,9 @@ class MetricsResponse(BaseModel):
     rejection_stages: List[Dict[str, Any]]
     skill_coverage: List[Dict[str, Any]]
     market_demand: List[Dict[str, Any]]
+    top_technologies: List[Dict[str, Any]] = Field(default_factory=list)
+    salary_medians: Dict[str, float] = Field(default_factory=dict)
+    skill_gaps: List[Dict[str, Any]] = Field(default_factory=list)
     generated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
