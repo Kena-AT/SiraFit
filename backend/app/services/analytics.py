@@ -132,6 +132,37 @@ def generate_analytics_metrics(db: Session, user_id: uuid.UUID) -> Dict[str, Any
 
     top_roles = title_counter.most_common(8)
     market_demand = []
+
+    # Calculate market trend using historical snapshots
+    from app.models.analytics import AnalyticsSnapshot
+    from datetime import timedelta
+
+    now = datetime.now(timezone.utc)
+    current_period_start = now - timedelta(days=30)
+    previous_period_start = now - timedelta(days=60)
+
+    # Count jobs in current and previous periods
+    current_count = (
+        db.query(Job)
+        .filter(Job.created_at >= current_period_start)
+        .count()
+    )
+    previous_count = (
+        db.query(Job)
+        .filter(
+            Job.created_at >= previous_period_start,
+            Job.created_at < current_period_start,
+        )
+        .count()
+    )
+
+    if previous_count > 0:
+        trend_pct = ((current_count - previous_count) / previous_count) * 100
+    else:
+        trend_pct = 0.0
+
+    trend_str = f"{'+' if trend_pct >= 0 else ''}{trend_pct:.1f}%"
+
     for rank, (role, count) in enumerate(top_roles):
         demand = max(10, 100 - rank * 10)
         market_demand.append(
@@ -139,7 +170,7 @@ def generate_analytics_metrics(db: Session, user_id: uuid.UUID) -> Dict[str, Any
                 "role": role,
                 "demand": demand,
                 "postings": count,
-                "change": "+0%",  # would need historical data
+                "change": trend_str,
             }
         )
 
