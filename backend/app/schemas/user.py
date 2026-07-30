@@ -1,6 +1,6 @@
 import uuid
 from typing import Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class UserBase(BaseModel):
@@ -41,3 +41,48 @@ class PasswordChangeRequest(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class NotificationPreferencesBase(BaseModel):
+    email_job_matches: bool = True
+    email_daily_summary: bool = False
+    push_notifications: bool = True
+    email_new_opportunities: bool = True
+
+
+class NotificationPreferences(NotificationPreferencesBase):
+    class Config:
+        from_attributes = True
+
+
+class ResumeDefaultsBase(BaseModel):
+    default_template: str = Field(
+        default="modern",
+        pattern=r"^(modern|classic|minimal|ats)$"
+    )
+    auto_tailor_enabled: bool = True
+    export_format: str = Field(
+        default="pdf",
+        pattern=r"^(pdf|docx|txt)$"
+    )
+
+
+class ResumeDefaults(ResumeDefaultsBase):
+    class Config:
+        from_attributes = True
+
+
+class AIProviderKeysWrite(BaseModel):
+    anthropic_key: Optional[str] = None
+    openai_key: Optional[str] = None
+    grok_key: Optional[str] = None
+    mistral_key: Optional[str] = None
+    nvidia_key: Optional[str] = None
+
+
+class AIProviderKeysRead(BaseModel):
+    anthropic_configured: bool
+    openai_configured: bool
+    grok_configured: bool
+    mistral_configured: bool
+    nvidia_configured: bool

@@ -10,8 +10,13 @@ from pydantic import ValidationError
 
 from app.core.database import get_db
 from app.core.config import settings
-from app.models.user import User
-from app.schemas.user import UserCreate, UserResponse, TokenPayload, PasswordChangeRequest
+from app.models.user import User, UserPreference
+from app.schemas.user import (
+    UserCreate, UserResponse, TokenPayload, PasswordChangeRequest,
+    NotificationPreferencesBase, NotificationPreferences,
+    ResumeDefaultsBase, ResumeDefaults,
+    AIProviderKeysWrite, AIProviderKeysRead,
+)
 
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(
@@ -218,3 +223,121 @@ def delete_account(
     db.commit()
     
     return {"message": "Account deleted successfully"}
+
+
+def _get_or_create_prefs(db: Session, user_id: uuid.UUID) -> UserPreference:
+    """Get user preferences or create if they don't exist."""
+    prefs = db.query(UserPreference).filter(UserPreference.user_id == user_id).first()
+    if not prefs:
+        prefs = UserPreference(user_id=user_id)
+        db.add(prefs)
+        db.commit()
+        db.refresh(prefs)
+    return prefs
+
+
+@router.get("/me/preferences/notifications", response_model=NotificationPreferences)
+def get_notification_preferences(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Get current user's notification preferences."""
+    prefs = _get_or_create_prefs(db, current_user.id)
+    return prefs
+
+
+@router.put("/me/preferences/notifications", response_model=NotificationPreferences)
+def update_notification_preferences(
+    *,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    prefs_in: NotificationPreferencesBase,
+) -> Any:
+    """Update current user's notification preferences."""
+    prefs = _get_or_create_prefs(db, current_user.id)
+    for field, value in prefs_in.model_dump().items():
+        setattr(prefs, field, value)
+    db.commit()
+    db.refresh(prefs)
+    return prefs
+
+
+@router.get("/me/preferences/resume", response_model=ResumeDefaults)
+def get_resume_defaults(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Get current user's resume default settings."""
+    prefs = _get_or_create_prefs(db, current_user.id)
+    return prefs
+
+
+@router.put("/me/preferences/resume", response_model=ResumeDefaults)
+def update_resume_defaults(
+    *,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    prefs_in: ResumeDefaultsBase,
+) -> Any:
+    """Update current user's resume default settings."""
+    prefs = _get_or_create_prefs(db, current_user.id)
+    for field, value in prefs_in.model_dump().items():
+        setattr(prefs, field, value)
+    db.commit()
+    db.refresh(prefs)
+    return prefs
+
+
+@router.get("/me/preferences/ai-keys", response_model=AIProviderKeysRead)
+def get_ai_provider_keys(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Get current user's AI provider key configuration status."""
+    prefs = _get_or_create_prefs(db, current_user.id)
+    return AIProviderKeysRead(
+        anthropic_configured=bool(prefs.encrypted_anthropic_key),
+        openai_configured=bool(prefs.encrypted_openai_key),
+        grok_configured=bool(prefs.encrypted_grok_key),
+        mistral_configured=bool(prefs.encrypted_mistral_key),
+        nvidia_configured=bool(prefs.encrypted_nvidia_key),
+    )
+
+
+@router.put("/me/preferences/ai-keys", response_model=AIProviderKeysRead)
+def update_ai_provider_keys(
+    *,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    keys_in: AIProviderKeysWrite,
+) -> Any:
+    """Update current user's AI provider API keys (encrypted at rest)."""
+    from app.core.security import encrypt_value
+
+    prefs = _get_or_create_prefs(db, current_user.id)
+
+    # Map of input field names to encrypted column names
+    key_fields = {
+        "anthropic_key": "encrypted_anthropic_key",
+        "openai_key": "encrypted_openai_key",
+        "grok_key": "encrypted_grok_key",
+        "mistral_key": "encrypted_mistral_key",
+        "nvidia_key": "encrypted_nvidia_key",
+    }
+
+    for input_field, db_field in key_fields.items():
+        value = getattr(keys_in, input_field)
+        if value is not None:
+            encrypted = encrypt_value(value) if value else None
+            setattr(prefs, db_field, encrypted)
+
+    db.commit()
+    db.refresh(prefs)
+
+    return AIProviderKeysRead(
+        anthropic_configured=bool(prefs.encrypted_anthropic_key),
+        openai_configured=bool(prefs.encrypted_openai_key),
+        grok_configured=bool(prefs.encrypted_grok_key),
+        mistral_configured=bool(prefs.encrypted_mistral_key),
+        nvidia_configured=bool(prefs.encrypted_nvidia_key),
+    )

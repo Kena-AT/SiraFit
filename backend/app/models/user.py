@@ -51,9 +51,26 @@ class UserPreference(Base):
     theme = Column(String(50), default="light")
     notifications_enabled = Column(Boolean, default=True)
 
+    # Notification preference fields
+    email_job_matches = Column(Boolean, default=True, nullable=False)
+    email_daily_summary = Column(Boolean, default=False, nullable=False)
+    push_notifications = Column(Boolean, default=True, nullable=False)
+    email_new_opportunities = Column(Boolean, default=True, nullable=False)
+
+    # Resume defaults
+    default_template = Column(String(50), default="modern", nullable=False)
+    auto_tailor_enabled = Column(Boolean, default=True, nullable=False)
+    export_format = Column(String(10), default="pdf", nullable=False)
+
     # Encrypted AI API keys (AES-128-CBC via Fernet)
     encrypted_gemini_key = Column(String(500), nullable=True)
     encrypted_openrouter_key = Column(String(500), nullable=True)
+    encrypted_anthropic_key = Column(String(500), nullable=True)
+    encrypted_openai_key = Column(String(500), nullable=True)
+    encrypted_grok_key = Column(String(500), nullable=True)
+    encrypted_mistral_key = Column(String(500), nullable=True)
+    encrypted_nvidia_key = Column(String(500), nullable=True)
+
     # Provider and model preferences (plain text, no sensitive data)
     ai_provider = Column(String(50), nullable=True, default="gemini")
     ai_model = Column(String(255), nullable=True, default="gemini-1.5-flash")
