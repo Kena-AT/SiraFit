@@ -41,11 +41,12 @@ export function HealthStatusDot({ className, showLabel = true, showDetails = fal
   const colorClass = getColorClass(status.color);
 
   // Determine what to show in the label
+  const provider = status.agent_api.provider || "Agent"
   const label = showLabel ? (
     status.agent_api.connected ? (
-      `Agent: connected${status.agent_api.source === "env" ? " via .env" : ""}`
+      `${provider} connected${status.agent_api.source === "env" ? " via .env" : ""}`
     ) : (
-      ("error" in status.agent_api && status.agent_api.error) || "Agent: disconnected"
+      status.agent_api.error || `${provider} disconnected`
     )
   ) : null;
 
