@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey
+from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -88,3 +88,22 @@ class RefreshToken(Base):
     is_revoked = Column(Boolean, default=False)
 
     user = relationship("User", back_populates="refresh_tokens")
+
+
+class DeviceSession(Base):
+    """Track user device sessions for security monitoring."""
+
+    __tablename__ = "device_sessions"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    device_name = Column(String(100), nullable=False)
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    last_seen = Column(DateTime, default=_utcnow, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+
+    user = relationship("User")

@@ -10,7 +10,7 @@ from pydantic import ValidationError
 
 from app.core.database import get_db
 from app.core.config import settings
-from app.models.user import User, UserPreference
+from app.models.user import User, UserPreference, DeviceSession
 from app.schemas.user import (
     UserCreate, UserResponse, TokenPayload, PasswordChangeRequest,
     NotificationPreferencesBase, NotificationPreferences,
@@ -341,3 +341,104 @@ def update_ai_provider_keys(
         mistral_configured=bool(prefs.encrypted_mistral_key),
         nvidia_configured=bool(prefs.encrypted_nvidia_key),
     )
+
+
+# ---------------------------------------------------------------------------
+# Device Sessions
+# ---------------------------------------------------------------------------
+
+
+def _parse_device_name(user_agent: str) -> str:
+    """Extract a human-readable device name from a user agent string."""
+    if not user_agent:
+        return "Unknown device"
+
+    ua_lower = user_agent.lower()
+
+    # Detect device type
+    if "iphone" in ua_lower or "ipad" in ua_lower:
+        device_type = "iPhone" if "iphone" in ua_lower else "iPad"
+    elif "android" in ua_lower:
+        device_type = "Android"
+    elif "macintosh" in ua_lower or "mac os" in ua_lower:
+        device_type = "Mac"
+    elif "windows" in ua_lower:
+        device_type = "Windows"
+    elif "linux" in ua_lower:
+        device_type = "Linux"
+    else:
+        device_type = "Unknown"
+
+    # Detect browser
+    if "chrome" in ua_lower:
+        browser = "Chrome"
+    elif "firefox" in ua_lower:
+        browser = "Firefox"
+    elif "safari" in ua_lower:
+        browser = "Safari"
+    elif "edge" in ua_lower:
+        browser = "Edge"
+    else:
+        browser = "Browser"
+
+    return f"{device_type} ({browser})"
+
+
+@router.get("/me/devices")
+def get_devices(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Get all device sessions for the current user."""
+    devices = (
+        db.query(DeviceSession)
+        .filter(DeviceSession.user_id == current_user.id)
+        .order_by(DeviceSession.last_seen.desc())
+        .all()
+    )
+
+    # Deactivate sessions that haven't been seen in 30 days
+    from datetime import timedelta
+
+    cutoff = datetime.utcnow() - timedelta(days=30)
+    for device in devices:
+        if device.last_seen < cutoff and device.is_active:
+            device.is_active = False
+    db.commit()
+
+    return [
+        {
+            "id": d.id,
+            "device_name": d.device_name,
+            "ip_address": d.ip_address,
+            "is_active": d.is_active,
+            "last_seen": d.last_seen.isoformat() if d.last_seen else None,
+            "created_at": d.created_at.isoformat() if d.created_at else None,
+        }
+        for d in devices
+    ]
+
+
+@router.delete("/me/devices/{device_id}")
+def revoke_device(
+    device_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Revoke a device session."""
+    device = (
+        db.query(DeviceSession)
+        .filter(
+            DeviceSession.id == device_id,
+            DeviceSession.user_id == current_user.id,
+        )
+        .first()
+    )
+
+    if not device:
+        raise HTTPException(status_code=404, detail="Device session not found")
+
+    device.is_active = False
+    db.commit()
+
+    return {"message": "Device session revoked"}
