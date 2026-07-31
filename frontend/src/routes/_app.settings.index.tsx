@@ -94,7 +94,6 @@ function SettingsIndex() {
       toast.error(detail);
     },
   });
-  });
 
   const handlePasswordSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
