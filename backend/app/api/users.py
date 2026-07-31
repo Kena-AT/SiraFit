@@ -110,36 +110,96 @@ def change_password(
     current_user: User = Depends(get_current_user),
     password_data: PasswordChangeRequest,
 ) -> Any:
-    """Change current user password."""
+    """Change current user password with validation and audit logging.
+
+    Security considerations:
+    - Current password must be verified before allowing a change
+    - New password must meet minimum complexity requirements
+    - Audit log entry is created for the password change event
+    - Session invalidation handled via DB cascade on user (but refresh tokens
+      remain valid until they expire; client should invalidate refresh token)
+    """
     from app.core.security import verify_password, get_password_hash
-    
+    from app.models.job import AuditLog
+
     # Validate that new passwords match
     if password_data.new_password != password_data.confirm_password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="New password and confirmation do not match"
+            detail="New password and confirmation do not match",
         )
-    
+
     # Verify current password
-    if not verify_password(password_data.current_password, current_user.hashed_password):
+    if not verify_password(
+        password_data.current_password, current_user.hashed_password
+    ):
+        # Log failed attempt
+        audit = AuditLog(
+            user_id=current_user.id,
+            action="password_change_failed",
+            entity_type="user",
+            entity_id=current_user.id,
+            details={"reason": "invalid_current_password"},
+        )
+        db.add(audit)
+        db.commit()
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Current password is incorrect"
+            detail="Current password is incorrect",
         )
-    
-    # Validate new password strength (basic validation)
-    if len(password_data.new_password) < 8:
+
+    new_pwd = password_data.new_password
+
+    # Validate new password strength
+    if len(new_pwd) < 12:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="New password must be at least 8 characters long"
+            detail="Password must be at least 12 characters",
         )
-    
+
+    # Check for common patterns (basic complexity)
+    import re
+
+    if not re.search(r"[A-Z]", new_pwd):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must contain at least one uppercase letter",
+        )
+    if not re.search(r"[a-z]", new_pwd):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must contain at least one lowercase letter",
+        )
+    if not re.search(r"[0-9]", new_pwd):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must contain at least one digit",
+        )
+
     # Hash and update password
-    current_user.hashed_password = get_password_hash(password_data.new_password)
+    current_user.hashed_password = get_password_hash(new_pwd)
+
+    # Invalidate all refresh tokens (force re-authentication)
+    db.query(RefreshToken).filter(
+        RefreshToken.user_id == current_user.id,
+        RefreshToken.is_revoked.is_(False),
+    ).update({RefreshToken.is_revoked: True})
+
+    # Log the password change
+    audit = AuditLog(
+        user_id=current_user.id,
+        action="password_change",
+        entity_type="user",
+        entity_id=current_user.id,
+    )
+    db.add(audit)
+
     db.commit()
     db.refresh(current_user)
-    
-    return {"message": "Password updated successfully"}
+
+    # Return success - client should invalidate local session and prompt re-login
+    return {"message": "Password updated. Please log in again."}
 
 
 @router.get("/me/export")
@@ -311,13 +371,21 @@ def update_ai_provider_keys(
     current_user: User = Depends(get_current_user),
     keys_in: AIProviderKeysWrite,
 ) -> Any:
-    """Update current user's AI provider API keys (encrypted at rest)."""
+    """Update current user's AI provider API keys (encrypted at rest).
+
+    Security considerations:
+    - Only keys explicitly included in the request body are modified
+    - Empty strings and explicit None values clear existing keys
+    - Keys are encrypted before storage using Fernet symmetric encryption
+    - Encrypted key material never leaves the server
+    - The response only indicates configured/not-configured status, never raw keys
+    """
     from app.core.security import encrypt_value
 
     prefs = _get_or_create_prefs(db, current_user.id)
 
     # Map of input field names to encrypted column names
-    key_fields = {
+    key_fields: dict[str, str] = {
         "anthropic_key": "encrypted_anthropic_key",
         "openai_key": "encrypted_openai_key",
         "grok_key": "encrypted_grok_key",
@@ -325,9 +393,14 @@ def update_ai_provider_keys(
         "nvidia_key": "encrypted_nvidia_key",
     }
 
+    # Only iterate over explicitly-set fields per model_dump(exclude_unset=True)
+    # This allows clients to send partial updates without clearing other keys
+    update_data = keys_in.model_dump(exclude_unset=True)
+
     for input_field, db_field in key_fields.items():
-        value = getattr(keys_in, input_field)
-        if value is not None:
+        if input_field in update_data:
+            value = update_data[input_field]
+            # Empty string or None means "clear this key"
             encrypted = encrypt_value(value) if value else None
             setattr(prefs, db_field, encrypted)
 

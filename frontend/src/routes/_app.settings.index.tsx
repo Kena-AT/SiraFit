@@ -65,7 +65,20 @@ function SettingsIndex() {
       if (!current) throw new Error("Current password is required");
       if (!newPwd) throw new Error("New password is required");
       if (newPwd !== confirmPwd) throw new Error("Passwords do not match");
-      if (newPwd.length < 8) throw new Error("Password must be at least 8 characters");
+
+      // Frontend validation to match backend requirements
+      if (newPwd.length < 12) {
+        throw new Error("Password must be at least 12 characters");
+      }
+      if (!/[A-Z]/.test(newPwd)) {
+        throw new Error("Password must contain at least one uppercase letter");
+      }
+      if (!/[a-z]/.test(newPwd)) {
+        throw new Error("Password must contain at least one lowercase letter");
+      }
+      if (!/[0-9]/.test(newPwd)) {
+        throw new Error("Password must contain at least one digit");
+      }
 
       return changePassword({
         current_password: current,
@@ -76,9 +89,11 @@ function SettingsIndex() {
     onSuccess: () => {
       toast.success("Password updated successfully");
     },
-    onError: (error) => {
-      toast.error(error.message);
+    onError: (error: Error) => {
+      const detail = error.message || "Failed to update password";
+      toast.error(detail);
     },
+  });
   });
 
   const handlePasswordSubmit = (e: React.FormEvent<HTMLFormElement>) => {
