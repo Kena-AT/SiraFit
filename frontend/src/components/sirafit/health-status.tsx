@@ -26,7 +26,7 @@ export function HealthStatusDot({ className, showLabel = true, showDetails = fal
     backend: false,
     database: false,
     deployment: false,
-    agent_api: { connected: false, source: "none", error: "Failed to fetch status" },
+    agent_api: { connected: false, source: "none", provider: undefined, error: "Failed to fetch status" },
   } : data || {
     color: "gray",
     message: "Checking status...",
@@ -34,17 +34,18 @@ export function HealthStatusDot({ className, showLabel = true, showDetails = fal
     backend: false,
     database: false,
     deployment: false,
-    agent_api: { connected: false, source: "none" },
+    agent_api: { connected: false, source: "none", provider: undefined },
   };
 
   // Get the appropriate color class
   const colorClass = getColorClass(status.color);
 
-  // Determine what to show in the label
+  // Determine what to show in the label. We don't distinguish ".env file" from
+  // "OS env var" (pydantic-settings merges both), so just name the provider.
   const provider = status.agent_api.provider || "Agent"
   const label = showLabel ? (
     status.agent_api.connected ? (
-      `${provider} connected${status.agent_api.source === "env" ? " via .env" : ""}`
+      `${provider} connected`
     ) : (
       status.agent_api.error || `${provider} disconnected`
     )
