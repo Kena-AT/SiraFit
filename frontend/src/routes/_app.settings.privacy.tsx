@@ -3,6 +3,7 @@ import { Panel } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { exportUserData, deleteAccount } from "@/lib/api/users";
 
 export const Route = createFileRoute("/_app/settings/privacy")({
   head: () => ({ meta: [{ title: "Data & privacy · SiraFit" }] }),
@@ -12,12 +13,19 @@ export const Route = createFileRoute("/_app/settings/privacy")({
 function PrivacySettings() {
   const exportMutation = useMutation({
     mutationFn: async () => {
-      // Mock API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const data = await exportUserData();
+      // Trigger download of the exported data
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "sirafit-data-export.json";
+      a.click();
+      URL.revokeObjectURL(url);
       return true;
     },
     onSuccess: () => {
-      toast.success("Your data export has been queued. You will receive an email shortly.");
+      toast.success("Your data export has been generated and downloaded.");
     },
     onError: () => {
       toast.error("Failed to generate export");
@@ -26,13 +34,13 @@ function PrivacySettings() {
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      // Mock API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await deleteAccount();
       return true;
     },
     onSuccess: () => {
       toast.success("Account deleted successfully");
-      // In reality, this would log the user out and redirect
+      // Log the user out and redirect to login
+      window.location.href = "/login";
     },
     onError: () => {
       toast.error("Failed to delete account");

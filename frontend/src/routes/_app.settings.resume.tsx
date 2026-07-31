@@ -1,47 +1,95 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Panel, Tag } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import {
+  getResumeDefaults,
+  updateResumeDefaults,
+  type ResumeDefaults,
+} from "@/lib/api/users";
 
 export const Route = createFileRoute("/_app/settings/resume")({
   head: () => ({ meta: [{ title: "Resume settings · SiraFit" }] }),
   component: ResumeSettings,
 });
 
+const TEMPLATE_MAP: Record<string, string> = {
+  Minimal: "minimal",
+  Technical: "modern",
+  Modern: "modern",
+  Corporate: "corporate",
+  Compact: "compact",
+};
+
+const TEMPLATE_LABELS = ["Minimal", "Technical", "Modern", "Corporate", "Compact"];
+
 function ResumeSettings() {
-  const [selectedTemplate, setSelectedTemplate] = useState("Technical");
-  const [autoTailor, setAutoTailor] = useState(true);
+  const queryClient = useQueryClient();
+
+  const { data: defaults, isLoading } = useQuery({
+    queryKey: ["resume-defaults"],
+    queryFn: getResumeDefaults,
+  });
 
   const saveMutation = useMutation({
-    mutationFn: async () => {
-      // Mock API call
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      return true;
+    mutationFn: async (prefs: Partial<ResumeDefaults>) => {
+      return updateResumeDefaults(prefs);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["resume-defaults"] });
       toast.success("Resume settings updated successfully");
     },
-    onError: () => {
-      toast.error("Failed to update resume settings");
+    onError: (error) => {
+      toast.error(`Failed to update resume settings: ${error.message}`);
     },
   });
 
+  const [selectedTemplate, setSelectedTemplate] = useState("Technical");
+  const [autoTailor, setAutoTailor] = useState(true);
+  const [exportFormat, setExportFormat] = useState("pdf");
+
+  useEffect(() => {
+    if (defaults) {
+      const label = Object.keys(TEMPLATE_MAP).find(
+        (key) => TEMPLATE_MAP[key] === defaults.default_template,
+      );
+      setSelectedTemplate(label ?? "Technical");
+      setAutoTailor(defaults.auto_tailor_enabled);
+      setExportFormat(defaults.export_format);
+    }
+  }, [defaults]);
+
   const handleSave = () => {
-    saveMutation.mutate();
+    const templateKey = TEMPLATE_MAP[selectedTemplate] || "modern";
+    saveMutation.mutate({
+      default_template: templateKey,
+      auto_tailor_enabled: autoTailor,
+      export_format: exportFormat,
+    });
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-4 text-sm text-muted-foreground">
+        Loading resume settings...
+      </div>
+    );
+  }
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Panel title="Default template">
         <div className="space-y-3 p-4">
           <div className="flex flex-wrap gap-2">
-            {["Minimal", "Technical", "Modern", "Corporate", "Compact"].map((t) => (
+            {TEMPLATE_LABELS.map((t) => (
               <button key={t} onClick={() => setSelectedTemplate(t)} type="button">
                 <Tag
                   className={
-                    selectedTemplate === t ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                    selectedTemplate === t
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-muted"
                   }
                 >
                   {t}
@@ -61,7 +109,10 @@ function ResumeSettings() {
           <Button
             variant={autoTailor ? "default" : "outline"}
             size="sm"
-            onClick={() => setAutoTailor(!autoTailor)}
+            onClick={() => {
+              setAutoTailor(!autoTailor);
+              saveMutation.mutate({ auto_tailor_enabled: !autoTailor });
+            }}
           >
             {autoTailor ? "Enabled" : "Disabled"}
           </Button>
@@ -71,7 +122,7 @@ function ResumeSettings() {
         <div className="grid gap-3 p-4 sm:grid-cols-3 text-sm">
           <div>
             <div className="text-[10px] font-semibold uppercase text-muted-foreground">Format</div>
-            PDF
+            {exportFormat.toUpperCase()}
           </div>
           <div>
             <div className="text-[10px] font-semibold uppercase text-muted-foreground">

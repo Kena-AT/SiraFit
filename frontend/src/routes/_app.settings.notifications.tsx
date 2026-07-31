@@ -1,18 +1,30 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Panel } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import {
+  getNotificationPreferences,
+  updateNotificationPreferences,
+  type NotificationPreferences,
+} from "@/lib/api/users";
 
-const rows = [
-  ["Resume generation complete", true, true],
-  ["High-match job ingested (>85%)", true, false],
-  ["Interview scheduled / updated", true, true],
-  ["Recruiter follow-up reminders", true, true],
-  ["Scraper rate-limit warnings", false, false],
-  ["Sync failure (degraded mode)", true, false],
-] as const;
+interface PrefRow {
+  id: string;
+  label: string;
+  emailKey: keyof NotificationPreferences;
+  inAppEnabled: boolean;
+}
+
+const rows: PrefRow[] = [
+  { id: "resume_gen", label: "Resume generation complete", emailKey: "email_new_opportunities", inAppEnabled: true },
+  { id: "high_match", label: "High-match job ingested (>85%)", emailKey: "email_job_matches", inAppEnabled: false },
+  { id: "interview", label: "Interview scheduled / updated", emailKey: "email_new_opportunities", inAppEnabled: true },
+  { id: "followup", label: "Recruiter follow-up reminders", emailKey: "email_new_opportunities", inAppEnabled: true },
+  { id: "scraper_warn", label: "Scraper rate-limit warnings", emailKey: "email_new_opportunities", inAppEnabled: false },
+  { id: "sync_fail", label: "Sync failure (degraded mode)", emailKey: "email_new_opportunities", inAppEnabled: true },
+];
 
 export const Route = createFileRoute("/_app/settings/notifications")({
   head: () => ({ meta: [{ title: "Notification settings · SiraFit" }] }),
@@ -20,29 +32,46 @@ export const Route = createFileRoute("/_app/settings/notifications")({
 });
 
 function NotificationsSettings() {
-  const [preferences, setPreferences] = useState(
-    rows.map(([label, inApp, email]) => ({ label, inApp, email })),
-  );
+  const queryClient = useQueryClient();
+
+  const { data: prefs, isLoading } = useQuery({
+    queryKey: ["notification-preferences"],
+    queryFn: getNotificationPreferences,
+  });
 
   const saveMutation = useMutation({
-    mutationFn: async () => {
-      // Mock API call
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      return true;
+    mutationFn: async (updatedPrefs: Partial<NotificationPreferences>) => {
+      return updateNotificationPreferences(updatedPrefs);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notification-preferences"] });
       toast.success("Notification preferences updated");
     },
-    onError: () => {
-      toast.error("Failed to update notification preferences");
+    onError: (error) => {
+      toast.error(`Failed to update preferences: ${error.message}`);
     },
   });
 
-  const handleToggle = (index: number, type: "inApp" | "email") => {
-    const newPrefs = [...preferences];
-    newPrefs[index][type] = !newPrefs[index][type];
-    setPreferences(newPrefs);
+  const [localPrefs, setLocalPrefs] = useState<NotificationPreferences | null>(null);
+
+  useEffect(() => {
+    if (prefs) setLocalPrefs(prefs);
+  }, [prefs]);
+
+  const handleToggle = (emailKey: keyof NotificationPreferences) => {
+    if (!localPrefs) return;
+    const newPrefs = { ...localPrefs, [emailKey]: !localPrefs[emailKey] };
+    setLocalPrefs(newPrefs);
+    saveMutation.mutate({ [emailKey]: newPrefs[emailKey] });
   };
+
+  if (isLoading || !localPrefs) {
+    return (
+      <div className="p-4 text-sm text-muted-foreground">
+        Loading notification preferences...
+      </div>
+    );
+  }
 
   return (
     <div className="grid gap-4">
@@ -56,22 +85,22 @@ function NotificationsSettings() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {preferences.map((pref, i) => (
-              <tr key={pref.label as string}>
-                <td className="px-4 py-3">{pref.label}</td>
+            {rows.map((row) => (
+              <tr key={row.id}>
+                <td className="px-4 py-3">{row.label}</td>
                 <td className="px-4 py-3">
                   <input
                     type="checkbox"
-                    checked={pref.inApp as boolean}
-                    onChange={() => handleToggle(i, "inApp")}
+                    checked={row.inAppEnabled}
+                    disabled
                     className="h-4 w-4"
                   />
                 </td>
                 <td className="px-4 py-3">
                   <input
                     type="checkbox"
-                    checked={pref.email as boolean}
-                    onChange={() => handleToggle(i, "email")}
+                    checked={localPrefs[row.emailKey] as boolean}
+                    onChange={() => handleToggle(row.emailKey)}
                     className="h-4 w-4"
                   />
                 </td>
@@ -81,8 +110,8 @@ function NotificationsSettings() {
         </table>
       </Panel>
       <div className="flex justify-end">
-        <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-          {saveMutation.isPending ? "Saving..." : "Save preferences"}
+        <Button disabled={saveMutation.isPending}>
+          {saveMutation.isPending ? "Saving..." : "Preferences saved automatically"}
         </Button>
       </div>
     </div>
