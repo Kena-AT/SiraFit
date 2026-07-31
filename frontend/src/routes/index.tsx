@@ -37,7 +37,7 @@ function VersionTag() {
   return (
     <div className="inline-flex items-center gap-2 rounded-full bg-card px-3 py-1 text-[11px] font-medium text-muted-foreground ring-1 ring-border">
       <HealthStatusDot showLabel={false} />
-      v{version} · {data?.agent_api?.connected ? "Local agent active" : "Local agent inactive"}
+      v{version} · {data?.agent_api?.connected ? `${data?.agent_api?.provider || "Agent"} active` : "No agent configured"}
     </div>
   );
 }

@@ -24,7 +24,7 @@ export interface HealthStatusResponse {
     connected: boolean;
     source: string; // "env" | "settings_ui" | "none"
     provider?: string;
-    error?: string;
+    error?: string | null;
   };
   checked_at: string;
   color: string;
