@@ -95,11 +95,12 @@ def check_agent_api_connection() -> AgentAPIStatus:
     authenticated `GET /models` returns 2xx is the active provider. On
     failure, returns a professional, trace-free message.
     """
-    configured = [
-        (p, getattr(settings, p["attr"], None))
-        for p in PROVIDERS
-        if getattr(settings, p["attr"], None)
-    ]
+    configured = []
+    for p in PROVIDERS:
+        val = getattr(settings, p["attr"], None)
+        # Consider a provider configured only if the value is a non-empty string (after stripping whitespace)
+        if val and isinstance(val, str) and val.strip():
+            configured.append((p, val))
 
     if not configured:
         return AgentAPIStatus(
