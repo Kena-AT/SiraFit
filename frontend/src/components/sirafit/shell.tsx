@@ -111,7 +111,7 @@ export function AppShell() {
   return (
     <div
       className="flex min-h-screen bg-background text-foreground"
-      style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
+      style={{ fontFamily: "var(--font-sans)" }}
     >
       {/* Sidebar */}
       <aside 
@@ -246,7 +246,7 @@ export function MarketingShell({ children }: { children: ReactNode }) {
   return (
     <div
       className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 text-foreground relative overflow-x-hidden"
-      style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
+      style={{ fontFamily: "var(--font-sans)" }}
     >
       <div className="absolute inset-0 pointer-events-none -z-10">
         <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-brand/5 to-transparent rounded-full filter blur-3xl opacity-50 dark:from-brand/10" />
@@ -323,7 +323,7 @@ export function AuthShell({
   return (
     <div
       className="grid min-h-screen bg-background text-foreground md:grid-cols-2"
-      style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
+      style={{ fontFamily: "var(--font-sans)" }}
     >
       <div className="flex flex-col">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
