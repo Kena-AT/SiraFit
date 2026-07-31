@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { getProfile, updateProfile } from "@/lib/api/profiles";
-import { changePassword, getDevices, revokeDevice, type DeviceSession } from "@/lib/api/users";
+import { changePassword, getDevices, revokeDevice } from "@/lib/api/users";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/settings/")({
   head: () => ({ meta: [{ title: "Account settings · SiraFit" }] }),
@@ -182,20 +183,15 @@ function SettingsIndex() {
 }
 
 function DeviceList() {
-  const [devices, setDevices] = useState<DeviceSession[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    getDevices()
-      .then((data) => {
-        setDevices(data);
-        setLoading(false);
-      })
-      .catch(() => {
-        setDevices([]);
-        setLoading(false);
-      });
-  }, []);
+  const queryClient = useQueryClient();
+  const {
+    data: devices,
+    isLoading: loading,
+    error,
+  } = useQuery({
+    queryKey: ["devices"],
+    queryFn: getDevices,
+  });
 
   const formatLastSeen = (lastSeen: string | null | undefined) => {
     if (!lastSeen) return "Never";
@@ -217,7 +213,7 @@ function DeviceList() {
     );
   }
 
-  if (devices.length === 0) {
+  if (!devices || devices.length === 0) {
     return (
       <div className="divide-y divide-border text-sm">
         <div className="px-4 py-3 text-muted-foreground">No devices found.</div>
@@ -257,7 +253,7 @@ function DeviceList() {
                 onClick={async () => {
                   try {
                     await revokeDevice(device.id);
-                    setDevices(devices.filter((d) => d.id !== device.id));
+                    queryClient.invalidateQueries({ queryKey: ["devices"] });
                     toast.success("Device session revoked");
                   } catch (err: any) {
                     toast.error(err.message || "Failed to revoke device");
