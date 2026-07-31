@@ -126,7 +126,7 @@ function RegisterPage() {
           <Input
             id="email"
             type="email"
-            placeholder="alex@rivera.dev"
+            placeholder="king@kunta.dev"
             value={formData.email}
             onChange={handleChange}
           />
