@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { getProfile, updateProfile } from "@/lib/api/profiles";
 import { changePassword, getDevices, revokeDevice, type DeviceSession } from "@/lib/api/users";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export const Route = createFileRoute("/_app/settings/")({
   head: () => ({ meta: [{ title: "Account settings · SiraFit" }] }),
