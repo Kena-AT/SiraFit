@@ -5,7 +5,7 @@ Analytics service for generating metrics and snapshots.
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.job import Job, JobApplication
 from app.models.profile import Profile
@@ -19,10 +19,18 @@ def _utcnow():
 def generate_analytics_metrics(db: Session, user_id: uuid.UUID) -> Dict[str, Any]:
     """
     Generate comprehensive analytics metrics for a user.
+
+    Performance considerations:
+    - Uses joinedload to eagerly load related Job objects to avoid N+1
+      query issues when iterating over applications
+    - Database-level aggregations used where possible
     """
-    # 1. Application metrics
+    # 1. Application metrics - eager load Job relationship to avoid N+1
     applications = (
-        db.query(JobApplication).filter(JobApplication.user_id == user_id).all()
+        db.query(JobApplication)
+        .filter(JobApplication.user_id == user_id)
+        .options(joinedload(JobApplication.job))
+        .all()
     )
     total_applications = len(applications)
 
