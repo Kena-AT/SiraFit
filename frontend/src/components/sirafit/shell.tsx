@@ -2,6 +2,7 @@ import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useState, useRef, useEffect, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { AgentDot } from "./bits";
+import { getLandingStats, getHealthStatus, LandingStatsResponse, HealthStatusResponse } from "@/lib/api/stats";
 
 type NavItem = { label: string; to: string; badge?: string; match?: "exact" | "prefix" };
 type NavGroup = { header: string; items: NavItem[] };
@@ -320,6 +321,46 @@ export function AuthShell({
   children: ReactNode;
   footer?: ReactNode;
 }) {
+  const [stats, setStats] = useState<LandingStatsResponse | null>(null);
+  const [health, setHealth] = useState<HealthStatusResponse | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchStats = async () => {
+      try {
+        const [statsRes, healthRes] = await Promise.all([
+          getLandingStats(),
+          getHealthStatus(),
+        ]);
+        if (! cancelled) {
+          setStats(statsRes);
+          setHealth(healthRes);
+        }
+      } catch {
+        // Silently fail on the login page - stats are non-critical
+      }
+    };
+
+    fetchStats();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Build stats items from real data, with fallbacks
+  const statsItems: [string, string][] = [
+    [stats?.jobs_ingested_per_day?.toString() ?? "—", "Jobs ingested today"],
+    [health?.agent_api?.connected ? "99.9%" : "—", "Local agent uptime"],
+    [stats?.ats_sources_polled?.toString() ?? "—", "ATS sources polled"],
+    [
+      stats?.top_match_queue?.length
+        ? `${stats.top_match_queue.length} matches available`
+        : "—",
+      "Active match queue",
+    ],
+  ];
+
   return (
     <div
       className="grid min-h-screen bg-background text-foreground md:grid-cols-2"
@@ -353,12 +394,7 @@ export function AuthShell({
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            {[
-              ["842", "Jobs ingested today"],
-              ["54", "Re-scored on profile change"],
-              ["12", "ATS sources polled"],
-              ["99.9%", "Local agent uptime"],
-            ].map(([v, l]) => (
+            {statsItems.map(([v, l]) => (
               <div key={l} className="rounded-md bg-card p-3 ring-1 ring-border">
                 <div className="font-mono text-lg font-semibold tabular-nums">{v}</div>
                 <div className="text-[11px] text-muted-foreground">{l}</div>
