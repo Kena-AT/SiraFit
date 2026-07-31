@@ -41,7 +41,8 @@ function RegisterPage() {
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
       errs.email = "Invalid email format";
     if (!formData.password) errs.password = "Password is required";
-    else if (formData.password.length < 8) errs.password = "Password must be at least 8 characters";
+    else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/.test(formData.password))
+      errs.password = "Password must be at least 8 characters, include an uppercase letter, a lowercase letter, a number, and a special character";
     if (formData.password !== formData.confirmPassword)
       errs.confirmPassword = "Passwords do not match";
     return errs;
@@ -115,7 +116,7 @@ function RegisterPage() {
           <Label htmlFor="full_name">Name</Label>
           <Input
             id="full_name"
-            placeholder="Alex Rivera"
+            placeholder="King Kunta"
             value={formData.full_name}
             onChange={handleChange}
           />
@@ -137,10 +138,27 @@ function RegisterPage() {
           <Input
             id="password"
             type="password"
-            placeholder="At least 8 characters"
+            placeholder="Create a strong password"
             value={formData.password}
             onChange={handleChange}
           />
+          <div className="text-xs space-y-1 mt-1">
+            <p className={/^(?=.*[A-Z]).{1,}$/.test(formData.password) ? "text-green-600" : "text-muted-foreground"}>
+              • At least one uppercase letter
+            </p>
+            <p className={/^(?=.*[a-z]).{1,}$/.test(formData.password) ? "text-green-600" : "text-muted-foreground"}>
+              • At least one lowercase letter
+            </p>
+            <p className={/^(?=.*\d).{1,}$/.test(formData.password) ? "text-green-600" : "text-muted-foreground"}>
+              • At least one number
+            </p>
+            <p className={/^(?=.*[!@#$%^&*(),.?":{}|<>]).{1,}$/.test(formData.password) ? "text-green-600" : "text-muted-foreground"}>
+              • At least one special character
+            </p>
+            <p className={formData.password.length >= 8 ? "text-green-600" : "text-muted-foreground"}>
+              • At least 8 characters
+            </p>
+          </div>
           {errors.password && <p className="text-xs text-red-600 mt-1">{errors.password}</p>}
         </div>
         <div className="space-y-1.5">
