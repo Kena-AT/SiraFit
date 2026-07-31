@@ -112,6 +112,18 @@ def login_access_token(
         + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
     )
     db.add(db_token)
+
+    # Register device session
+    user_agent = request.headers.get("user-agent", "")
+    ip_address = request.client.host if request.client else None
+    try:
+        from app.api.users import _create_device_session
+        _create_device_session(db, user.id, user_agent, ip_address)
+    except Exception as e:
+        # Device registration should not block login
+        import logging
+        logging.getLogger(__name__).warning(f"Failed to create device session: {e}")
+
     db.commit()
 
     # Set HttpOnly cookies

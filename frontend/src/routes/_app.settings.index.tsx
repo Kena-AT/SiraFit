@@ -1,3 +1,4 @@
+import { Eye, EyeOff } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Panel } from "@/components/sirafit/bits";
@@ -17,6 +18,9 @@ export const Route = createFileRoute("/_app/settings/")({
 
 function SettingsIndex() {
   const queryClient = useQueryClient();
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const {
     data: profile,
@@ -47,13 +51,11 @@ function SettingsIndex() {
     const nameParts = fullName.split(" ");
     const first_name = nameParts[0] || "";
     const last_name = nameParts.slice(1).join(" ") || "";
-    const location = formData.get("location") as string;
 
     updateMutation.mutate({
       ...profile,
       first_name,
       last_name,
-      location,
     });
   };
 
@@ -131,14 +133,10 @@ function SettingsIndex() {
               defaultValue={`${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim()}
             />
           </div>
-          <div className="space-y-1.5">
+           <div className="space-y-1.5">
             <Label htmlFor="email">Email</Label>
             <Input id="email" name="email" defaultValue={profile.email ?? ""} disabled />
             <p className="text-xs text-muted-foreground">Email cannot be changed directly.</p>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="location">Location</Label>
-            <Input id="location" name="location" defaultValue={profile.location ?? ""} />
           </div>
           <Button type="submit" className="w-fit" disabled={updateMutation.isPending}>
             {updateMutation.isPending ? "Saving..." : "Save changes"}
@@ -149,21 +147,62 @@ function SettingsIndex() {
         <form onSubmit={handlePasswordSubmit} className="grid gap-3 p-4">
           <div className="space-y-1.5">
             <Label htmlFor="current_password">Current password</Label>
-            <Input id="current_password" name="current_password" type="password" required />
+            <div className="relative">
+              <Input
+                id="current_password"
+                name="current_password"
+                type={showCurrent ? "text" : "password"}
+                required
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowCurrent(!showCurrent)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="new_password">New password</Label>
-            <Input id="new_password" name="new_password" type="password" required minLength={8} />
+            <div className="relative">
+              <Input
+                id="new_password"
+                name="new_password"
+                type={showNew ? "text" : "password"}
+                required
+                minLength={12}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowNew(!showNew)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="confirm_password">Confirm password</Label>
-            <Input
-              id="confirm_password"
-              name="confirm_password"
-              type="password"
-              required
-              minLength={8}
-            />
+            <div className="relative">
+              <Input
+                id="confirm_password"
+                name="confirm_password"
+                type={showConfirm ? "text" : "password"}
+                required
+                minLength={12}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirm(!showConfirm)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </div>
           <Button
             type="submit"
@@ -221,12 +260,19 @@ function DeviceList() {
     );
   }
 
-  return (
+   return (
     <ul className="divide-y divide-border text-sm">
       {devices.map((device) => (
         <li key={device.id} className="flex items-center justify-between px-4 py-3">
           <div>
-            <div className="font-semibold">{device.device_name}</div>
+            <div className="font-semibold flex items-center gap-2">
+              {device.device_name}
+              {device.is_active && (
+                <span className="text-[10px] text-[color:var(--brand)] font-medium">
+                  · Current session
+                </span>
+              )}
+            </div>
             <div className="text-[11px] text-muted-foreground">
               {device.is_active ? "Active" : "Inactive"} · Last seen {formatLastSeen(device.last_seen)}
             </div>

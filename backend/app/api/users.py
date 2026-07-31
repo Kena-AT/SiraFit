@@ -457,6 +457,53 @@ def _parse_device_name(user_agent: str) -> str:
     return f"{device_type} ({browser})"
 
 
+def _create_device_session(
+    db: Session, user_id: uuid.UUID, user_agent: str, ip_address: str | None
+) -> DeviceSession:
+    """Create or update a device session record on login.
+
+    If a session with the same user_agent already exists and is active,
+    it is updated (last_seen refreshed). Otherwise a new session is created.
+    """
+    device_name = _parse_device_name(user_agent)
+
+    existing = (
+        db.query(DeviceSession)
+        .filter(
+            DeviceSession.user_id == user_id,
+            DeviceSession.user_agent == user_agent,
+            DeviceSession.is_active.is_(True),
+        )
+        .first()
+    )
+
+    if existing:
+        existing.last_seen = datetime.now(timezone.utc)
+        db.add(existing)
+        db.commit()
+        db.refresh(existing)
+        return existing
+
+    # Deactivate any existing sessions for this user (only one active session per user)
+    db.query(DeviceSession).filter(
+        DeviceSession.user_id == user_id, DeviceSession.is_active.is_(True)
+    ).update({DeviceSession.is_active: False})
+
+    device = DeviceSession(
+        user_id=user_id,
+        device_name=device_name,
+        user_agent=user_agent,
+        ip_address=ip_address,
+        is_active=True,
+    )
+    db.add(device)
+    db.commit()
+    db.refresh(device)
+    return device
+
+
+# ---------------------------------------------------------------------------
+
 @router.get("/me/devices")
 def get_devices(
     current_user: User = Depends(get_current_user),
