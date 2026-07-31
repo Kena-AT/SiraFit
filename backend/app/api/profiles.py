@@ -25,15 +25,42 @@ def get_my_profile(
 ) -> Any:
     """
     Get the current user's profile.
-    If no profile exists, creates an empty one and returns it.
+    If no profile exists, creates one and populates it from the user's signup data.
+    Backfills missing first_name/last_name/email from the User table for legacy profiles.
     """
     profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
 
     if not profile:
-        profile = Profile(user_id=current_user.id)
+        # Create profile from user signup data
+        name_parts = current_user.full_name.split(" ", 1) if current_user.full_name else ["", ""]
+        profile = Profile(
+            user_id=current_user.id,
+            first_name=name_parts[0] if name_parts[0] else None,
+            last_name=name_parts[1] if len(name_parts) > 1 else None,
+            email=current_user.email,
+        )
         db.add(profile)
         db.commit()
         db.refresh(profile)
+    else:
+        # Backfill missing fields from User table for legacy profiles
+        updated = False
+        if not profile.email and current_user.email:
+            profile.email = current_user.email
+            updated = True
+        if not profile.first_name and current_user.full_name:
+            name_parts = current_user.full_name.split(" ", 1)
+            if name_parts[0]:
+                profile.first_name = name_parts[0]
+                updated = True
+        if not profile.last_name and current_user.full_name:
+            name_parts = current_user.full_name.split(" ", 1)
+            if len(name_parts) > 1 and name_parts[1]:
+                profile.last_name = name_parts[1]
+                updated = True
+        if updated:
+            db.commit()
+            db.refresh(profile)
 
     return profile
 

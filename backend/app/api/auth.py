@@ -162,6 +162,17 @@ def register_user(
     db.commit()
     db.refresh(user)
 
+    # Create profile with name and email from signup
+    name_parts = user.full_name.split(" ", 1) if user.full_name else ["", ""]
+    from app.models.profile import Profile
+    profile = Profile(
+        user_id=user.id,
+        first_name=name_parts[0] if name_parts[0] else None,
+        last_name=name_parts[1] if len(name_parts) > 1 else None,
+        email=user.email,
+    )
+    db.add(profile)
+
     # Create default preferences
     from app.models.user import UserPreference
 
