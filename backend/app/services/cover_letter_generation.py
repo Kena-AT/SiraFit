@@ -161,13 +161,13 @@ async def generate_cover_letter(
     # ponytail: duplicated provider-key map; extract to a shared helper if a
     # 3rd caller appears.
     setting_fields = {
-        "gemini": "GEMINI_API_KEY",
-        "openrouter": "OPENROUTER_API_KEY",
-        "anthropic": "ANTHROPIC_API_KEY",
-        "openai": "OPENAI_API_KEY",
-        "grok": "GROK_API_KEY",
-        "mistral": "MISTRAL_API_KEY",
-        "nvidia": "NVIDIA_API_KEY",
+        "gemini": "GEMINI_API",
+        "openrouter": "OPENROUTER_API",
+        "anthropic": "ANTHROPIC_API",
+        "openai": "OPENAI_API",
+        "grok": "GROK_API",
+        "mistral": "MISTRAL_API",
+        "nvidia": "NVIDIA_API",
     }
     actual_provider = (provider or "").lower()
     actual_model = model or ""

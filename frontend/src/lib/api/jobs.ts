@@ -95,3 +95,18 @@ export const getMatchScore = async (jobId: string) => {
   }
   return response.json();
 };
+
+export const getRankedJobs = async (params: {
+  skip?: number;
+  limit?: number;
+} = {}): Promise<any> => {
+  const queryParams = new URLSearchParams();
+  if (params.skip) queryParams.append("skip", params.skip.toString());
+  if (params.limit) queryParams.append("limit", params.limit.toString());
+  
+  const response = await apiFetch(`/api/v1/jobs/ranked?${queryParams.toString()}`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch ranked jobs");
+  }
+  return response.json();
+};

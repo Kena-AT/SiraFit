@@ -2,6 +2,7 @@ import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useState, useRef, useEffect, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { AgentDot } from "./bits";
+import { UserMenu } from "./user-menu";
 import { getLandingStats, getHealthStatus, LandingStatsResponse, HealthStatusResponse } from "@/lib/api/stats";
 
 type NavItem = { label: string; to: string; badge?: string; match?: "exact" | "prefix" };
@@ -227,9 +228,7 @@ function TopBar({ pathname }: { pathname: string }) {
           <span className="text-muted-foreground">Search jobs, apps, resumes…</span>
         </div>
         <AgentDot label="Gemini · connected" />
-        <div className="grid h-7 w-7 place-items-center rounded-full bg-muted text-[11px] font-semibold ring-1 ring-border">
-          AR
-        </div>
+        <UserMenu />
       </div>
     </header>
   );

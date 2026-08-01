@@ -2,8 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, StatusPill, EmptyState } from "@/components/sirafit/bits";
-import { Plus, RefreshCw } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -12,6 +13,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   getBatchJobs,
   createBatchJob,
@@ -30,6 +39,8 @@ export const Route = createFileRoute("/_app/batch")({
 function BatchCenter() {
   const queryClient = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedOp, setSelectedOp] = useState<BatchOperationType>("analyze");
+  const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterOp, setFilterOp] = useState<string>("all");
 
@@ -84,6 +95,53 @@ function BatchCenter() {
 
   return (
     <PageBody>
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create new batch job</DialogTitle>
+            <DialogDescription>
+              Select an operation to run on selected jobs.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label>Operation</Label>
+                      <Select value={selectedOp} onValueChange={(v) => setSelectedOp(v as BatchOperationType)}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="analyze">Analyze</SelectItem>
+                          <SelectItem value="score">Score</SelectItem>
+                          <SelectItem value="tag">Tag</SelectItem>
+                          <SelectItem value="archive">Archive</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2 max-h-60 overflow-y-auto border p-2 rounded">
+                      {jobs.map((job) => (
+                        <div key={job.id} className="flex items-center gap-2 text-xs">
+                          <input
+                            type="checkbox"
+                            checked={selectedJobIds.includes(job.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) setSelectedJobIds([...selectedJobIds, job.id]);
+                              else setSelectedJobIds(selectedJobIds.filter(id => id !== job.id));
+                            }}
+                          />
+                          {job.company} - {job.title}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button onClick={() => handleCreate({ operation_type: selectedOp, job_ids: selectedJobIds })}>
+                      {createMutation.isPending ? "Creating..." : "Create"}
+                    </Button>
+                  </DialogFooter>
+
+        </DialogContent>
+      </Dialog>
       <PageHeader
         eyebrow="Operations"
         title="Batch processing center"

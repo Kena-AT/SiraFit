@@ -41,13 +41,16 @@ def _set_auth_cookies(
     response: Response, access_token: str, refresh_token: str
 ) -> None:
     """Write tokens into secure, HttpOnly cookies.
-    In production: SameSite=Lax + Secure=True (HTTPS required).
-    In development: SameSite=Lax + Secure=False (plain HTTP on localhost).
-    NOTE: SameSite=None requires Secure=True; browsers reject SameSite=None on plain HTTP,
-    so we always use Lax which works across different ports on the same localhost host.
+
+    In production: SameSite=None + Secure=True (HTTPS required).
+    In development: SameSite=None + Secure=False (plain HTTP on localhost).
+
+    SameSite=Lax would BLOCK cookies on cross-origin XHR (which we have in dev:
+    frontend on :3030 → backend on :8000), so we use None for cross-site API requests.
     """
     is_production = settings.ENVIRONMENT == "production"
-    samesite_mode = "lax"  # Lax works in both dev and prod
+    # SameSite=None requires Secure=True in production, but works on localhost without HTTPS in dev
+    samesite_mode = "none"  # Allow cross-site (needed for dev: localhost:3030 → localhost:8000)
     secure_flag = is_production  # True only in production (HTTPS)
     response.set_cookie(
         key="access_token",
@@ -56,6 +59,7 @@ def _set_auth_cookies(
         httponly=True,
         samesite=samesite_mode,
         secure=secure_flag,
+        path="/",
     )
     response.set_cookie(
         key="refresh_token",
@@ -64,6 +68,7 @@ def _set_auth_cookies(
         httponly=True,
         samesite=samesite_mode,
         secure=secure_flag,
+        path="/",
     )
 
 

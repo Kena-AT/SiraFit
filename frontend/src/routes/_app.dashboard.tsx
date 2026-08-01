@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, EmptyState } from "@/components/sirafit/bits";
+import { getDashboardStats } from "@/lib/api/dashboard";
 
 export const Route = createFileRoute("/_app/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard · SiraFit" }] }),
@@ -8,6 +10,11 @@ export const Route = createFileRoute("/_app/dashboard")({
 });
 
 function Dashboard() {
+  const { data: stats } = useQuery({
+    queryKey: ["dashboard-stats"],
+    queryFn: getDashboardStats,
+  });
+
   return (
     <PageBody>
       <PageHeader
@@ -23,6 +30,19 @@ function Dashboard() {
           </Link>
         }
       />
+
+      <div className="grid gap-4 md:grid-cols-3 mb-6">
+        {[
+          ["Active Apps", stats?.active_applications ?? 0],
+          ["Resumes Generated", stats?.resumes_generated ?? 0],
+          ["Jobs Scored", stats?.jobs_scored ?? 0],
+        ].map(([label, value]) => (
+          <Panel key={label as string} className="p-4">
+            <div className="text-sm text-muted-foreground">{label}</div>
+            <div className="text-2xl font-bold">{value}</div>
+          </Panel>
+        ))}
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel title="Get Started" description="Complete these steps to begin your job search">
@@ -79,7 +99,7 @@ function Dashboard() {
             {[
               ["Import Job", "/jobs/import"],
               ["View History", "/jobs/history"],
-              ["Resume Profiles", "/resume-profiles"],
+              ["Resume Profiles", "/resumes/profiles"],
               ["Settings", "/settings"],
             ].map(([label, to]) => (
               <Link
@@ -94,11 +114,24 @@ function Dashboard() {
         </Panel>
       </div>
 
-      <Panel title="Recent Activity">
-        <EmptyState
-          title="No activity yet"
-          body="Your recent actions and updates will appear here once you start using SiraFit."
-        />
+      <Panel title="Recent Activity" className="mt-4">
+        {stats?.recent_activity && stats.recent_activity.length > 0 ? (
+          <ul className="divide-y divide-border">
+            {stats.recent_activity.map((activity) => (
+              <li key={activity.id} className="p-4 text-sm">
+                <span className="font-medium">{activity.action}</span>
+                <span className="text-muted-foreground ml-2">
+                  {new Date(activity.created_at).toLocaleString()}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyState
+            title="No activity yet"
+            body="Your recent actions and updates will appear here once you start using SiraFit."
+          />
+        )}
       </Panel>
     </PageBody>
   );

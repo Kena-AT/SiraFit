@@ -1,3 +1,4 @@
+import { Eye, EyeOff } from "lucide-react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { AuthShell } from "@/components/sirafit/shell";
@@ -18,6 +19,8 @@ function RegisterPage() {
     password: "",
     confirmPassword: "",
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -135,41 +138,65 @@ function RegisterPage() {
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="password">Password</Label>
-          <Input
-            id="password"
-            type="password"
-            placeholder="Create a strong password"
-            value={formData.password}
-            onChange={handleChange}
-          />
-          <div className="text-xs space-y-1 mt-1">
-            <p className={/^(?=.*[A-Z]).{1,}$/.test(formData.password) ? "text-green-600" : "text-muted-foreground"}>
-              • At least one uppercase letter
-            </p>
-            <p className={/^(?=.*[a-z]).{1,}$/.test(formData.password) ? "text-green-600" : "text-muted-foreground"}>
-              • At least one lowercase letter
-            </p>
-            <p className={/^(?=.*\d).{1,}$/.test(formData.password) ? "text-green-600" : "text-muted-foreground"}>
-              • At least one number
-            </p>
-            <p className={/^(?=.*[!@#$%^&*(),.?":{}|<>]).{1,}$/.test(formData.password) ? "text-green-600" : "text-muted-foreground"}>
-              • At least one special character
-            </p>
-            <p className={formData.password.length >= 8 ? "text-green-600" : "text-muted-foreground"}>
-              • At least 8 characters
-            </p>
+          <div className="relative">
+            <Input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              placeholder="Create a strong password"
+              value={formData.password}
+              onChange={handleChange}
+              className="pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+          <div className="text-xs space-y-1 mt-1 text-red-600">
+            {!/^(?=.*[A-Z]).{1,}$/.test(formData.password) && (
+              <p>• At least one uppercase letter</p>
+            )}
+            {!/^(?=.*[a-z]).{1,}$/.test(formData.password) && (
+              <p>• At least one lowercase letter</p>
+            )}
+            {!/^(?=.*\d).{1,}$/.test(formData.password) && (
+              <p>• At least one number</p>
+            )}
+            {!/^(?=.*[!@#$%^&*(),.?":{}|<>]).{1,}$/.test(formData.password) && (
+              <p>• At least one special character</p>
+            )}
+            {!(formData.password.length >= 8) && (
+              <p>• At least 8 characters</p>
+            )}
           </div>
           {errors.password && <p className="text-xs text-red-600 mt-1">{errors.password}</p>}
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="confirmPassword">Confirm Password</Label>
-          <Input
-            id="confirmPassword"
-            type="password"
-            placeholder="Confirm your password"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-          />
+          <div className="relative">
+            <Input
+              id="confirmPassword"
+              type={showConfirmPassword ? "text" : "password"}
+              placeholder="Confirm your password"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              className={`pr-10 ${
+                formData.confirmPassword && formData.password === formData.confirmPassword
+                  ? "border-green-500 focus-visible:ring-green-500"
+                  : ""
+              }`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
           {errors.confirmPassword && (
             <p className="text-xs text-red-600 mt-1">{errors.confirmPassword}</p>
           )}

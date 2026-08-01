@@ -2,7 +2,7 @@
 Agent API connection check.
 
 Reports whether at least one AI provider is configured and reachable. Detection
-is by Settings field name (each provider has its own `*_API_KEY` field), not by
+is by Settings field name (each provider has its own `*_API` field), not by
 key-prefix heuristics — the field name already identifies the provider.
 
 A lightweight authenticated `GET <provider>/models` (via httpx, 5s timeout) is
@@ -37,21 +37,21 @@ PROVIDERS: list[dict] = [
     {
         "id": "openrouter",
         "label": "OpenRouter",
-        "attr": "OPENROUTER_API_KEY",
+        "attr": "OPENROUTER_API",
         "url": "https://openrouter.ai/api/v1/models",
         "auth": "bearer",
     },
     {
         "id": "gemini",
         "label": "Gemini",
-        "attr": "GEMINI_API_KEY",
+        "attr": "GEMINI_API",
         "url": "https://generativelanguage.googleapis.com/v1beta/models?key={key}",
         "auth": "query",
     },
     {
         "id": "anthropic",
         "label": "Claude (Anthropic)",
-        "attr": "ANTHROPIC_API_KEY",
+        "attr": "ANTHROPIC_API",
         "url": "https://api.anthropic.com/v1/models",
         "auth": "x-api-key",
         "extra_headers": {"anthropic-version": "2023-06-01"},
@@ -59,28 +59,28 @@ PROVIDERS: list[dict] = [
     {
         "id": "openai",
         "label": "OpenAI",
-        "attr": "OPENAI_API_KEY",
+        "attr": "OPENAI_API",
         "url": "https://api.openai.com/v1/models",
         "auth": "bearer",
     },
     {
         "id": "grok",
         "label": "Grok (xAI)",
-        "attr": "GROK_API_KEY",
+        "attr": "GROK_API",
         "url": "https://api.x.ai/v1/models",
         "auth": "bearer",
     },
     {
         "id": "mistral",
         "label": "Mistral AI",
-        "attr": "MISTRAL_API_KEY",
+        "attr": "MISTRAL_API",
         "url": "https://api.mistral.ai/v1/models",
         "auth": "bearer",
     },
     {
         "id": "nvidia",
         "label": "Nvidia NIM",
-        "attr": "NVIDIA_API_KEY",
+        "attr": "NVIDIA_API",
         "url": "https://integrate.api.nvidia.com/v1/models",
         "auth": "bearer",
     },

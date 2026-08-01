@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, ScoreMeter, Tag } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
-import { getJobs, getMatchScore } from "@/lib/api/jobs";
+import { getRankedJobs } from "@/lib/api/jobs";
 import type { Job, JobMatchScore } from "@/types/job";
 
 interface JobWithScore {
@@ -25,19 +25,8 @@ function OpportunityRanking() {
   const fetchRanked = async () => {
     setError(null);
     try {
-      const list = await getJobs({ limit: 200 });
-      const withScores: JobWithScore[] = [];
-      for (const job of list.jobs) {
-        let score: JobMatchScore | null = null;
-        try {
-          score = await getMatchScore(job.id);
-        } catch {
-          /* no score */
-        }
-        withScores.push({ job, score });
-      }
-      withScores.sort((a, b) => (b.score?.score ?? 0) - (a.score?.score ?? 0));
-      setItems(withScores);
+      const data = await getRankedJobs({ limit: 200 });
+      setItems(data.jobs);
     } catch (e: any) {
       setError(e.message);
     }

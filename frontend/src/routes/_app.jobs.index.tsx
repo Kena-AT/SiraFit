@@ -20,12 +20,24 @@ function JobsExplorer() {
   // Search and filter state
   const [searchTerm, setSearchTerm] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
+  const [companyInput, setCompanyInput] = useState("");
   const [companyFilter, setCompanyFilter] = useState("");
+  const [locationInput, setLocationInput] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
   const [page, setPage] = useState(0);
   const [sortBy, setSortBy] = useState("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+  // Debounce effect for company and location
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setCompanyFilter(companyInput);
+      setLocationFilter(locationInput);
+      setPage(0);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [companyInput, locationInput]);
 
   const limit = 50;
 
@@ -67,7 +79,9 @@ function JobsExplorer() {
   const handleClearFilters = () => {
     setSearchTerm("");
     setActiveSearch("");
+    setCompanyInput("");
     setCompanyFilter("");
+    setLocationInput("");
     setLocationFilter("");
     setSourceFilter("");
     setPage(0);
@@ -158,20 +172,14 @@ function JobsExplorer() {
           <Input
             placeholder="Company"
             className="h-8 w-40 bg-card text-xs"
-            value={companyFilter}
-            onChange={(e) => {
-              setCompanyFilter(e.target.value);
-              setPage(0);
-            }}
+            value={companyInput}
+            onChange={(e) => setCompanyInput(e.target.value)}
           />
           <Input
             placeholder="Location"
             className="h-8 w-40 bg-card text-xs"
-            value={locationFilter}
-            onChange={(e) => {
-              setLocationFilter(e.target.value);
-              setPage(0);
-            }}
+            value={locationInput}
+            onChange={(e) => setLocationInput(e.target.value)}
           />
           <select
             className="h-8 rounded-md border border-border bg-card px-2 text-xs"

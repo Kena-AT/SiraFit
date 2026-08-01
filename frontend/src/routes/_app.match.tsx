@@ -27,16 +27,16 @@ function MatchAnalysis() {
       setError(null);
       try {
         const list = await getJobs({ limit: 200 });
-        const withScores: JobWithScore[] = [];
-        for (const job of list.jobs) {
-          let score: JobMatchScore | null = null;
-          try {
-            score = await getMatchScore(job.id);
-          } catch {
-            /* no score */
-          }
-          withScores.push({ job, score });
-        }
+        const withScores = await Promise.all(
+          list.jobs.map(async (job) => {
+            try {
+              const score = await getMatchScore(job.id);
+              return { job, score };
+            } catch {
+              return { job, score: null };
+            }
+          })
+        );
         withScores.sort((a, b) => (b.score?.score ?? 0) - (a.score?.score ?? 0));
         setItems(withScores);
       } catch (e: any) {

@@ -67,7 +67,7 @@ async def run_job_analysis(
     Key resolution order (first match wins):
       1. api_key parameter (passed via header — client override)
       2. User-stored encrypted key (from UserPreference)
-      3. Server environment variable (settings.GEMINI_API_KEY / OPENROUTER_API_KEY)
+      3. Server environment variable (settings.GEMINI_API / OPENROUTER_API)
     """
     # Fetch or create the analysis record
     analysis = db.query(JobAnalysis).filter(JobAnalysis.job_id == job.id).first()
@@ -144,13 +144,13 @@ async def run_job_analysis(
             
             # Map provider to settings field
             setting_fields = {
-                "gemini": "GEMINI_API_KEY",
-                "openrouter": "OPENROUTER_API_KEY",
-                "anthropic": "ANTHROPIC_API_KEY",
-                "openai": "OPENAI_API_KEY",
-                "grok": "GROK_API_KEY",
-                "mistral": "MISTRAL_API_KEY",
-                "nvidia": "NVIDIA_API_KEY",
+                "gemini": "GEMINI_API",
+                "openrouter": "OPENROUTER_API",
+                "anthropic": "ANTHROPIC_API",
+                "openai": "OPENAI_API",
+                "grok": "GROK_API",
+                "mistral": "MISTRAL_API",
+                "nvidia": "NVIDIA_API",
             }
             
             # If provider is specified, use its specific key
