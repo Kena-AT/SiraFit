@@ -4,7 +4,8 @@ let isRefreshing = false;
 let refreshPromise: Promise<boolean> | null = null;
 
 async function tryRefreshToken(): Promise<boolean> {
-  if (isRefreshing && refreshPromise) return refreshPromise;
+  // Deduplicate concurrent refresh attempts
+  if (isRefreshing) return refreshPromise ?? Promise.resolve(false);
 
   isRefreshing = true;
   refreshPromise = (async () => {
@@ -13,8 +14,15 @@ async function tryRefreshToken(): Promise<boolean> {
         method: "POST",
         credentials: "include",
       });
+
+      // Log for debugging
+      if (!res.ok) {
+        console.warn("Token refresh failed:", res.status, await res.text());
+      }
+
       return res.ok;
-    } catch {
+    } catch (e) {
+      console.error("Token refresh error:", e);
       return false;
     } finally {
       isRefreshing = false;
@@ -75,11 +83,14 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   let response = await fetch(url, mergedInit);
 
   if (response.status === 401) {
+    console.log("Request returned 401, attempting token refresh...");
     const refreshed = await tryRefreshToken();
     if (refreshed) {
+      console.log("Token refreshed, retrying request...");
       response = await fetch(url, mergedInit);
     }
     if (response.status === 401) {
+      console.log("Request still failed after refresh, redirecting to login");
       navigateToLogin();
       throw new ApiError(401, "Session expired. Please log in again.");
     }
