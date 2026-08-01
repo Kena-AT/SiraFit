@@ -44,15 +44,16 @@ export function setAutoRedirect(enabled: boolean) {
  * Navigate to login using the TanStack Router instance.
  * Lazy-imported to avoid circular deps — the router is created in router.tsx.
  */
-async function navigateToLogin() {
+async function navigateToLogin(): Promise<void> {
   if (!shouldAutoRedirect) return;
+
   try {
     const { getRouter } = await import("@/router");
     const router = getRouter();
     router.navigate({ to: "/login" });
   } catch {
-    // Fallback if router is unavailable (e.g. during SSR or before mount)
-    window.location.href = "/login";
+    // Router not ready - do nothing. Let the caller handle navigation.
+    // This can happen during SSR or very early client startup.
   }
 }
 
