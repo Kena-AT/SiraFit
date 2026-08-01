@@ -33,11 +33,19 @@ export class ApiError extends Error {
   }
 }
 
+// Flag to control automatic login redirect (disabled for beforeLoad hooks)
+let shouldAutoRedirect = true;
+
+export function setAutoRedirect(enabled: boolean) {
+  shouldAutoRedirect = enabled;
+}
+
 /**
  * Navigate to login using the TanStack Router instance.
  * Lazy-imported to avoid circular deps — the router is created in router.tsx.
  */
 async function navigateToLogin() {
+  if (!shouldAutoRedirect) return;
   try {
     const { getRouter } = await import("@/router");
     const router = getRouter();

@@ -1,9 +1,13 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { AppShell } from "@/components/sirafit/shell";
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch, ApiError, setAutoRedirect } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_app")({
   beforeLoad: async ({ context, location }) => {
+    // Disable automatic login redirect during beforeLoad
+    // We handle redirects explicitly to avoid double navigation
+    setAutoRedirect(false);
+
     // Check authentication status
     try {
       const response = await apiFetch("/api/v1/users/me");
@@ -24,9 +28,7 @@ export const Route = createFileRoute("/_app")({
 
       return { user };
     } catch (error: any) {
-      // apiFetch calls navigateToLogin() on 401, which may have already navigated
-      // We throw redirect to ensure TanStack Router handles it consistently
-      if (error?.message === "Session expired. Please log in again." || error?.status === 401) {
+      if (error instanceof ApiError && error.status === 401) {
         throw redirect({
           to: "/login",
           search: {
