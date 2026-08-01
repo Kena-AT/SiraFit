@@ -51,7 +51,7 @@ def _set_auth_cookies(
     is_production = settings.ENVIRONMENT == "production"
     # SameSite=None requires Secure=True in production, but works on localhost without HTTPS in dev
     samesite_mode = "none"  # Allow cross-site (needed for dev: localhost:3030 → localhost:8000)
-    secure_flag = is_production  # True only in production (HTTPS)
+    secure_flag = True  # Must be True if samesite is none
     response.set_cookie(
         key="access_token",
         value=access_token,

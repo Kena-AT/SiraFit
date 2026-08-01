@@ -82,8 +82,8 @@ from pydantic import BaseModel
 
 class CsrfSettings(BaseModel):
     secret_key: str = settings.SECRET_KEY
-    cookie_samesite: str = "none"  # Allow cross-site for dev: localhost:3030 → localhost:8000
-    cookie_secure: bool = settings.ENVIRONMENT == "production"
+    cookie_samesite: str = "none"
+    cookie_secure: bool = True
 
 @CsrfProtect.load_config
 def get_csrf_config():
