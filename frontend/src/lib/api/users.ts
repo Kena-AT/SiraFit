@@ -20,6 +20,8 @@ export interface ResumeDefaults {
 }
 
 export interface AIProviderKeys {
+  gemini_key?: string | null;
+  openrouter_key?: string | null;
   anthropic_key?: string | null;
   openai_key?: string | null;
   grok_key?: string | null;
@@ -28,6 +30,8 @@ export interface AIProviderKeys {
 }
 
 export interface AIProviderKeysRead {
+  gemini_configured: boolean;
+  openrouter_configured: boolean;
   anthropic_configured: boolean;
   openai_configured: boolean;
   grok_configured: boolean;

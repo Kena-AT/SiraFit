@@ -1,4 +1,7 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+// Same-origin by default: the Vite dev proxy forwards /api → backend:8000,
+// so cookies are same-origin (Lax cookies work on plain HTTP). Set
+// VITE_API_URL to an absolute URL only for cross-origin dev without a proxy.
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 let isRefreshing = false;
 let refreshPromise: Promise<boolean> | null = null;
