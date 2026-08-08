@@ -242,57 +242,48 @@ function AISettings() {
             <div className="space-y-2">
               <Label className="flex items-center space-x-2 justify-between">
                 <span>Gemini API Key</span>
-                {keyStatus ? (
-                  keyStatus.anthropic_configured === undefined &&
-                  keyStatus.openai_configured === undefined &&
-                  keyStatus.grok_configured === undefined &&
-                  keyStatus.mistral_configured === undefined &&
-                  keyStatus.nvidia_configured === undefined
-                    ? // Old format - only has has_gemini_key/has_openrouter_key
-                      config?.has_gemini_key ? (
-                        <span className="text-[color:var(--success)] text-[10px]">(set)</span>
-                      ) : (
-                        <span className="text-muted-foreground text-[10px]">(not set)</span>
-                      )
-                    ) : // New format - has all 7 provider status
-                      keyStatus.anthropic_configured !== undefined
-                        ? (
-                          // New format - check specific provider
-                          <span className="text-[color:var(--success)] text-[10px]">(set)</span>
-                        ) : (
-                          // Fallback
-                          <span className="text-muted-foreground text-[10px]">(unknown)</span>
-                        )
-                )}
+                {keyStatus && keyStatus.gemini_configured !== undefined
+                  ? (
+                    keyStatus.gemini_configured
+                      ? <span className="text-[color:var(--success)] text-[10px]">(set)</span>
+                      : <span className="text-muted-foreground text-[10px]">(not set)</span>
+                  )
+                  : <span className="text-muted-foreground text-[10px]">(not configured)</span>
+                }
               </Label>
               <Input
                 type="password"
                 value={apiKeys.gemini}
                 onChange={(e) => setApiKeys(prev => ({ ...prev, gemini: e.target.value }))}
                 placeholder={
-                  keyStatus &&
-                  (keyStatus.anthropic_configured !== undefined
-                    ? keyStatus.anthropic_configured
-                    : config?.has_gemini_key)
+                  keyStatus && keyStatus.gemini_configured
                     ? "Enter new key to replace existing one"
                     : "Enter Gemini API key"
                 }
               />
+              {keyStatus && keyStatus.gemini_configured !== undefined && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleClearKey("gemini")}
+                  className="ml-2"
+                >
+                  Clear
+                </Button>
+              )}
             </div>
 
             {/* OpenRouter */}
             <div className="space-y-2">
               <Label className="flex items-center space-x-2 justify-between">
                 <span>OpenRouter API Key</span>
-                {keyStatus &&
-                  (keyStatus.anthropic_configured !== undefined
-                    ? keyStatus.openai_configured
-                    : config?.has_openrouter_key)
-                    ? (
-                      <span className="text-[color:var(--success)] text-[10px]">(set)</span>
-                    ) : (
-                      <span className="text-muted-foreground text-[10px]">(not set)</span>
-                    )
+                {keyStatus && keyStatus.openrouter_configured !== undefined
+                  ? (
+                    keyStatus.openrouter_configured
+                      ? <span className="text-[color:var(--success)] text-[10px]">(set)</span>
+                      : <span className="text-muted-foreground text-[10px]">(not set)</span>
+                  )
+                  : <span className="text-muted-foreground text-[10px]">(not configured)</span>
                 }
               </Label>
               <Input
@@ -300,14 +291,21 @@ function AISettings() {
                 value={apiKeys.openrouter}
                 onChange={(e) => setApiKeys(prev => ({ ...prev, openrouter: e.target.value }))}
                 placeholder={
-                  keyStatus &&
-                  (keyStatus.anthropic_configured !== undefined
-                    ? keyStatus.openai_configured
-                    : config?.has_openrouter_key)
+                  keyStatus && keyStatus.openrouter_configured
                     ? "Enter new key to replace existing one"
                     : "Enter OpenRouter API key"
                 }
               />
+              {keyStatus && keyStatus.openrouter_configured !== undefined && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleClearKey("openrouter")}
+                  className="ml-2"
+                >
+                  Clear
+                </Button>
+              )}
             </div>
 
             {/* Anthropic */}

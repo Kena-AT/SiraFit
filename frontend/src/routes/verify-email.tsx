@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { AuthShell } from "@/components/sirafit/shell";
 import { Button } from "@/components/ui/button";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 type VerifyEmailSearch = {
   token?: string;

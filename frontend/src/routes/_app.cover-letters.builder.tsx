@@ -170,7 +170,7 @@ function Builder() {
 
   const handleExportPdf = () => {
     if (!letter) return;
-    const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+    const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
     window.open(`${API_BASE_URL}${exportCoverLetterPdf(letter.id)}`, "_blank");
   };
 
