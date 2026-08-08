@@ -73,6 +73,8 @@ class ResumeDefaults(ResumeDefaultsBase):
 
 
 class AIProviderKeysWrite(BaseModel):
+    gemini_key: Optional[str] = None
+    openrouter_key: Optional[str] = None
     anthropic_key: Optional[str] = None
     openai_key: Optional[str] = None
     grok_key: Optional[str] = None
@@ -81,6 +83,8 @@ class AIProviderKeysWrite(BaseModel):
 
 
 class AIProviderKeysRead(BaseModel):
+    gemini_configured: bool
+    openrouter_configured: bool
     anthropic_configured: bool
     openai_configured: bool
     grok_configured: bool

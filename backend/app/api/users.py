@@ -356,6 +356,8 @@ def get_ai_provider_keys(
     """Get current user's AI provider key configuration status."""
     prefs = _get_or_create_prefs(db, current_user.id)
     return AIProviderKeysRead(
+        gemini_configured=bool(prefs.encrypted_gemini_key),
+        openrouter_configured=bool(prefs.encrypted_openrouter_key),
         anthropic_configured=bool(prefs.encrypted_anthropic_key),
         openai_configured=bool(prefs.encrypted_openai_key),
         grok_configured=bool(prefs.encrypted_grok_key),
@@ -386,6 +388,8 @@ def update_ai_provider_keys(
 
     # Map of input field names to encrypted column names
     key_fields: dict[str, str] = {
+        "gemini_key": "encrypted_gemini_key",
+        "openrouter_key": "encrypted_openrouter_key",
         "anthropic_key": "encrypted_anthropic_key",
         "openai_key": "encrypted_openai_key",
         "grok_key": "encrypted_grok_key",
@@ -408,6 +412,8 @@ def update_ai_provider_keys(
     db.refresh(prefs)
 
     return AIProviderKeysRead(
+        gemini_configured=bool(prefs.encrypted_gemini_key),
+        openrouter_configured=bool(prefs.encrypted_openrouter_key),
         anthropic_configured=bool(prefs.encrypted_anthropic_key),
         openai_configured=bool(prefs.encrypted_openai_key),
         grok_configured=bool(prefs.encrypted_grok_key),

@@ -42,16 +42,17 @@ def _set_auth_cookies(
 ) -> None:
     """Write tokens into secure, HttpOnly cookies.
 
-    In production: SameSite=None + Secure=True (HTTPS required).
-    In development: SameSite=None + Secure=False (plain HTTP on localhost).
-
-    SameSite=Lax would BLOCK cookies on cross-origin XHR (which we have in dev:
-    frontend on :3030 → backend on :8000), so we use None for cross-site API requests.
+    In production: SameSite=None + Secure=True (HTTPS required) — the frontend
+    and backend are on different origins, so cross-site cookies are needed.
+    In development: SameSite=Lax + Secure=False — requests are same-origin
+    (the Vite dev proxy forwards /api → backend:8000), so Lax cookies are sent
+    normally without requiring HTTPS.
     """
     is_production = settings.ENVIRONMENT == "production"
-    # SameSite=None requires Secure=True in production, but works on localhost without HTTPS in dev
-    samesite_mode = "none"  # Allow cross-site (needed for dev: localhost:3030 → localhost:8000)
-    secure_flag = True  # Must be True if samesite is none
+    # SameSite=None requires Secure=True in production.
+    # In development, use Lax to avoid needing HTTPS, as None + Secure=False is rejected.
+    samesite_mode = "none" if is_production else "lax"
+    secure_flag = is_production  # True in prod, False in dev (HTTP)
     response.set_cookie(
         key="access_token",
         value=access_token,
