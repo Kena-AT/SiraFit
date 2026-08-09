@@ -12,19 +12,6 @@ from app.services.analytics import (
     get_latest_snapshot,
     get_snapshots,
 )
-from app.services.notification import (
-    create_notification,
-    create_notifications_bulk,
-    get_notifications,
-    mark_as_read,
-    mark_all_as_read,
-    get_unread_count,
-    create_job_alert_notification,
-    create_application_update_notification,
-    create_follow_up_reminder,
-    create_system_event_notification,
-)
-
 __all__ = [
     "email_service",
     "EmailService",
@@ -37,14 +24,4 @@ __all__ = [
     "create_analytics_snapshot",
     "get_latest_snapshot",
     "get_snapshots",
-    "create_notification",
-    "create_notifications_bulk",
-    "get_notifications",
-    "mark_as_read",
-    "mark_all_as_read",
-    "get_unread_count",
-    "create_job_alert_notification",
-    "create_application_update_notification",
-    "create_follow_up_reminder",
-    "create_system_event_notification",
 ]

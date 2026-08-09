@@ -11,20 +11,60 @@ Provides aggregated metrics for the landing page:
 from datetime import datetime, timedelta
 from typing import List, Optional
 import json
+import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from sqlalchemy import case, func, text
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.config import settings
 from app.core.cache import cache_get, cache_set
 from app.models.job import Job, JobApplication
 from app.models.profile import Profile
+from app.models.user import User
 from app.services.agent_api import check_agent_api_connection
+from app.services.matching_engine import calculate_match_score
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
+
+# Reuse the OAuth2 scheme already configured in app.api.users
+_oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl=f"{settings.API_V1_STR}/auth/login", auto_error=False
+)
+
+
+def _try_get_current_user(
+    request: Request, db: Session, token: Optional[str]
+) -> Optional[User]:
+    """Attempt to resolve the current user from header or cookie, returning
+    ``None`` when no valid token is present (anonymous request)."""
+    token_str = token or request.cookies.get("access_token")
+    if not token_str:
+        return None
+
+    try:
+        import jwt
+        from app.schemas.user import TokenPayload
+        from pydantic import ValidationError
+
+        payload = jwt.decode(token_str, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        token_data = TokenPayload(**payload)
+        if token_data.type != "access":
+            return None
+        import uuid
+
+        user = db.query(User).filter(User.id == uuid.UUID(token_data.sub)).first()
+        if user and user.is_active:
+            return user
+    except Exception:
+        logger.debug("Could not resolve authenticated user for landing stats", exc_info=True)
+    return None
 
 
 class TopMatchItem(BaseModel):
@@ -42,17 +82,30 @@ class LandingStatsResponse(BaseModel):
     generated_at: datetime
 
 
+def _get_optional_user(
+    request: Request,
+    db: Session = Depends(get_db),
+    token: Optional[str] = Depends(_oauth2_scheme),
+) -> Optional[User]:
+    """FastAPI dependency: resolves the current user or returns ``None``."""
+    return _try_get_current_user(request, db, token)
+
+
 @router.get("/landing", response_model=LandingStatsResponse)
 def get_landing_stats(
     db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(_get_optional_user),
 ) -> LandingStatsResponse:
     """
     Get aggregated statistics for the landing page.
-    
+
+    Works for both anonymous visitors (top match queue is empty) and
+    authenticated users (who get a personalised match queue).
+
     Returns:
         LandingStatsResponse: Aggregated metrics
     """
-    cache_key = "stats:landing"
+    cache_key = f"stats:landing:{current_user.id}" if current_user else "stats:landing"
     cached = cache_get(cache_key)
     if cached:
         return LandingStatsResponse(**cached)
@@ -68,7 +121,7 @@ def get_landing_stats(
         sector_interview_rate = _get_sector_interview_rate(db)
         
         # 4. Top match queue (top 4 matches for the current user/org)
-        top_match_queue = _get_top_match_queue(db)
+        top_match_queue = _get_top_match_queue(db, current_user)
         
         response = LandingStatsResponse(
             jobs_ingested_per_day=jobs_ingested_per_day,
@@ -152,16 +205,57 @@ def _get_sector_interview_rate(db: Session) -> float:
         return 0.0  # Return 0 if query fails
 
 
-def _get_top_match_queue(db: Session) -> List[TopMatchItem]:
+def _get_top_match_queue(
+    db: Session, current_user: Optional[User] = None
+) -> List[TopMatchItem]:
     """
-    Get the top 4 job matches for the current user/org.
-    
-    This is a simplified implementation. In a real app, you'd have a proper
-    match scoring system and user-specific data.
+    Get the top 4 job matches for the current user.
+
+    If no user is authenticated (anonymous landing-page visitor), returns an
+    empty list.  When authenticated, mirrors the scoring logic from
+    ``jobs.get_top_matches``: pull the user's profile, exclude jobs they've
+    already applied to, score the remaining candidates with the deterministic
+    matching engine, and return the top 4 above the minimum threshold.
     """
-    # For now, return an empty list. This would be replaced with real logic
-    # that queries the match table and joins with job data.
-    return []
+    if current_user is None:
+        return []
+
+    profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
+    if not profile:
+        return []
+
+    # Jobs the user has already applied to — exclude them from the queue
+    applied_job_ids = (
+        db.query(JobApplication.job_id)
+        .filter(JobApplication.user_id == current_user.id)
+        .subquery()
+    )
+
+    # Fetch recent candidate jobs the user hasn't seen yet (limit to 50 for
+    # scoring performance; the list is sorted and trimmed below).
+    candidate_jobs = (
+        db.query(Job)
+        .filter(Job.id.notin_(applied_job_ids))
+        .order_by(Job.created_at.desc())
+        .limit(50)
+        .all()
+    )
+
+    scored_matches: List[TopMatchItem] = []
+    for job in candidate_jobs:
+        score_data = calculate_match_score(profile, job)
+        if score_data["score"] >= 30:  # minimum threshold (mirrors jobs.py)
+            scored_matches.append(
+                TopMatchItem(
+                    company=job.company or "Unknown",
+                    role=job.title or "Untitled",
+                    match_score=score_data["score"] / 100.0,  # 0–1 range
+                    status="new",
+                )
+            )
+
+    scored_matches.sort(key=lambda x: x.match_score, reverse=True)
+    return scored_matches[:4]
 
 
 # Add the router to the API

@@ -23,18 +23,34 @@ export interface UnreadCountResponse {
   count: number;
 }
 
+export interface FunnelItem {
+  stage: string;
+  count: number;
+}
+
+export interface SkillGapItem {
+  skill: string;
+  demand_frequency: number;
+  impact_score: number;
+}
+
+export interface TopTechItem {
+  skill: string;
+  count: number;
+}
+
 export interface MetricsResponse {
   total_applications: number;
   interview_rate: number;
   avg_response_time_days: number;
   offer_rate: number;
-  conversion_funnel: Array<[string, number]>;
-  rejection_stages: Array<[string, number]>;
+  conversion_funnel: FunnelItem[];
+  rejection_stages: FunnelItem[];
   skill_coverage: Array<{ skill: string; you: number; market: number }>;
   market_demand: Array<{ role: string; demand: number; postings: number; change: string }>;
-  top_technologies: Array<[string, number]>;
-  salary_medians: Array<[string, string]>;
-  skill_gaps?: string[];
+  top_technologies: TopTechItem[];
+  salary_medians: Record<string, number>;
+  skill_gaps: SkillGapItem[];
   generated_at: string;
 }
 

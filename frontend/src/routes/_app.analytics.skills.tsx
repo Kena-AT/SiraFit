@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel } from "@/components/sirafit/bits";
-import { getAnalyticsMetrics } from "@/lib/api/notifications";
+import { getAnalyticsMetrics, type SkillGapItem } from "@/lib/api/notifications";
 
 export const Route = createFileRoute("/_app/analytics/skills")({
   head: () => ({ meta: [{ title: "Skill insights · SiraFit" }] }),
@@ -84,31 +84,18 @@ function SkillsInsights() {
       </Panel>
       <Panel title="Suggested learning targets">
         <ul className="divide-y divide-border text-sm">
-          {metrics?.skill_gaps?.map((s: string, i: number) => (
-            <li key={i} className="flex items-center justify-between px-4 py-3">
-              <span className="font-semibold">{s}</span>
-              <span className="text-[11px] text-muted-foreground">
-                Improves match on {Math.floor(Math.random() * 10 + 5)} jobs
-              </span>
-            </li>
-          )) || (
-            <>
-              <li key="1" className="flex items-center justify-between px-4 py-3">
-                <span className="font-semibold">Kubernetes</span>
-                <span className="text-[11px] text-muted-foreground">
-                  Closing this gap improves match on 14 jobs
-                </span>
-              </li>
-              <li key="2" className="flex items-center justify-between px-4 py-3">
-                <span className="font-semibold">AWS</span>
-                <span className="text-[11px] text-muted-foreground">Improves match on 11 jobs</span>
-              </li>
-              <li key="3" className="flex items-center justify-between px-4 py-3">
-                <span className="font-semibold">Go</span>
-                <span className="text-[11px] text-muted-foreground">Improves match on 8 jobs</span>
-              </li>
-            </>
-          )}
+           {metrics?.skill_gaps?.map((s: SkillGapItem) => (
+             <li key={s.skill} className="flex items-center justify-between px-4 py-3">
+               <span className="font-semibold">{s.skill}</span>
+               <span className="text-[11px] text-muted-foreground">
+                 Improves match on {s.demand_frequency} jobs
+               </span>
+             </li>
+           )) || (
+             <li className="px-4 py-3 text-sm text-muted-foreground">
+               No skill gaps detected. Add more skills to your profile to see insights.
+             </li>
+           )}
         </ul>
       </Panel>
     </PageBody>

@@ -2,23 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel } from "@/components/sirafit/bits";
-import { getAnalyticsMetrics } from "@/lib/api/notifications";
+import { getAnalyticsMetrics, type TopTechItem } from "@/lib/api/notifications";
 
 interface MarketRole {
   role: string;
   demand: number;
   postings: number;
   change: string;
-}
-
-interface TechStat {
-  0: string;
-  1: number;
-}
-
-interface SalaryStat {
-  0: string;
-  1: string;
 }
 
 export const Route = createFileRoute("/_app/analytics/market")({
@@ -37,20 +27,12 @@ function MarketInsights() {
   });
 
   const marketRoles = (metrics?.market_demand as MarketRole[]) || [];
-  const topTechs = (metrics?.top_technologies as TechStat[]) || [
-    ["TypeScript", 71],
-    ["Python", 64],
-    ["React", 58],
-    ["AWS", 56],
-    ["Kubernetes", 41],
-  ];
-  const salaryMedians = (metrics?.salary_medians as SalaryStat[]) || [
-    ["SF Bay Area", "$165k"],
-    ["NYC", "$155k"],
-    ["Remote (US)", "$145k"],
-    ["Berlin", "€68k"],
-    ["London", "£72k"],
-  ];
+  const topTechs = (metrics?.top_technologies as TopTechItem[]) || [];
+  // Backend returns salary_medians as Record<string, number> (company → median salary)
+  // Convert to typed entries for rendering; empty object means no data
+  const salaryEntries: [string, number][] = metrics?.salary_medians
+    ? Object.entries(metrics.salary_medians)
+    : [];
 
   if (isLoading) {
     return (
@@ -119,22 +101,30 @@ function MarketInsights() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel title="Top technologies (in postings)">
           <ul className="divide-y divide-border text-sm">
-            {topTechs.map((r: TechStat) => (
-              <li key={r[0]} className="flex items-center justify-between px-4 py-2.5">
-                <span>{r[0]}</span>
-                <span className="font-mono text-muted-foreground tabular-nums">{r[1]}%</span>
+            {topTechs.map((r: TopTechItem) => (
+              <li key={r.skill} className="flex items-center justify-between px-4 py-2.5">
+                <span>{r.skill}</span>
+                <span className="font-mono text-muted-foreground tabular-nums">{r.count}</span>
               </li>
             ))}
           </ul>
         </Panel>
         <Panel title="Salary medians (Junior)">
           <ul className="divide-y divide-border text-sm">
-            {salaryMedians.map((r: SalaryStat) => (
-              <li key={r[0]} className="flex items-center justify-between px-4 py-2.5">
-                <span>{r[0]}</span>
-                <span className="font-mono tabular-nums">{r[1]}</span>
+            {salaryEntries.length === 0 ? (
+              <li className="px-4 py-3 text-sm text-muted-foreground">
+                No salary data available yet.
               </li>
-            ))}
+            ) : (
+              salaryEntries.map(([company, median]) => (
+                <li key={company} className="flex items-center justify-between px-4 py-2.5">
+                  <span>{company}</span>
+                  <span className="font-mono tabular-nums">
+                    ${Math.round(median / 1000)}k
+                  </span>
+                </li>
+              ))
+            )}
           </ul>
         </Panel>
       </div>
