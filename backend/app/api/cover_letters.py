@@ -216,7 +216,7 @@ def export_cover_letter(
     response_model=CoverLetterGenerateResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def generate_cover_letter_new(
+async def generate_cover_letter_new(
     letter_in: CoverLetterGenerateRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -236,7 +236,7 @@ def generate_cover_letter_new(
             status_code=404, detail="Profile required to generate cover letter"
         )
 
-    body = asyncio.run(_generate(profile, job, tone=letter_in.tone or "matching"))
+    body = await _generate(profile, job, tone=letter_in.tone or "matching")
 
     letter = CoverLetter(
         user_id=current_user.id,
@@ -260,7 +260,7 @@ def generate_cover_letter_new(
 
 
 @router.post("/{letter_id}/generate", response_model=CoverLetterGenerateResponse)
-def regenerate_cover_letter(
+async def regenerate_cover_letter(
     letter_id: uuid.UUID,
     letter_in: CoverLetterGenerateRequest,
     db: Session = Depends(get_db),
@@ -293,7 +293,7 @@ def regenerate_cover_letter(
             status_code=404, detail="Profile required to generate cover letter"
         )
 
-    body = asyncio.run(_generate(profile, job, tone=letter_in.tone or "matching"))
+    body = await _generate(profile, job, tone=letter_in.tone or "matching")
 
     # Update the EXISTING letter instead of creating a new one
     letter.body = body

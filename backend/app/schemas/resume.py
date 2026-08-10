@@ -25,6 +25,7 @@ class ResumeResponse(ResumeBase):
     user_id: uuid.UUID
     application_id: Optional[uuid.UUID] = None
     pdf_url: Optional[str] = None
+    versions_count: int = 0
     created_at: datetime
     updated_at: datetime
 

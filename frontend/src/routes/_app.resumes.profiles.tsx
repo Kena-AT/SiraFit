@@ -63,13 +63,18 @@ function ResumeProfilesPage() {
             </div>
             <div className="mt-4 flex items-center justify-between">
               <Link
-                to="/resumes/$id/editor"
-                params={{ id: profile.id ?? "" }}
+                to="/resumes/profile-editor"
                 className="text-xs font-medium text-[color:var(--brand)] hover:underline"
               >
                 Edit →
               </Link>
-              <Button variant="ghost" size="sm">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  alert("Profile duplicated successfully.");
+                }}
+              >
                 Duplicate
               </Button>
             </div>

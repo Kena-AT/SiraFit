@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
+import { Route as DocsRouteImport } from './routes/docs'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as HelpRouteImport } from './routes/help'
 import { Route as LoginRouteImport } from './routes/login'
@@ -31,6 +32,12 @@ import { Route as AppNotificationsRouteImport } from './routes/_app.notification
 import { Route as AppRankingRouteImport } from './routes/_app.ranking'
 import { Route as AppResumesRouteImport } from './routes/_app.resumes'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
+import { Route as DocsAgentInstallRouteImport } from './routes/docs.agent-install'
+import { Route as DocsGeminiKeyRouteImport } from './routes/docs.gemini-key'
+import { Route as DocsImportJobsRouteImport } from './routes/docs.import-jobs'
+import { Route as DocsMatchScoresRouteImport } from './routes/docs.match-scores'
+import { Route as DocsResumeProfileRouteImport } from './routes/docs.resume-profile'
+import { Route as DocsTrackApplicationsRouteImport } from './routes/docs.track-applications'
 import { Route as AppAnalyticsIndexRouteImport } from './routes/_app.analytics.index'
 import { Route as AppAnalyticsMarketRouteImport } from './routes/_app.analytics.market'
 import { Route as AppAnalyticsSkillsRouteImport } from './routes/_app.analytics.skills'
@@ -64,6 +71,11 @@ const IndexRoute = IndexRouteImport.update({
 } as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsRoute = DocsRouteImport.update({
+  id: '/docs',
+  path: '/docs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -165,6 +177,36 @@ const AppSettingsRoute = AppSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
   getParentRoute: () => AppRoute,
+} as any)
+const DocsAgentInstallRoute = DocsAgentInstallRouteImport.update({
+  id: '/agent-install',
+  path: '/agent-install',
+  getParentRoute: () => DocsRoute,
+} as any)
+const DocsGeminiKeyRoute = DocsGeminiKeyRouteImport.update({
+  id: '/gemini-key',
+  path: '/gemini-key',
+  getParentRoute: () => DocsRoute,
+} as any)
+const DocsImportJobsRoute = DocsImportJobsRouteImport.update({
+  id: '/import-jobs',
+  path: '/import-jobs',
+  getParentRoute: () => DocsRoute,
+} as any)
+const DocsMatchScoresRoute = DocsMatchScoresRouteImport.update({
+  id: '/match-scores',
+  path: '/match-scores',
+  getParentRoute: () => DocsRoute,
+} as any)
+const DocsResumeProfileRoute = DocsResumeProfileRouteImport.update({
+  id: '/resume-profile',
+  path: '/resume-profile',
+  getParentRoute: () => DocsRoute,
+} as any)
+const DocsTrackApplicationsRoute = DocsTrackApplicationsRouteImport.update({
+  id: '/track-applications',
+  path: '/track-applications',
+  getParentRoute: () => DocsRoute,
 } as any)
 const AppAnalyticsIndexRoute = AppAnalyticsIndexRouteImport.update({
   id: '/',
@@ -296,6 +338,7 @@ const AppResumesIdEditorRoute = AppResumesIdEditorRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/docs': typeof DocsRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
   '/login': typeof LoginRoute
@@ -316,6 +359,12 @@ export interface FileRoutesByFullPath {
   '/ranking': typeof AppRankingRoute
   '/resumes': typeof AppResumesRouteWithChildren
   '/settings': typeof AppSettingsRouteWithChildren
+  '/docs/agent-install': typeof DocsAgentInstallRoute
+  '/docs/gemini-key': typeof DocsGeminiKeyRoute
+  '/docs/import-jobs': typeof DocsImportJobsRoute
+  '/docs/match-scores': typeof DocsMatchScoresRoute
+  '/docs/resume-profile': typeof DocsResumeProfileRoute
+  '/docs/track-applications': typeof DocsTrackApplicationsRoute
   '/analytics/market': typeof AppAnalyticsMarketRoute
   '/analytics/skills': typeof AppAnalyticsSkillsRoute
   '/applications/$id': typeof AppApplicationsIdRoute
@@ -344,6 +393,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/docs': typeof DocsRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
   '/login': typeof LoginRoute
@@ -358,6 +408,12 @@ export interface FileRoutesByTo {
   '/match': typeof AppMatchRoute
   '/notifications': typeof AppNotificationsRoute
   '/ranking': typeof AppRankingRoute
+  '/docs/agent-install': typeof DocsAgentInstallRoute
+  '/docs/gemini-key': typeof DocsGeminiKeyRoute
+  '/docs/import-jobs': typeof DocsImportJobsRoute
+  '/docs/match-scores': typeof DocsMatchScoresRoute
+  '/docs/resume-profile': typeof DocsResumeProfileRoute
+  '/docs/track-applications': typeof DocsTrackApplicationsRoute
   '/analytics/market': typeof AppAnalyticsMarketRoute
   '/analytics/skills': typeof AppAnalyticsSkillsRoute
   '/applications/$id': typeof AppApplicationsIdRoute
@@ -388,6 +444,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
+  '/docs': typeof DocsRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
   '/login': typeof LoginRoute
@@ -408,6 +465,12 @@ export interface FileRoutesById {
   '/_app/ranking': typeof AppRankingRoute
   '/_app/resumes': typeof AppResumesRouteWithChildren
   '/_app/settings': typeof AppSettingsRouteWithChildren
+  '/docs/agent-install': typeof DocsAgentInstallRoute
+  '/docs/gemini-key': typeof DocsGeminiKeyRoute
+  '/docs/import-jobs': typeof DocsImportJobsRoute
+  '/docs/match-scores': typeof DocsMatchScoresRoute
+  '/docs/resume-profile': typeof DocsResumeProfileRoute
+  '/docs/track-applications': typeof DocsTrackApplicationsRoute
   '/_app/analytics/market': typeof AppAnalyticsMarketRoute
   '/_app/analytics/skills': typeof AppAnalyticsSkillsRoute
   '/_app/applications/$id': typeof AppApplicationsIdRoute
@@ -438,6 +501,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/docs'
     | '/forgot-password'
     | '/help'
     | '/login'
@@ -458,6 +522,12 @@ export interface FileRouteTypes {
     | '/ranking'
     | '/resumes'
     | '/settings'
+    | '/docs/agent-install'
+    | '/docs/gemini-key'
+    | '/docs/import-jobs'
+    | '/docs/match-scores'
+    | '/docs/resume-profile'
+    | '/docs/track-applications'
     | '/analytics/market'
     | '/analytics/skills'
     | '/applications/$id'
@@ -486,6 +556,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/docs'
     | '/forgot-password'
     | '/help'
     | '/login'
@@ -500,6 +571,12 @@ export interface FileRouteTypes {
     | '/match'
     | '/notifications'
     | '/ranking'
+    | '/docs/agent-install'
+    | '/docs/gemini-key'
+    | '/docs/import-jobs'
+    | '/docs/match-scores'
+    | '/docs/resume-profile'
+    | '/docs/track-applications'
     | '/analytics/market'
     | '/analytics/skills'
     | '/applications/$id'
@@ -529,6 +606,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_app'
+    | '/docs'
     | '/forgot-password'
     | '/help'
     | '/login'
@@ -549,6 +627,12 @@ export interface FileRouteTypes {
     | '/_app/ranking'
     | '/_app/resumes'
     | '/_app/settings'
+    | '/docs/agent-install'
+    | '/docs/gemini-key'
+    | '/docs/import-jobs'
+    | '/docs/match-scores'
+    | '/docs/resume-profile'
+    | '/docs/track-applications'
     | '/_app/analytics/market'
     | '/_app/analytics/skills'
     | '/_app/applications/$id'
@@ -579,6 +663,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
+  DocsRoute: typeof DocsRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   HelpRoute: typeof HelpRoute
   LoginRoute: typeof LoginRoute
@@ -604,6 +689,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs': {
+      id: '/docs'
+      path: '/docs'
+      fullPath: '/docs'
+      preLoaderRoute: typeof DocsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -745,6 +837,48 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings'
       preLoaderRoute: typeof AppSettingsRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/docs/agent-install': {
+      id: '/docs/agent-install'
+      path: '/agent-install'
+      fullPath: '/docs/agent-install'
+      preLoaderRoute: typeof DocsAgentInstallRouteImport
+      parentRoute: typeof DocsRoute
+    }
+    '/docs/gemini-key': {
+      id: '/docs/gemini-key'
+      path: '/gemini-key'
+      fullPath: '/docs/gemini-key'
+      preLoaderRoute: typeof DocsGeminiKeyRouteImport
+      parentRoute: typeof DocsRoute
+    }
+    '/docs/import-jobs': {
+      id: '/docs/import-jobs'
+      path: '/import-jobs'
+      fullPath: '/docs/import-jobs'
+      preLoaderRoute: typeof DocsImportJobsRouteImport
+      parentRoute: typeof DocsRoute
+    }
+    '/docs/match-scores': {
+      id: '/docs/match-scores'
+      path: '/match-scores'
+      fullPath: '/docs/match-scores'
+      preLoaderRoute: typeof DocsMatchScoresRouteImport
+      parentRoute: typeof DocsRoute
+    }
+    '/docs/resume-profile': {
+      id: '/docs/resume-profile'
+      path: '/resume-profile'
+      fullPath: '/docs/resume-profile'
+      preLoaderRoute: typeof DocsResumeProfileRouteImport
+      parentRoute: typeof DocsRoute
+    }
+    '/docs/track-applications': {
+      id: '/docs/track-applications'
+      path: '/track-applications'
+      fullPath: '/docs/track-applications'
+      preLoaderRoute: typeof DocsTrackApplicationsRouteImport
+      parentRoute: typeof DocsRoute
     }
     '/_app/analytics/': {
       id: '/_app/analytics/'
@@ -1083,9 +1217,30 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface DocsRouteChildren {
+  DocsAgentInstallRoute: typeof DocsAgentInstallRoute
+  DocsGeminiKeyRoute: typeof DocsGeminiKeyRoute
+  DocsImportJobsRoute: typeof DocsImportJobsRoute
+  DocsMatchScoresRoute: typeof DocsMatchScoresRoute
+  DocsResumeProfileRoute: typeof DocsResumeProfileRoute
+  DocsTrackApplicationsRoute: typeof DocsTrackApplicationsRoute
+}
+
+const DocsRouteChildren: DocsRouteChildren = {
+  DocsAgentInstallRoute: DocsAgentInstallRoute,
+  DocsGeminiKeyRoute: DocsGeminiKeyRoute,
+  DocsImportJobsRoute: DocsImportJobsRoute,
+  DocsMatchScoresRoute: DocsMatchScoresRoute,
+  DocsResumeProfileRoute: DocsResumeProfileRoute,
+  DocsTrackApplicationsRoute: DocsTrackApplicationsRoute,
+}
+
+const DocsRouteWithChildren = DocsRoute._addFileChildren(DocsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
+  DocsRoute: DocsRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
   HelpRoute: HelpRoute,
   LoginRoute: LoginRoute,

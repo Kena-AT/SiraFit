@@ -29,6 +29,7 @@ function ProfileEditorPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
 
   useEffect(() => {
     getProfile()
@@ -40,10 +41,14 @@ function ProfileEditorPage() {
   const handleSave = async () => {
     if (!profile) return;
     setSaving(true);
+    setSaveStatus(null);
     try {
-      await updateProfile(profile);
-    } catch {
-      // silently fail
+      const updated = await updateProfile(profile);
+      setProfile(updated);
+      setSaveStatus("Saved successfully ✓");
+      setTimeout(() => setSaveStatus(null), 3000);
+    } catch (e: any) {
+      setSaveStatus("Failed to save");
     } finally {
       setSaving(false);
     }
@@ -74,12 +79,41 @@ function ProfileEditorPage() {
     certifications: [],
   };
 
+  const updateField = (field: keyof Profile, val: any) => {
+    if (!profile) return;
+    setProfile({ ...profile, [field]: val });
+  };
+
+  const updateExperience = (index: number, field: string, val: any) => {
+    if (!profile) return;
+    const exps = [...(profile.experiences ?? [])];
+    exps[index] = { ...exps[index], [field]: val };
+    setProfile({ ...profile, experiences: exps });
+  };
+
+  const addExperience = () => {
+    if (!profile) return;
+    const exps = [
+      ...(profile.experiences ?? []),
+      { title: "", company: "", description: "", start_date: "", is_current: false },
+    ];
+    setProfile({ ...profile, experiences: exps });
+  };
+
+  const addSkill = () => {
+    if (!profile) return;
+    const name = prompt("Enter skill name:");
+    if (!name) return;
+    const skills = [...(profile.skills ?? []), { name, category: "General" }];
+    setProfile({ ...profile, skills });
+  };
+
   return (
     <PageBody className="max-w-none">
       <PageHeader
         eyebrow="Assets · Profile"
         title={p.headline || "Profile editor"}
-        description="Edit your structured resume profile. Auto-saved locally every 5s."
+        description={saveStatus || "Edit your structured resume profile. Changes persist when saved."}
         actions={
           <Button onClick={handleSave} disabled={saving}>
             {saving ? "Saving..." : "Save snapshot"}
@@ -107,34 +141,55 @@ function ProfileEditorPage() {
             <div className="grid gap-3 p-4 sm:grid-cols-2">
               <div>
                 <label className="text-[10px] font-semibold uppercase text-muted-foreground">
-                  Name
+                  First Name
                 </label>
-                <Input defaultValue={`${p.first_name ?? ""} ${p.last_name ?? ""}`} />
+                <Input
+                  value={p.first_name ?? ""}
+                  onChange={(e) => updateField("first_name", e.target.value)}
+                />
               </div>
               <div>
                 <label className="text-[10px] font-semibold uppercase text-muted-foreground">
-                  Title
+                  Last Name
                 </label>
-                <Input defaultValue={p.headline ?? ""} />
+                <Input
+                  value={p.last_name ?? ""}
+                  onChange={(e) => updateField("last_name", e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold uppercase text-muted-foreground">
+                  Title / Headline
+                </label>
+                <Input
+                  value={p.headline ?? ""}
+                  onChange={(e) => updateField("headline", e.target.value)}
+                />
               </div>
               <div>
                 <label className="text-[10px] font-semibold uppercase text-muted-foreground">
                   Email
                 </label>
-                <Input defaultValue={p.email ?? ""} />
+                <Input
+                  value={p.email ?? ""}
+                  onChange={(e) => updateField("email", e.target.value)}
+                />
               </div>
               <div>
                 <label className="text-[10px] font-semibold uppercase text-muted-foreground">
                   Location
                 </label>
-                <Input defaultValue={p.location ?? ""} />
+                <Input
+                  value={p.location ?? ""}
+                  onChange={(e) => updateField("location", e.target.value)}
+                />
               </div>
             </div>
           </Panel>
           <Panel
             title="Experience"
             actions={
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={addExperience}>
                 + Add role
               </Button>
             }
@@ -150,42 +205,60 @@ function ProfileEditorPage() {
                         <label className="text-[10px] font-semibold uppercase text-muted-foreground">
                           Company
                         </label>
-                        <Input defaultValue={e.company} />
+                        <Input
+                          value={e.company ?? ""}
+                          onChange={(ev) => updateExperience(i, "company", ev.target.value)}
+                        />
                       </div>
                       <div className="sm:col-span-1">
                         <label className="text-[10px] font-semibold uppercase text-muted-foreground">
                           Role
                         </label>
-                        <Input defaultValue={e.title} />
+                        <Input
+                          value={e.title ?? ""}
+                          onChange={(ev) => updateExperience(i, "title", ev.target.value)}
+                        />
                       </div>
                       <div className="sm:col-span-1">
                         <label className="text-[10px] font-semibold uppercase text-muted-foreground">
                           Period
                         </label>
-                        <Input defaultValue={e.start_date ?? ""} />
+                        <Input
+                          value={e.start_date ?? ""}
+                          onChange={(ev) => updateExperience(i, "start_date", ev.target.value)}
+                          placeholder="e.g. 2021 – Present"
+                        />
                       </div>
                     </div>
                     <div>
                       <label className="text-[10px] font-semibold uppercase text-muted-foreground">
                         Achievements
                       </label>
-                      <Textarea defaultValue={e.description ?? ""} rows={3} />
+                      <Textarea
+                        value={e.description ?? ""}
+                        onChange={(ev) => updateExperience(i, "description", ev.target.value)}
+                        rows={3}
+                      />
                     </div>
                   </div>
                 ))
               )}
             </div>
           </Panel>
-          <Panel title="Skills">
+          <Panel
+            title="Skills"
+            actions={
+              <Button variant="outline" size="sm" onClick={addSkill}>
+                + Add skill
+              </Button>
+            }
+          >
             <div className="flex flex-wrap gap-1.5 p-4">
               {(p.skills ?? []).length === 0 ? (
                 <span className="text-sm text-muted-foreground">No skills added yet.</span>
               ) : (
                 p.skills!.map((s) => <Tag key={s.id ?? s.name}>{s.name}</Tag>)
               )}
-              <Button variant="ghost" size="sm">
-                + Add skill
-              </Button>
             </div>
           </Panel>
         </div>

@@ -24,6 +24,13 @@ router = APIRouter()
 # ---------------------------------------------------------------------------
 
 
+def _enrich_resume(db: Session, resume: Resume) -> dict:
+    count = db.query(ResumeVersion).filter(ResumeVersion.resume_id == resume.id).count()
+    data = ResumeResponse.model_validate(resume).model_dump()
+    data["versions_count"] = count
+    return data
+
+
 @router.get("/", response_model=List[ResumeResponse])
 def get_resumes(
     db: Session = Depends(get_db),
@@ -32,13 +39,14 @@ def get_resumes(
     limit: int = 100,
 ) -> Any:
     """Retrieve current user's resumes."""
-    return (
+    resumes = (
         db.query(Resume)
         .filter(Resume.user_id == current_user.id)
         .offset(skip)
         .limit(limit)
         .all()
     )
+    return [_enrich_resume(db, r) for r in resumes]
 
 
 @router.post("/", response_model=ResumeResponse, status_code=status.HTTP_201_CREATED)
@@ -63,7 +71,7 @@ def create_resume(
 
     db.commit()
     db.refresh(resume)
-    return resume
+    return _enrich_resume(db, resume)
 
 
 @router.get("/{resume_id}", response_model=ResumeResponse)
@@ -80,7 +88,7 @@ def get_resume(
     )
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
-    return resume
+    return _enrich_resume(db, resume)
 
 
 @router.put("/{resume_id}", response_model=ResumeResponse)
@@ -117,7 +125,7 @@ def update_resume(
     db.add(log)
     db.commit()
 
-    return resume
+    return _enrich_resume(db, resume)
 
 
 @router.delete("/{resume_id}", status_code=status.HTTP_204_NO_CONTENT)

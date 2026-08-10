@@ -221,10 +221,15 @@ def enqueue_resume_generation(
         logger.info("resume_generation_enqueued", extra={"version_id": str(version_id)})
     except Exception as exc:
         logger.warning(
-            "resume_generation_celery_unavailable_running_sync",
+            "resume_generation_celery_unavailable_running_background_thread",
             extra={"error": str(exc)},
         )
-        _run_generation(version_id, user_id, profile_id, job_id, template)
+        import threading
+        threading.Thread(
+            target=_run_generation,
+            args=(version_id, user_id, profile_id, job_id, template),
+            daemon=True,
+        ).start()
 
 
 # ---------------------------------------------------------------------------
