@@ -66,6 +66,18 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown events."""
+    # Enforce mandatory Redis connection check on startup
+    from app.core.redis_client import get_redis_client
+    redis_client = get_redis_client()
+    if not redis_client:
+        logger.error("redis_connection_required_failed", extra={"redis_url": settings.REDIS_URL})
+        raise RuntimeError(f"FATAL: Redis connection could not be established at {settings.REDIS_URL}. Redis is required for backend startup.")
+    try:
+        redis_client.ping()
+    except Exception as e:
+        logger.error("redis_ping_failed", extra={"error": str(e)})
+        raise RuntimeError(f"FATAL: Redis ping failed at {settings.REDIS_URL}: {e}")
+
     # Startup: create tables if they don't exist (dev convenience).
     # In production, rely on Alembic migrations exclusively.
     if settings.ENVIRONMENT in ("development", "testing"):
