@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     SMTP_FROM: str = "noreply@sirafit.com"
 
     # Redis
-    REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_URL: str = "redis://localhost:6381/0"
 
     # Frontend URL (used for verification/reset links in emails)
     FRONTEND_URL: str = "http://localhost:8080"
