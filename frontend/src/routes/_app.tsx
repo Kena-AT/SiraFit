@@ -11,39 +11,8 @@ export const Route = createFileRoute("/_app")({
     // Server-side auth check with cookie forwarding.
     // SSR runs without browser cookies — forward them via request headers.
     if (typeof window === "undefined") {
-      // Access cookies from incoming request headers during SSR
-      const requestHeaders = (await import("@tanstack/start-server-core")).getHeaders();
-      const cookieHeader = requestHeaders.get("cookie");
-      const accessToken = cookieHeader
-        ?.split(";")
-        .map((c) => c.trim())
-        .find((c) => c.startsWith("access_token="))
-        ?.split("=")[1];
-
-      if (accessToken) {
-        try {
-          const res = await fetch("http://localhost:8000/api/v1/users/me", {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          });
-
-          if (res.ok) {
-            const user = await res.json();
-            if (user.is_active) {
-              return { user };
-            }
-          }
-        } catch {
-          // Fall through to redirect on error
-        }
-      }
-
-      // No valid session — redirect to login server-side
-      throw redirect({
-        to: "/login",
-        search: { redirect: location.href },
-      });
+      // During SSR, allow rendering and let client handle auth verification
+      return { user: null };
     }
 
     // Client-side auth check (cookies available via same-origin proxy)
