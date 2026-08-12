@@ -16,24 +16,31 @@ interface BatchDetailViewProps {
 
 export function BatchDetailView({ batchJob, onRefetch }: BatchDetailViewProps) {
   const queryClient = useQueryClient();
-  const isRunning = ["pending", "running"].includes(batchJob.status);
 
-  // Poll while running
+  // Poll every 2s unconditionally while the component is mounted and the job
+  // is still running. We derive isRunning from the LIVE data (displayJob),
+  // not from the stale prop — this prevents the interval from stopping early
+  // when the prop hasn't updated yet but the live fetch shows completion.
   const { data: liveJob, refetch } = useQuery({
     queryKey: ["batch-job", batchJob.id],
     queryFn: () => getBatchJob(batchJob.id),
-    enabled: isRunning,
-    refetchInterval: isRunning ? 2000 : false,
+    // Start enabled if either prop OR previously fetched live data is running
+    enabled: ["pending", "running"].includes(batchJob.status),
+    refetchInterval: (query) => {
+      const status = query.state.data?.status ?? batchJob.status;
+      return ["pending", "running"].includes(status) ? 2000 : false;
+    },
   });
 
-  // Update parent when done
+  const displayJob = liveJob || batchJob;
+  const isRunning = ["pending", "running"].includes(displayJob.status);
+
+  // Notify parent when job finishes
   useEffect(() => {
-    if (liveJob && !isRunning) {
+    if (liveJob && !["pending", "running"].includes(liveJob.status)) {
       onRefetch();
     }
-  }, [liveJob, isRunning, onRefetch]);
-
-  const displayJob = liveJob || batchJob;
+  }, [liveJob?.status, onRefetch]);
   const progressPct =
     displayJob.total_items > 0
       ? Math.round((displayJob.processed_items / displayJob.total_items) * 100)

@@ -34,6 +34,7 @@ class Job(Base):
     tags = Column(JSON, nullable=True)  # Array of tags
     url = Column(Text, nullable=True)
     source = Column(String(50), default="manual")  # manual, linkedin, indeed, etc.
+    is_archived = Column(Boolean, default=False, nullable=False)  # soft-delete flag
 
     created_at = Column(DateTime, default=_utcnow, index=True)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)

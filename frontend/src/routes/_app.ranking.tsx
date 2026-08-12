@@ -116,6 +116,7 @@ function OpportunityRanking() {
                 </div>
                 <Link
                   to="/resumes/builder"
+                  search={{ jobId: job.id }}
                   className="text-xs font-medium text-[color:var(--brand)] hover:underline"
                 >
                   Tailor &rarr;

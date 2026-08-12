@@ -96,6 +96,17 @@ export const getMatchScore = async (jobId: string) => {
   return response.json();
 };
 
+/**
+ * Read the stored match score without recalculating or writing to the DB.
+ * Returns null if no score exists yet for this job.
+ */
+export const getCachedMatchScore = async (jobId: string) => {
+  const response = await apiFetch(`/api/v1/jobs/${jobId}/match-score/cached`);
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error("Failed to fetch cached match score");
+  return response.json();
+};
+
 export const getRankedJobs = async (params: {
   skip?: number;
   limit?: number;

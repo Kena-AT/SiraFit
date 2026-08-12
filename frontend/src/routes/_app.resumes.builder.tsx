@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, ScoreMeter, Tag } from "@/components/sirafit/bits";
@@ -18,6 +18,9 @@ import type { Resume, ResumeVersion } from "@/types/resume";
 export const Route = createFileRoute("/_app/resumes/builder")({
   head: () => ({ meta: [{ title: "Resume builder · SiraFit" }] }),
   component: Builder,
+  validateSearch: (search: Record<string, unknown>) => ({
+    jobId: search.jobId as string | undefined,
+  }),
 });
 
 const TEMPLATES = [
@@ -29,6 +32,7 @@ const TEMPLATES = [
 ];
 
 function Builder() {
+  const { jobId: preselectedJobId } = useSearch({ from: "/_app/resumes/builder" });
   const [jobs, setJobs] = useState<Job[]>([]);
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [selectedResume, setSelectedResume] = useState<Resume | null>(null);
@@ -40,7 +44,14 @@ function Builder() {
 
   useEffect(() => {
     getJobs({ limit: 200 })
-      .then((res) => setJobs(res.jobs))
+      .then((res) => {
+        setJobs(res.jobs);
+        // Auto-select job when navigating from ranking/match with ?jobId=
+        if (preselectedJobId) {
+          const found = res.jobs.find((j: Job) => j.id === preselectedJobId);
+          if (found) setSelectedJob(found);
+        }
+      })
       .catch(console.error);
     getResumes()
       .then(async (res) => {

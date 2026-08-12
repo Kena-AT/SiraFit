@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
 import { PageBody } from "@/components/sirafit/shell";
-import { PageHeader, Panel, Tag, EmptyState } from "@/components/sirafit/bits";
+import { PageHeader, Panel, Tag, EmptyState, StatusPill } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
-import { getJob, triggerAnalysis, getJobAnalysis, getMatchScore } from "@/lib/api/jobs";
+import { getJob, triggerAnalysis, getJobAnalysis, getCachedMatchScore } from "@/lib/api/jobs";
+import { getApplications, createApplication } from "@/lib/api/applications";
 import { AnalysisInsights, AnalysisSkeleton } from "@/components/sirafit/analysis-insights";
 import { MatchScoreCard } from "@/components/sirafit/match-score-card";
 import type { Job, JobAnalysis, JobMatchScore } from "@/types/job";
@@ -32,6 +33,11 @@ function JobDetails() {
   const [matchScore, setMatchScore] = useState<JobMatchScore | null>(null);
   const [matchScoreLoading, setMatchScoreLoading] = useState(false);
 
+  // Application state for this job
+  const [existingApplication, setExistingApplication] = useState<any | null>(null);
+  const [savingPipeline, setSavingPipeline] = useState(false);
+  const [pipelineMsg, setPipelineMsg] = useState<string | null>(null);
+
   // Load job
   useEffect(() => {
     const fetchJob = async () => {
@@ -59,10 +65,18 @@ function JobDetails() {
       .catch(() => {});
 
     setMatchScoreLoading(true);
-    getMatchScore(jobId)
+    getCachedMatchScore(jobId)
       .then((data) => setMatchScore(data))
       .catch(() => {})
       .finally(() => setMatchScoreLoading(false));
+
+    // Load applications to check if this job is already in the pipeline
+    getApplications()
+      .then((apps: any[]) => {
+        const found = apps.find((a: any) => a.job_id === jobId);
+        setExistingApplication(found ?? null);
+      })
+      .catch(() => {});
   }, [jobId]);
 
   // Polling helper
@@ -111,6 +125,46 @@ function JobDetails() {
       setAnalysisError(e.message || "Failed to start analysis");
       setAnalysisLoading(false);
     }
+  };
+
+  const handleSaveToPipeline = async () => {
+    if (existingApplication) return; // already saved
+    setSavingPipeline(true);
+    setPipelineMsg(null);
+    try {
+      const app = await createApplication(jobId);
+      setExistingApplication(app);
+      setPipelineMsg("Saved to pipeline!");
+    } catch (e: any) {
+      setPipelineMsg(e.message || "Failed to save");
+    } finally {
+      setSavingPipeline(false);
+      setTimeout(() => setPipelineMsg(null), 3000);
+    }
+  };
+
+  const handleExportDetails = () => {
+    if (!job) return;
+    const content = [
+      `Title: ${job.title}`,
+      `Company: ${job.company}`,
+      `Location: ${job.location || "N/A"}`,
+      `Source: ${job.source}`,
+      `URL: ${job.url || "N/A"}`,
+      `Salary: ${formatSalary(job)}`,
+      `Tags: ${(job.tags || []).join(", ")}`,
+      `Imported: ${formatDate(job.created_at)}`,
+      "",
+      "Description:",
+      job.description || "No description available",
+    ].join("\n");
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${job.company}-${job.title}.txt`.replace(/[^a-z0-9.-]/gi, "_");
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const formatSalary = (job: Job) => {
@@ -404,19 +458,53 @@ function JobDetails() {
 
           <Panel title="Actions">
             <div className="space-y-2 p-4">
-              <Button className="w-full" variant="outline">
-                Save to pipeline
+              {pipelineMsg && (
+                <div className="rounded-md bg-muted px-3 py-2 text-xs font-medium text-foreground">
+                  {pipelineMsg}
+                </div>
+              )}
+              <Button
+                className="w-full"
+                variant="outline"
+                onClick={handleSaveToPipeline}
+                disabled={savingPipeline || !!existingApplication}
+              >
+                {savingPipeline
+                  ? "Saving…"
+                  : existingApplication
+                  ? "In pipeline ✓"
+                  : "Save to pipeline"}
               </Button>
-              <Button className="w-full" variant="outline">
+              <Button className="w-full" variant="outline" onClick={handleExportDetails}>
                 Export details
               </Button>
             </div>
           </Panel>
 
           <Panel title="Application history">
-            <div className="p-4 text-xs text-muted-foreground">
-              No application record for this job yet.
-            </div>
+            {existingApplication ? (
+              <div className="space-y-2 p-4 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Status</span>
+                  <StatusPill status={existingApplication.status} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Added</span>
+                  <span>{new Date(existingApplication.created_at).toLocaleDateString()}</span>
+                </div>
+                <Link
+                  to="/applications/$id"
+                  params={{ id: existingApplication.id }}
+                  className="mt-2 block text-center text-xs font-medium text-[color:var(--brand)] hover:underline"
+                >
+                  View application →
+                </Link>
+              </div>
+            ) : (
+              <div className="p-4 text-xs text-muted-foreground">
+                No application record for this job yet.
+              </div>
+            )}
           </Panel>
         </div>
       </div>

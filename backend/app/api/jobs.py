@@ -7,7 +7,7 @@ import uuid
 from app.core.database import get_db
 from app.api.users import get_current_user
 from app.models.user import User
-from app.models.job import Job, JobImport, JobAnalysis
+from app.models.job import Job, JobApplication, JobImport, JobAnalysis
 from app.models.score import JobMatchScore
 from app.models.profile import Profile
 from app.schemas.job import (
@@ -87,9 +87,13 @@ def list_jobs(
     max_salary: Optional[int] = Query(None, ge=0),
     sort_by: Optional[str] = Query("created_at"),
     sort_order: Optional[str] = Query("desc"),
+    include_archived: bool = Query(False, description="Include archived jobs"),
 ) -> Any:
     """List jobs with search, filtering, sorting, and pagination."""
     query = db.query(Job)
+
+    if not include_archived:
+        query = query.filter(Job.is_archived == False)  # noqa: E712
 
     if search:
         term = f"%{search}%"
@@ -253,6 +257,33 @@ def get_match_score(
         db.commit()
         db.refresh(new_score)
         return new_score
+
+
+@router.get("/{job_id}/match-score/cached", response_model=JobMatchScoreResponse)
+def get_cached_match_score(
+    job_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """Return the stored match score for a job without recalculating.
+
+    Returns 404 if no score has been calculated yet. Use GET /{job_id}/match-score
+    to calculate and store a score on demand.
+    """
+    score = (
+        db.query(JobMatchScore)
+        .filter(
+            JobMatchScore.user_id == current_user.id,
+            JobMatchScore.job_id == job_id,
+        )
+        .first()
+    )
+    if not score:
+        raise HTTPException(
+            status_code=404,
+            detail="No match score found for this job. Trigger one via GET /{job_id}/match-score.",
+        )
+    return score
 
 
 # ---------------------------------------------------------------------------

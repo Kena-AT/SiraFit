@@ -131,7 +131,7 @@ def batch_archive_item(
         job = db.query(Job).filter(Job.id == job_id).first()
         if not job:
             raise ValueError(f"Job {job_id} not found")
-        job.source = "archived"
+        job.is_archived = True
         db.commit()
         return {"archived": True, "target": "jobs"}
     elif target == "applications":

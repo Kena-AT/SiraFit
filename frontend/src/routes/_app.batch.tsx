@@ -43,11 +43,15 @@ function BatchCenter() {
   const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterOp, setFilterOp] = useState<string>("all");
+  const [filterText, setFilterText] = useState("");
 
-  const { data: jobs = [] } = useQuery({
+  // Only fetch jobs when the modal is open — avoids a 500-job fetch on every page load
+  const { data: jobsData } = useQuery({
     queryKey: ["jobs-for-batch"],
     queryFn: () => getJobs({ limit: 500 }),
+    enabled: modalOpen,
   });
+  const jobs = jobsData?.jobs ?? [];
   const { data: batchData, isLoading } = useQuery({
     queryKey: [
       "batch-jobs",
@@ -62,6 +66,15 @@ function BatchCenter() {
   });
 
   const batchJobs = batchData?.jobs ?? [];
+
+  // Client-side filter by text (operation type or status)
+  const visibleBatchJobs = filterText.trim()
+    ? batchJobs.filter(
+        (b) =>
+          b.operation_type.toLowerCase().includes(filterText.toLowerCase()) ||
+          b.status.toLowerCase().includes(filterText.toLowerCase())
+      )
+    : batchJobs;
 
   const createMutation = useMutation({
     mutationFn: createBatchJob,
@@ -161,7 +174,12 @@ function BatchCenter() {
 
         <Panel title="Recent batches">
           <div className="mb-4 flex flex-wrap items-center gap-2">
-            <Input placeholder="Filter batches..." className="w-64" />
+            <Input
+              placeholder="Filter batches..."
+              className="w-64"
+              value={filterText}
+              onChange={(e) => setFilterText(e.target.value)}
+            />
             <Select value={filterStatus} onValueChange={setFilterStatus}>
               <SelectTrigger className="w-40">
                 <SelectValue />
@@ -190,18 +208,24 @@ function BatchCenter() {
             </Select>
           </div>
           <div className="flex flex-col gap-3">
-            {batchJobs.length === 0 ? (
+            {visibleBatchJobs.length === 0 ? (
               <EmptyState
-                title="No batch jobs yet"
-                body="Create a batch job to process multiple items at once."
+                title={batchJobs.length === 0 ? "No batch jobs yet" : "No matches"}
+                body={
+                  batchJobs.length === 0
+                    ? "Create a batch job to process multiple items at once."
+                    : "Try a different filter."
+                }
                 action={
-                  <Button onClick={() => setModalOpen(true)} className="w-full">
-                    <Plus className="w-4 h-4 mr-2" /> Create batch job
-                  </Button>
+                  batchJobs.length === 0 ? (
+                    <Button onClick={() => setModalOpen(true)} className="w-full">
+                      <Plus className="w-4 h-4 mr-2" /> Create batch job
+                    </Button>
+                  ) : undefined
                 }
               />
             ) : (
-              batchJobs.map((batchJob) => (
+              visibleBatchJobs.map((batchJob) => (
                 <div
                   key={batchJob.id}
                   className="flex items-center gap-4 p-4 rounded-lg bg-card ring-1 ring-border hover:ring-[color:var(--brand)]/40 transition-colors cursor-pointer"

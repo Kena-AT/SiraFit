@@ -1,3 +1,5 @@
+"use client";
+
 import { Eye, EyeOff } from "lucide-react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
