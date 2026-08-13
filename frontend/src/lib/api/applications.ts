@@ -190,8 +190,8 @@ export const deleteApplicationContact = async (contactId: string): Promise<void>
 };
 
 // Timeline API
-export const getUserTimeline = async (limit = 100): Promise<ApplicationEvent[]> => {
-  const response = await apiFetch(`/api/v1/applications/timeline?limit=${limit}`);
+export const getUserTimeline = async (limit = 100, skip = 0): Promise<ApplicationEvent[]> => {
+  const response = await apiFetch(`/api/v1/applications/timeline?limit=${limit}&skip=${skip}`);
   if (!response.ok) throw new Error("Failed to fetch timeline");
   return response.json();
 };
@@ -203,8 +203,10 @@ export const getApplicationEvents = async (applicationId: string): Promise<Appli
 };
 
 // Follow-up Center API
-export const getFollowUps = async (includePast = false): Promise<FollowUpItem[]> => {
-  const response = await apiFetch(`/api/v1/applications/followups?include_past=${includePast}`);
+export const getFollowUps = async (includePast = false, skip = 0, limit = 50): Promise<FollowUpItem[]> => {
+  const response = await apiFetch(
+    `/api/v1/applications/followups?include_past=${includePast}&skip=${skip}&limit=${limit}`
+  );
   if (!response.ok) throw new Error("Failed to fetch follow-ups");
   return response.json();
 };

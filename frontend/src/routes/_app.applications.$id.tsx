@@ -9,12 +9,16 @@ import {
   updateApplicationNote,
   deleteApplicationNote,
   getApplicationContacts,
+  createApplicationContact,
+  getApplicationEvents,
   setFollowUp,
+  type ApplicationNote,
+  type ApplicationContact,
 } from "@/lib/api/applications";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { ApplicationNote } from "@/lib/api/applications";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/applications/$id")({
   head: () => ({ meta: [{ title: "Application · SiraFit" }] }),
@@ -42,9 +46,26 @@ function AppDetails() {
     enabled: !!application,
   });
 
+  // Fetch events from the dedicated endpoint (not from application.events)
+  const { data: events = [] } = useQuery({
+    queryKey: ["application-events", id],
+    queryFn: () => getApplicationEvents(id),
+    enabled: !!application,
+  });
+
   const [newNote, setNewNote] = useState("");
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editBody, setEditBody] = useState("");
+
+  // Add contact form state
+  const [showAddContact, setShowAddContact] = useState(false);
+  const [contactForm, setContactForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    role: "recruiter",
+    linkedin: "",
+  });
 
   const addNoteMutation = useMutation({
     mutationFn: (body: string) => createApplicationNote(id, body),
@@ -71,10 +92,28 @@ function AppDetails() {
     },
   });
 
+  const addContactMutation = useMutation({
+    mutationFn: () =>
+      createApplicationContact(id, {
+        name: contactForm.name,
+        email: contactForm.email || undefined,
+        phone: contactForm.phone || undefined,
+        role: contactForm.role,
+        linkedin: contactForm.linkedin || undefined,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["application-contacts", id] });
+      setShowAddContact(false);
+      setContactForm({ name: "", email: "", phone: "", role: "recruiter", linkedin: "" });
+      toast.success("Contact added");
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to add contact");
+    },
+  });
+
   const handleAddNote = () => {
-    if (newNote.trim()) {
-      addNoteMutation.mutate(newNote);
-    }
+    if (newNote.trim()) addNoteMutation.mutate(newNote);
   };
 
   const startEdit = (note: ApplicationNote) => {
@@ -106,8 +145,6 @@ function AppDetails() {
     );
   }
 
-  const events = application.events || [];
-
   return (
     <PageBody>
       <PageHeader
@@ -129,6 +166,7 @@ function AppDetails() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
+          {/* Status history — uses dedicated events query */}
           <Panel title="Status history">
             <ul className="divide-y divide-border">
               {events.length === 0 ? (
@@ -137,23 +175,32 @@ function AppDetails() {
                 events.map((event: any) => (
                   <li key={event.id} className="flex items-center gap-4 px-4 py-2.5 text-sm">
                     <span className="w-40 font-mono text-[11px] text-muted-foreground tabular-nums">
-                      {new Date(event.occurred_at).toLocaleDateString()}
+                      {new Date(event.occurred_at).toLocaleString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </span>
-                    <StatusPill status={event.title} />
-                    <span className="text-foreground/90">{event.description}</span>
+                    {event.event_type === "status_change" ? (
+                      <StatusPill status={event.event_metadata?.to_status || event.event_type} />
+                    ) : (
+                      <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+                        {event.event_type.replace(/_/g, " ")}
+                      </span>
+                    )}
+                    <span className="text-foreground/90">{event.description || event.title}</span>
                   </li>
                 ))
               )}
             </ul>
           </Panel>
 
+          {/* Notes */}
           <Panel title="Notes">
             <div className="space-y-3 p-5">
               {notes.map((note: any) => (
-                <div
-                  key={note.id}
-                  className="rounded bg-muted/40 p-3 text-sm ring-1 ring-transparent"
-                >
+                <div key={note.id} className="rounded bg-muted/40 p-3 text-sm ring-1 ring-transparent">
                   <div className="flex items-start justify-between gap-2">
                     <div className="font-mono text-[10px] text-muted-foreground">
                       {note.author || "Me"} · {new Date(note.created_at).toLocaleDateString()}
@@ -162,7 +209,6 @@ function AppDetails() {
                       <button
                         type="button"
                         onClick={() => togglePin(note)}
-                        title={note.pinned ? "Unpin note" : "Pin note"}
                         className="rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-border hover:bg-muted"
                       >
                         {note.pinned ? "★ Pinned" : "☆ Pin"}
@@ -170,7 +216,6 @@ function AppDetails() {
                       <button
                         type="button"
                         onClick={() => startEdit(note)}
-                        title="Edit note"
                         className="rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-border hover:bg-muted"
                       >
                         Edit
@@ -178,7 +223,6 @@ function AppDetails() {
                       <button
                         type="button"
                         onClick={() => deleteNoteMutation.mutate(note.id)}
-                        title="Delete note"
                         disabled={deleteNoteMutation.isPending}
                         className="rounded px-1.5 py-0.5 text-[10px] font-medium text-destructive ring-1 ring-destructive/30 hover:bg-destructive/10 disabled:opacity-50"
                       >
@@ -221,7 +265,7 @@ function AppDetails() {
               <textarea
                 className="w-full rounded-md border border-input bg-background p-2 text-sm"
                 rows={3}
-                placeholder="Add a note... (Enter to save, Shift+Enter for newline)"
+                placeholder="Add a note… (Enter to save, Shift+Enter for newline)"
                 value={newNote}
                 onChange={(e) => setNewNote(e.target.value)}
                 onKeyDown={(e) =>
@@ -238,21 +282,23 @@ function AppDetails() {
             </div>
           </Panel>
 
+          {/* Documents */}
           <Panel title="Documents">
             <ul className="divide-y divide-border text-sm">
-              {application.resumes?.map((resume: any) => (
-                <li key={resume.id} className="flex items-center justify-between px-4 py-2.5">
-                  <span>Resume - {resume.title}</span>
-                  <Link
-                    to="/resumes/$id"
-                    params={{ id: resume.id }}
-                    className="text-[color:var(--brand)] hover:underline"
-                  >
-                    Preview →
-                  </Link>
-                </li>
-              ))}
-              {(!application.resumes || application.resumes.length === 0) && (
+              {application.resumes?.length > 0 ? (
+                application.resumes.map((resume: any) => (
+                  <li key={resume.id} className="flex items-center justify-between px-4 py-2.5">
+                    <span>{resume.title}</span>
+                    <Link
+                      to="/resumes/$id"
+                      params={{ id: resume.id }}
+                      className="text-[color:var(--brand)] hover:underline"
+                    >
+                      Preview →
+                    </Link>
+                  </li>
+                ))
+              ) : (
                 <li className="px-4 py-3 text-muted-foreground">No documents attached</li>
               )}
             </ul>
@@ -260,14 +306,75 @@ function AppDetails() {
         </div>
 
         <div className="space-y-4">
-          {contacts.length > 0 && (
-            <Panel title="Contacts">
-              {contacts.map((contact: any) => (
-                <div key={contact.id} className="space-y-2 p-4 text-sm">
+          {/* Contacts */}
+          <Panel
+            title="Contacts"
+            actions={
+              <button
+                onClick={() => setShowAddContact((v) => !v)}
+                className="text-[11px] font-medium text-[color:var(--brand)] hover:underline"
+              >
+                {showAddContact ? "Cancel" : "+ Add"}
+              </button>
+            }
+          >
+            {showAddContact && (
+              <div className="border-b border-border p-4 space-y-2">
+                <Input
+                  placeholder="Name *"
+                  className="h-8 text-xs"
+                  value={contactForm.name}
+                  onChange={(e) => setContactForm((f) => ({ ...f, name: e.target.value }))}
+                />
+                <Input
+                  placeholder="Email"
+                  className="h-8 text-xs"
+                  value={contactForm.email}
+                  onChange={(e) => setContactForm((f) => ({ ...f, email: e.target.value }))}
+                />
+                <Input
+                  placeholder="Phone"
+                  className="h-8 text-xs"
+                  value={contactForm.phone}
+                  onChange={(e) => setContactForm((f) => ({ ...f, phone: e.target.value }))}
+                />
+                <Input
+                  placeholder="LinkedIn URL"
+                  className="h-8 text-xs"
+                  value={contactForm.linkedin}
+                  onChange={(e) => setContactForm((f) => ({ ...f, linkedin: e.target.value }))}
+                />
+                <select
+                  className="h-8 w-full rounded-md border border-border bg-card px-2 text-xs"
+                  value={contactForm.role}
+                  onChange={(e) => setContactForm((f) => ({ ...f, role: e.target.value }))}
+                >
+                  <option value="recruiter">Recruiter</option>
+                  <option value="hiring_manager">Hiring Manager</option>
+                  <option value="hr">HR</option>
+                  <option value="referrer">Referrer</option>
+                  <option value="interviewer">Interviewer</option>
+                  <option value="other">Other</option>
+                </select>
+                <Button
+                  size="sm"
+                  className="w-full"
+                  disabled={!contactForm.name.trim() || addContactMutation.isPending}
+                  onClick={() => addContactMutation.mutate()}
+                >
+                  {addContactMutation.isPending ? "Saving…" : "Save contact"}
+                </Button>
+              </div>
+            )}
+            {contacts.length === 0 && !showAddContact ? (
+              <div className="px-4 py-3 text-sm text-muted-foreground">No contacts yet.</div>
+            ) : (
+              contacts.map((contact: any) => (
+                <div key={contact.id} className="space-y-1 p-4 text-sm border-b border-border last:border-0">
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="font-semibold">{contact.name}</div>
-                      <div className="text-muted-foreground">{contact.role}</div>
+                      <div className="text-muted-foreground capitalize">{contact.role.replace(/_/g, " ")}</div>
                     </div>
                     {contact.is_primary && (
                       <span className="rounded bg-[color:var(--brand)]/10 px-1.5 py-0.5 text-[10px] font-medium text-[color:var(--brand)]">
@@ -276,36 +383,44 @@ function AppDetails() {
                     )}
                   </div>
                   {contact.email && (
-                    <div className="font-mono text-[11px] text-muted-foreground">
-                      {contact.email}
-                    </div>
+                    <div className="font-mono text-[11px] text-muted-foreground">{contact.email}</div>
                   )}
                   {contact.phone && (
-                    <div className="font-mono text-[11px] text-muted-foreground">
-                      {contact.phone}
-                    </div>
+                    <div className="font-mono text-[11px] text-muted-foreground">{contact.phone}</div>
+                  )}
+                  {contact.linkedin && (
+                    <a
+                      href={contact.linkedin}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block font-mono text-[11px] text-[color:var(--brand)] hover:underline truncate"
+                    >
+                      {contact.linkedin}
+                    </a>
                   )}
                 </div>
-              ))}
+              ))
+            )}
+          </Panel>
+
+          {/* Compensation — only real data, no placeholder equity/sponsorship */}
+          {(application.job?.salary_min || application.job?.salary_max) && (
+            <Panel title="Compensation">
+              <div className="space-y-1 p-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Posted range: </span>
+                  {application.job.salary_min && application.job.salary_max
+                    ? `$${application.job.salary_min.toLocaleString()} – $${application.job.salary_max.toLocaleString()}`
+                    : application.job.salary_max
+                      ? `Up to $${application.job.salary_max.toLocaleString()}`
+                      : `$${application.job.salary_min?.toLocaleString()}+`}
+                  {application.job.currency && application.job.currency !== "USD" && (
+                    <span className="ml-1 text-muted-foreground">({application.job.currency})</span>
+                  )}
+                </div>
+              </div>
             </Panel>
           )}
-
-          <Panel title="Compensation">
-            <div className="space-y-2 p-4 text-sm">
-              {application.job?.salary_min && application.job?.salary_max && (
-                <div>
-                  <span className="text-muted-foreground">Posted range:</span> $
-                  {application.job.salary_min}–${application.job.salary_max}
-                </div>
-              )}
-              <div>
-                <span className="text-muted-foreground">Equity:</span> Not specified
-              </div>
-              <div>
-                <span className="text-muted-foreground">Sponsorship:</span> Check listing
-              </div>
-            </div>
-          </Panel>
 
           <FollowUpPanel
             applicationId={id}
@@ -313,13 +428,16 @@ function AppDetails() {
             currentNote={application.follow_up_note}
           />
 
-          <Panel title="Tags">
-            <div className="flex flex-wrap gap-1.5 p-4">
-              {application.job?.tags?.map((tag: string) => (
-                <Tag key={tag}>{tag}</Tag>
-              ))}
-            </div>
-          </Panel>
+          {/* Tags */}
+          {application.job?.tags?.length > 0 && (
+            <Panel title="Tags">
+              <div className="flex flex-wrap gap-1.5 p-4">
+                {application.job.tags.map((tag: string) => (
+                  <Tag key={tag}>{tag}</Tag>
+                ))}
+              </div>
+            </Panel>
+          )}
         </div>
       </div>
     </PageBody>
@@ -408,7 +526,7 @@ function FollowUpPanel({
               </Button>
             </div>
           </>
-        ) : editing || !currentFollowUpAt ? (
+        ) : (
           <>
             <div>
               <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
@@ -452,7 +570,7 @@ function FollowUpPanel({
               </div>
             )}
           </>
-        ) : null}
+        )}
       </div>
     </Panel>
   );

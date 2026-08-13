@@ -1,6 +1,6 @@
 from typing import List, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, Header, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import asc
 import uuid
 
@@ -49,10 +49,11 @@ def get_applications(
     skip: int = 0,
     limit: int = 100,
 ) -> Any:
-    """Retrieve current user's job applications."""
+    """Retrieve current user's job applications with related job data eager-loaded."""
     applications = (
         db.query(JobApplication)
         .filter(JobApplication.user_id == current_user.id)
+        .options(joinedload(JobApplication.job))
         .offset(skip)
         .limit(limit)
         .all()
@@ -157,10 +158,11 @@ def user_timeline(
     *,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    limit: int = 100,
+    limit: int = Query(100, ge=1, le=500),
+    skip: int = Query(0, ge=0),
 ) -> Any:
     """Get all events across applications (global timeline page)."""
-    return get_all_events_for_user(db, current_user.id, limit)
+    return get_all_events_for_user(db, current_user.id, limit=limit, skip=skip)
 
 
 # --- Follow-up Center ---
@@ -175,34 +177,42 @@ def list_followups(
     include_past: bool = Query(
         False, description="Include already-passed follow-up dates"
     ),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
 ) -> Any:
     """List all applications that have a follow-up date set, soonest first."""
     from datetime import datetime, timezone
 
-    query = db.query(JobApplication).filter(
-        JobApplication.user_id == current_user.id,
-        JobApplication.follow_up_at.isnot(None),
+    query = (
+        db.query(JobApplication)
+        .filter(
+            JobApplication.user_id == current_user.id,
+            JobApplication.follow_up_at.isnot(None),
+        )
+        .options(joinedload(JobApplication.job))
     )
     if not include_past:
         query = query.filter(JobApplication.follow_up_at >= datetime.now(timezone.utc))
 
-    applications = query.order_by(asc(JobApplication.follow_up_at)).all()
+    applications = (
+        query.order_by(asc(JobApplication.follow_up_at))
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
-    items = []
-    for app in applications:
-        job = db.query(Job).filter(Job.id == app.job_id).first()
-        items.append(
-            FollowUpItem(
-                application_id=app.id,
-                job_title=job.title if job else "Unknown",
-                company=job.company if job else "Unknown",
-                status=app.status or "saved",
-                follow_up_at=app.follow_up_at,
-                follow_up_note=app.follow_up_note,
-                score=app.score,
-            )
+    return [
+        FollowUpItem(
+            application_id=app.id,
+            job_title=app.job.title if app.job else "Unknown",
+            company=app.job.company if app.job else "Unknown",
+            status=app.status or "saved",
+            follow_up_at=app.follow_up_at,
+            follow_up_note=app.follow_up_note,
+            score=app.score,
         )
-    return items
+        for app in applications
+    ]
 
 
 @router.put("/{app_id}/followup", response_model=JobApplicationResponse)
@@ -236,10 +246,14 @@ def get_application(
     current_user: User = Depends(get_current_user),
     app_id: uuid.UUID,
 ) -> Any:
-    """Get a single application."""
+    """Get a single application with job, resumes, and events eager-loaded."""
     application = (
         db.query(JobApplication)
         .filter(JobApplication.id == app_id, JobApplication.user_id == current_user.id)
+        .options(
+            joinedload(JobApplication.job),
+            joinedload(JobApplication.resumes),
+        )
         .first()
     )
     if not application:

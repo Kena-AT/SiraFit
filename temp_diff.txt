@@ -1,0 +1,16 @@
+diff --git a/frontend/src/routes/_app.applications.followups.tsx b/frontend/src/routes/_app.applications.followups.tsx
+index e1e1cea..71b0b53 100644
+--- a/frontend/src/routes/_app.applications.followups.tsx
++++ b/frontend/src/routes/_app.applications.followups.tsx
+@@ -195,8 +195,9 @@ function FollowUps() {
+     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["followups"] }),
+   });
+ 
+-  const overdue = followups.filter((f) => new Date(f.follow_up_at) < new Date());
+-  const upcoming = followups.filter((f) => new Date(f.follow_up_at) >= new Date());
++  const overdue = followups.filter((f) => !showPast && new Date(f.follow_up_at) < new Date());
++  const upcoming = followups.filter((f) => showPast || new Date(f.follow_up_at) >= new Date());
++  const past = showPast ? followups.filter((f) => new Date(f.follow_up_at) < new Date()) : [];
+ 
+   return (
+     <PageBody>

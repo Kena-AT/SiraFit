@@ -1,9 +1,25 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageBody } from "@/components/sirafit/shell";
-import { PageHeader, Panel, ScorePill, StatusPill } from "@/components/sirafit/bits";
+import { PageHeader, Panel, ScorePill, StatusPill, EmptyState } from "@/components/sirafit/bits";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getApplications, transitionApplicationStatus } from "@/lib/api/applications";
+import {
+  getApplications,
+  transitionApplicationStatus,
+  createApplication,
+  getFollowUps,
+} from "@/lib/api/applications";
+import { getJobs } from "@/lib/api/jobs";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 // Status columns for the Kanban board
 const STATUS_COLUMNS = [
@@ -26,15 +42,61 @@ export const Route = createFileRoute("/_app/applications/")({
 
 function Board() {
   const queryClient = useQueryClient();
+  const [addOpen, setAddOpen] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState<string>("");
+
   const { data: applications = [], isLoading } = useQuery({
     queryKey: ["applications"],
     queryFn: getApplications,
   });
 
+  // Live follow-up count — only upcoming (not past)
+  const { data: followups = [] } = useQuery({
+    queryKey: ["followups", false],
+    queryFn: () => getFollowUps(false),
+  });
+
+  // Jobs for "add application" dialog
+  const { data: jobsData, isLoading: jobsLoading } = useQuery({
+    queryKey: ["jobs-for-add-app"],
+    queryFn: () => getJobs({ limit: 200 }),
+    enabled: addOpen,
+  });
+  const jobs = jobsData?.jobs ?? [];
+
   const transitionMutation = useMutation({
     mutationFn: ({ id, toStatus }: { id: string; toStatus: string }) =>
       transitionApplicationStatus(id, toStatus),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["applications"] }),
+    // Optimistic update: move card immediately
+    onMutate: async ({ id, toStatus }) => {
+      await queryClient.cancelQueries({ queryKey: ["applications"] });
+      const previous = queryClient.getQueryData<typeof applications>(["applications"]);
+      queryClient.setQueryData<typeof applications>(["applications"], (old = []) =>
+        old.map((app: any) => (app.id === id ? { ...app, status: toStatus } : app))
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context: any) => {
+      // Roll back
+      queryClient.setQueryData(["applications"], context?.previous);
+      toast.error("Invalid status transition. That move isn't allowed.");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["applications"] });
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (jobId: string) => createApplication(jobId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["applications"] });
+      setAddOpen(false);
+      setSelectedJobId("");
+      toast.success("Application added to board");
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to create application");
+    },
   });
 
   // Group applications by status
@@ -68,14 +130,69 @@ function Board() {
     );
   }
 
+  const followupCount = followups.length;
+
   return (
     <PageBody>
+      {/* Add Application Dialog */}
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add application</DialogTitle>
+            <DialogDescription>
+              Choose a job you've already imported to track as an application.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-72 overflow-y-auto space-y-1 border rounded-md p-2">
+            {jobsLoading ? (
+              <div className="p-4 text-sm text-muted-foreground">Loading jobs…</div>
+            ) : jobs.length === 0 ? (
+              <div className="p-4 text-sm text-muted-foreground">
+                No jobs imported yet.{" "}
+                <Link to="/jobs/import" className="underline" onClick={() => setAddOpen(false)}>
+                  Import jobs first →
+                </Link>
+              </div>
+            ) : (
+              jobs.map((job: any) => (
+                <button
+                  key={job.id}
+                  onClick={() => setSelectedJobId(job.id)}
+                  className={`w-full rounded border p-2.5 text-left text-xs transition-colors hover:bg-muted/40 ${
+                    selectedJobId === job.id
+                      ? "border-[color:var(--brand)] bg-[color:var(--brand)]/5 font-medium"
+                      : "border-border"
+                  }`}
+                >
+                  <span className="font-medium">{job.company}</span>
+                  <span className="ml-2 text-muted-foreground">{job.title}</span>
+                </button>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setAddOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={!selectedJobId || createMutation.isPending}
+              onClick={() => createMutation.mutate(selectedJobId)}
+            >
+              {createMutation.isPending ? "Adding…" : "Add application"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <PageHeader
         eyebrow="Pipeline"
         title="Applications board"
         description="Drag through the hiring lifecycle. Status transitions are deterministic - no AI auto-moves."
         actions={
           <>
+            <Button variant="outline" size="sm" onClick={() => setAddOpen(true)}>
+              + Add application
+            </Button>
             <Link
               to="/applications/timeline"
               className="rounded-md bg-card px-3 py-1.5 text-sm font-medium ring-1 ring-border hover:bg-muted"
@@ -86,7 +203,7 @@ function Board() {
               to="/applications/followups"
               className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background ring-1 ring-foreground hover:bg-foreground/90"
             >
-              Follow-ups · 4
+              Follow-ups{followupCount > 0 ? ` · ${followupCount}` : ""}
             </Link>
           </>
         }
@@ -113,7 +230,7 @@ function Board() {
                     empty
                   </div>
                 ) : (
-                  items.map((app: any, i: number) => (
+                  items.map((app: any) => (
                     <Link
                       key={app.id}
                       to="/applications/$id"

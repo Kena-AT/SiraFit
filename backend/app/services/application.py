@@ -53,7 +53,7 @@ VALID_NEXT = {
     "offer": {"rejected", "archived"},
     # Terminal states
     "rejected": {"archived"},
-    "withdrawn": {"archived"},
+    "withdrawn": {"saved", "preparing", "applied", "archived"},
     "archived": set(),
 }
 
@@ -356,6 +356,7 @@ def get_all_events_for_user(
     db: Session,
     user_id: uuid.UUID,
     limit: int = 100,
+    skip: int = 0,
 ) -> List["ApplicationEvent"]:
     """Fetch recent events across all applications for the user's timeline page."""
 
@@ -363,6 +364,7 @@ def get_all_events_for_user(
         db.query(ApplicationEvent)
         .filter(ApplicationEvent.user_id == user_id)
         .order_by(ApplicationEvent.occurred_at.desc())
+        .offset(skip)
         .limit(limit)
         .all()
     )
