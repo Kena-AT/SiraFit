@@ -119,7 +119,7 @@ function Builder() {
         description="Select a job and template, then generate a tailored resume."
         actions={
           <>
-            <Button variant="outline" disabled={generating}>
+            <Button variant="outline" disabled={generating} onClick={handleGenerate}>
               Re-validate
             </Button>
             <Button
