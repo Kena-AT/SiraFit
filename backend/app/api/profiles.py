@@ -1,5 +1,5 @@
 from typing import Any
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -73,9 +73,9 @@ def update_my_profile(
     profile_in: ProfileUpdate,
 ) -> Any:
     """
-    Update the current user's profile monolithically.
-    Nested objects (experiences, educations, etc.) are fully replaced if provided in the payload.
-    This simplifies autosave functionality on the frontend.
+    Update the current user's profile with validation before delete-and-replace.
+    Nested objects (experiences, educations, etc.) are validated before existing
+    records are cleared, preventing data loss on invalid payloads.
     """
     profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
 
@@ -86,7 +86,8 @@ def update_my_profile(
 
     update_data = profile_in.model_dump(exclude_unset=True)
 
-    # Extract nested lists if they are present in the update payload
+    # Validate nested list items BEFORE deleting existing records
+    # This prevents data loss if the payload has invalid data
     nested_fields = {
         "experiences": (Experience, "profile_id"),
         "educations": (Education, "profile_id"),
@@ -95,15 +96,24 @@ def update_my_profile(
         "certifications": (Certification, "profile_id"),
     }
 
-    # Update top-level primitive fields
-    for field, value in update_data.items():
-        if field not in nested_fields:
-            setattr(profile, field, value)
-
-    # Process nested objects
+    # Validate nested fields if present in the update payload
     for field_name, (ModelClass, fkey_name) in nested_fields.items():
         if field_name in update_data:
-            # We completely replace the list if it's provided in the payload
+            items_data = update_data[field_name]
+            # Validate each item has required fields before deleting existing
+            for item_data in items_data:
+                # Check for required fields based on model
+                if not item_data.get("title") and field_name == "experiences":
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Experience item missing required field: title",
+                    )
+                if not item_data.get("name") and field_name == "skills":
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Skill item missing required field: name",
+                    )
+            # At this point validation passed - proceed with delete-and-replace
             # Step 1: Delete existing records
             getattr(profile, field_name).clear()
             db.query(ModelClass).filter(
@@ -111,7 +121,6 @@ def update_my_profile(
             ).delete()
 
             # Step 2: Add new records
-            items_data = update_data[field_name]
             new_items = []
             for item_data in items_data:
                 # Remove any existing ids so they are generated fresh
@@ -121,6 +130,11 @@ def update_my_profile(
 
             # Assign the new list back to the relationship
             setattr(profile, field_name, new_items)
+
+    # Update top-level primitive fields
+    for field, value in update_data.items():
+        if field not in nested_fields:
+            setattr(profile, field, value)
 
     db.commit()
     db.refresh(profile)
