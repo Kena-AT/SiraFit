@@ -119,29 +119,32 @@ def generate_analytics_metrics(db: Session, user_id: uuid.UUID) -> Dict[str, Any
     # Count applications per job title (normalised), take the top 8.
     from collections import Counter
 
+    # Get jobs the user has applied to (not all jobs globally)
+    applied_job_ids = [a.job_id for a in applications]
     title_counter: Counter = Counter()
-    all_imported_jobs = db.query(Job).all()
-    for job in all_imported_jobs:
-        # Normalise: strip seniority words and lowercase
-        import re
+    if applied_job_ids:
+        jobs = db.query(Job).filter(Job.id.in_(applied_job_ids)).all()
+        for job in jobs:
+            # Normalise: strip seniority words and lowercase
+            import re
 
-        normalised = (
-            re.sub(
-                r"\b(senior|junior|staff|principal|lead|mid|associate|sr\.|jr\.)\b",
-                "",
-                job.title,
-                flags=re.IGNORECASE,
+            normalised = (
+                re.sub(
+                    r"\b(senior|junior|staff|principal|lead|mid|associate|sr\.|jr\.)\b",
+                    "",
+                    job.title,
+                    flags=re.IGNORECASE,
+                )
+                .strip()
+                .title()
             )
-            .strip()
-            .title()
-        )
-        if normalised:
-            title_counter[normalised] += 1
+            if normalised:
+                title_counter[normalised] += 1
 
     top_roles = title_counter.most_common(8)
     market_demand = []
 
-    # Calculate market trend using historical snapshots
+    # Calculate market trend using historical snapshots (user-specific)
     from app.models.analytics import AnalyticsSnapshot
     from datetime import timedelta
 
@@ -149,15 +152,19 @@ def generate_analytics_metrics(db: Session, user_id: uuid.UUID) -> Dict[str, Any
     current_period_start = now - timedelta(days=30)
     previous_period_start = now - timedelta(days=60)
 
-    # Count jobs in current and previous periods
+    # Count jobs created by/imported by this user in current/previous periods
     current_count = (
         db.query(Job)
-        .filter(Job.created_at >= current_period_start)
+        .filter(
+            Job.user_id == user_id,
+            Job.created_at >= current_period_start,
+        )
         .count()
     )
     previous_count = (
         db.query(Job)
         .filter(
+            Job.user_id == user_id,
             Job.created_at >= previous_period_start,
             Job.created_at < current_period_start,
         )
