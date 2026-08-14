@@ -68,15 +68,28 @@ function ResumeProfilesPage() {
               >
                 Edit →
               </Link>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  alert("Profile duplicated successfully.");
-                }}
-              >
-                Duplicate
-              </Button>
+<div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={async () => {
+                    if (!profile) return;
+                    const duplicate = {
+                      ...profile,
+                      first_name: `${profile.first_name} (copy)`,
+                      last_name: `${profile.last_name} (copy)`,
+                    };
+                    try {
+                      const updated = await updateProfile(duplicate);
+                      setProfile(updated);
+                      alert("Profile duplicated successfully!");
+                    } catch (e: any) {
+                      setError(e.message);
+                      alert("Failed to duplicate profile");
+                    }
+                  }}>
+                  Duplicate
+                </Button>
             </div>
           </div>
         ) : (
