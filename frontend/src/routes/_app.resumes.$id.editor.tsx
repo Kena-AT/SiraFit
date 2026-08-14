@@ -24,7 +24,7 @@ function ResumeEditorPage() {
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        const data = await getProfile();
+        const data = await getProfile(id ?? undefined);
         setProfile(data);
       } catch (error) {
         console.error("Failed to load profile:", error);
@@ -33,7 +33,7 @@ function ResumeEditorPage() {
       }
     };
     loadProfile();
-  }, []);
+  }, [id]);
 
   const debouncedSave = useCallback(
     useDebouncedCallback(async (profileData: Profile) => {
