@@ -17,6 +17,7 @@ function SkillsInsights() {
   } = useQuery({
     queryKey: ["analytics-metrics"],
     queryFn: getAnalyticsMetrics,
+    staleTime: 60000, // 60 seconds to match backend cache TTL
   });
 
   const skillCoverage = metrics?.skill_coverage || [];
