@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, ScoreMeter, Tag } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,8 @@ function Builder() {
   const [versions, setVersions] = useState<ResumeVersion[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  const creatingRef = useRef(false);
+
   useEffect(() => {
     getJobs({ limit: 200 })
       .then((res) => {
@@ -56,13 +58,19 @@ function Builder() {
     getResumes()
       .then(async (res) => {
         if (res.length === 0) {
-          const created = await createResume({
-            title: "My Resume",
-            content: "{}",
-            is_primary: true,
-          });
-          setResumes([created]);
-          setSelectedResume(created);
+          if (creatingRef.current) return;
+          creatingRef.current = true;
+          try {
+            const created = await createResume({
+              title: "My Resume",
+              content: "{}",
+              is_primary: true,
+            });
+            setResumes([created]);
+            setSelectedResume(created);
+          } finally {
+            creatingRef.current = false;
+          }
         } else {
           setResumes(res);
           setSelectedResume(res[0]);
