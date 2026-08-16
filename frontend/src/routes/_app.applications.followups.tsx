@@ -17,7 +17,7 @@ export const Route = createFileRoute("/_app/applications/followups")({
   component: FollowUps,
 });
 
-// ── helpers ────────────────────────────────────────────────────────────────
+// ── helpers ─────────────────────────────────────────────────────────────────
 
 function formatDue(dateStr: string) {
   const d = new Date(dateStr);
@@ -35,7 +35,7 @@ function formatDue(dateStr: string) {
   };
 }
 
-// ── Add / Edit dialog (inline, no modal library needed) ────────────────────
+// ── Add / Edit dialog (inline, no modal library needed) ─────────────────────
 
 interface SetReminderFormProps {
   applicationId: string;
@@ -119,7 +119,7 @@ function SetReminderForm({ applicationId, current, onClose }: SetReminderFormPro
   );
 }
 
-// ── New reminder picker: choose from existing applications ─────────────────
+// ── New reminder picker: choose from existing applications ──────────────────
 
 function NewReminderPicker({ onClose }: { onClose: () => void }) {
   const [step, setStep] = useState<"pick" | "set">("pick");
@@ -254,17 +254,31 @@ function FollowUps() {
               />
             </Panel>
           )}
-          <Panel title={`Upcoming (${upcoming.length})`}>
-            {upcoming.length === 0 ? (
-              <div className="px-4 py-6 text-sm text-muted-foreground">No upcoming follow-ups.</div>
-            ) : (
-              <FollowUpList
-                items={upcoming}
-                editingId={editingId}
-                setEditingId={setEditingId}
-                onClear={(id) => clearMutation.mutate(id)}
-              />
-            )}
+          {/* When showPast is true, split into Past and Upcoming; otherwise just Overdue/Upcoming */}
+          {showPast ? (
+            <>
+              {past.length > 0 && (
+                <Panel title={`Past (${past.length})`}>
+                  <FollowUpList
+                    items={past}
+                    editingId={editingId}
+                    setEditingId={setEditingId}
+                    onClear={(id) => clearMutation.mutate(id)}
+                  />
+                </Panel>
+              )}
+              <Panel title={`Upcoming (${upcoming.length})`}>
+{upcoming.length === 0 ? (
+  <div className="px-4 py-6 text-sm text-muted-foreground">No upcoming follow-ups.</div>
+) : (
+  <FollowUpList
+    items={upcoming}
+    editingId={editingId}
+    setEditingId={setEditingId}
+    onClear={(id) => clearMutation.mutate(id)}
+  />
+)}
+            </Panel>
           </Panel>
         </div>
       )}
@@ -279,16 +293,20 @@ function FollowUpList({
   editingId,
   setEditingId,
   onClear,
+  showPast = false,
 }: {
   items: FollowUpItem[];
   editingId: string | null;
   setEditingId: (id: string | null) => void;
-  onClear: (id: string) => void;
+  onClear: (id) => void;
+  showPast?: boolean;
 }) {
   return (
     <ul className="divide-y divide-border">
       {items.map((f) => {
         const due = formatDue(f.follow_up_at);
+        // When showPast is true, don't filter out past items as overdue
+        const isOverdue = !showPast && new Date(f.follow_up_at) < new Date();
         return (
           <li key={f.application_id} className="px-4 py-3.5 space-y-1">
             <div className="flex items-center justify-between gap-4">
@@ -312,7 +330,7 @@ function FollowUpList({
               <div className="flex items-center gap-3 shrink-0">
                 <span
                   className={`font-mono text-[11px] tabular-nums ${
-                    due.overdue ? "font-semibold text-destructive" : "text-muted-foreground"
+                    isOverdue ? "font-semibold text-destructive" : "text-muted-foreground"}
                   }`}
                 >
                   {due.label}
