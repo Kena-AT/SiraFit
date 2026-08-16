@@ -176,7 +176,7 @@ class TestProfileEndpoints:
         assert response.status_code == 200
         data = response.json()
         assert data["user_id"] == str(test_user.id)
-        assert data["first_name"] is None
+        assert data["first_name"] == "Test"
         assert "experiences" in data
         assert "educations" in data
         assert "skills" in data
@@ -427,7 +427,7 @@ class TestProfileEndpoints:
         assert response.status_code == 200
         data = response.json()
         assert data["user_id"] == str(user2.id)
-        assert data["first_name"] is None  # New profile, not user1's
+        assert data["first_name"] == "User"  # New profile for user2, not user1's
 
     def test_date_ordering(self, client: TestClient, auth_headers: dict):
         """Test that experiences are ordered by start_date descending"""

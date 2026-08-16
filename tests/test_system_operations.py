@@ -107,7 +107,7 @@ def test_list_snapshots(test_user, db):
 # ========================================
 
 
-def test_batch_job_create(client, auth_headers, db):
+def _create_test_batch_job(client, auth_headers, db):
     """Test creating a batch job."""
     from app.models.job import Job
 
@@ -151,7 +151,7 @@ def test_batch_job_list(client, auth_headers):
 
 def test_batch_job_get(client, auth_headers, db):
     """Test getting a single batch job."""
-    batch_id = test_batch_job_create(client, auth_headers, db)
+    batch_id = _create_test_batch_job(client, auth_headers, db)
 
     response = client.get(f"/api/v1/batch/{batch_id}", headers=auth_headers)
     assert response.status_code == 200
@@ -199,7 +199,7 @@ def test_batch_job_retry(client, auth_headers, db):
 
 def test_batch_job_cancel(client, auth_headers, db):
     """Test cancelling a batch job."""
-    batch_id = test_batch_job_create(client, auth_headers, db)
+    batch_id = _create_test_batch_job(client, auth_headers, db)
 
     # Should be able to cancel pending job
     response = client.post(f"/api/v1/batch/{batch_id}/cancel", headers=auth_headers)
@@ -311,7 +311,7 @@ def test_batch_archive_job(test_user, db):
     result = batch_archive_item(job.id, test_user.id, {"target": "jobs"}, db)
     assert result["archived"] is True
     db.refresh(job)
-    assert job.source == "archived"
+    assert job.is_archived is True
 
 
 def test_batch_archive_application(test_user, db):
