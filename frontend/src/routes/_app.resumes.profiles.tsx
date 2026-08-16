@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Tag } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
-import { getProfile } from "@/lib/api/profiles";
+import { getProfile, updateProfile } from "@/lib/api/profiles";
 import { Profile } from "@/types/profile";
 
 export const Route = createFileRoute("/_app/resumes/profiles")({
@@ -14,6 +14,7 @@ export const Route = createFileRoute("/_app/resumes/profiles")({
 function ResumeProfilesPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     getProfile()
@@ -37,6 +38,13 @@ function ResumeProfilesPage() {
           </Link>
         }
       />
+
+      {error && (
+        <div className="mb-4 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
       <div className="grid gap-3 md:grid-cols-3">
         {loading ? (
           <div>Loading profiles...</div>
@@ -68,7 +76,7 @@ function ResumeProfilesPage() {
               >
                 Edit →
               </Link>
-<div className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -90,6 +98,7 @@ function ResumeProfilesPage() {
                   }}>
                   Duplicate
                 </Button>
+              </div>
             </div>
           </div>
         ) : (
