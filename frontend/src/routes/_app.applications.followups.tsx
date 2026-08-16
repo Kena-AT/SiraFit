@@ -254,20 +254,18 @@ function FollowUps() {
               />
             </Panel>
           )}
-          {/* When showPast is true, split into Past and Upcoming; otherwise just Overdue/Upcoming */}
-          {showPast ? (
-            <>
-              {past.length > 0 && (
-                <Panel title={`Past (${past.length})`}>
-                  <FollowUpList
-                    items={past}
-                    editingId={editingId}
-                    setEditingId={setEditingId}
-                    onClear={(id) => clearMutation.mutate(id)}
-                  />
-                </Panel>
-              )}
-              <Panel title={`Upcoming (${upcoming.length})`}>
+           {/* When showPast is true, also show a Past panel before Upcoming */}
+           {showPast && past.length > 0 && (
+             <Panel title={`Past (${past.length})`}>
+               <FollowUpList
+                 items={past}
+                 editingId={editingId}
+                 setEditingId={setEditingId}
+                 onClear={(id) => clearMutation.mutate(id)}
+               />
+             </Panel>
+           )}
+           <Panel title={`Upcoming (${upcoming.length})`}>
 {upcoming.length === 0 ? (
   <div className="px-4 py-6 text-sm text-muted-foreground">No upcoming follow-ups.</div>
 ) : (
@@ -278,10 +276,10 @@ function FollowUps() {
     onClear={(id) => clearMutation.mutate(id)}
   />
 )}
-            </Panel>
           </Panel>
         </div>
       )}
+
     </PageBody>
   );
 }
@@ -298,7 +296,7 @@ function FollowUpList({
   items: FollowUpItem[];
   editingId: string | null;
   setEditingId: (id: string | null) => void;
-  onClear: (id) => void;
+  onClear: (id: string) => void;
   showPast?: boolean;
 }) {
   return (
