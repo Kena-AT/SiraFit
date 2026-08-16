@@ -3,6 +3,15 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, StatusPill } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
+import { useState } from "react";
+import {
+  getNotifications,
+  getUnreadCount,
+  markNotificationRead,
+  markAllNotificationsRead,
+  deleteNotification,
+} from "@/lib/api/notifications";
 
 export const Route = createFileRoute("/_app/notifications")({
   head: () => ({ meta: [{ title: "Notifications · SiraFit" }] }),
@@ -11,29 +20,58 @@ export const Route = createFileRoute("/_app/notifications")({
 
 function Notifications() {
   const queryClient = useQueryClient();
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [limit, setLimit] = useState<number>(50);
 
   const {
     data: response,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["notifications"],
-    queryFn: () => getNotifications({ limit: 50 }),
+    queryKey: ["notifications", statusFilter, limit],
+    queryFn: () =>
+      getNotifications({
+        status: statusFilter === "all" ? undefined : statusFilter,
+        limit,
+      }),
+    refetchInterval: 5000,
+  });
+
+  const { data: unreadData } = useQuery({
+    queryKey: ["notifications-unread-count"],
+    queryFn: getUnreadCount,
+    refetchInterval: 5000,
   });
 
   const notifications = response?.notifications || [];
+  const total = response?.total || 0;
+  const unreadCount = unreadData?.count || 0;
 
   const markReadMutation = useMutation({
     mutationFn: markNotificationRead,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
+    },
   });
 
   const markAllReadMutation = useMutation({
     mutationFn: markAllNotificationsRead,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
+    },
   });
 
-  if (isLoading) {
+  const deleteMutation = useMutation({
+    mutationFn: deleteNotification,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
+    },
+  });
+
+  if (isLoading && limit === 50) {
     return (
       <PageBody>
         <PageHeader eyebrow="System" title="Notifications" description="Loading..." />
@@ -57,10 +95,6 @@ function Notifications() {
     );
   }
 
-  const unreadCount = notifications.filter(
-    (n: (typeof notifications)[number]) => n.status === "unread",
-  ).length;
-
   return (
     <PageBody>
       <PageHeader
@@ -79,12 +113,28 @@ function Notifications() {
           )
         }
       />
+      <div className="mb-4 flex items-center gap-2">
+        {["all", "unread", "read"].map((tab) => (
+          <Button
+            key={tab}
+            variant={statusFilter === tab ? "default" : "outline"}
+            size="sm"
+            onClick={() => {
+              setStatusFilter(tab);
+              setLimit(50);
+            }}
+            className="capitalize text-xs"
+          >
+            {tab}
+          </Button>
+        ))}
+      </div>
       <Panel>
         <ul className="divide-y divide-border">
           {notifications.length === 0 ? (
-            <li className="px-4 py-8 text-center text-muted-foreground">No notifications yet</li>
+            <li className="px-4 py-8 text-center text-muted-foreground">No notifications found</li>
           ) : (
-            notifications.map((n: (typeof notifications)[number]) => (
+            notifications.map((n) => (
               <li
                 key={n.id}
                 className={`flex items-start gap-3 px-4 py-3 ${n.status === "unread" ? "bg-muted/20" : ""}`}
@@ -111,43 +161,30 @@ function Notifications() {
                       Mark read
                     </button>
                   )}
+                  <button
+                    onClick={() => deleteMutation.mutate(n.id)}
+                    className="text-muted-foreground hover:text-destructive p-1"
+                    title="Delete notification"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </li>
             ))
           )}
         </ul>
+        {notifications.length < total && (
+          <div className="p-4 border-t border-border text-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setLimit((prev) => prev + 50)}
+            >
+              Load more ({total - notifications.length} remaining)
+            </Button>
+          </div>
+        )}
       </Panel>
     </PageBody>
   );
-}
-
-async function getNotifications(params?: { status?: string; skip?: number; limit?: number }) {
-  const search = new URLSearchParams();
-  if (params?.status) search.set("status", params.status);
-  if (params?.skip !== undefined) search.set("skip", params.skip.toString());
-  if (params?.limit !== undefined) search.set("limit", params.limit.toString());
-
-  const response = await fetch(`/api/v1/notifications?${search}`, {
-    credentials: "include",
-  });
-  if (!response.ok) throw new Error("Failed to fetch notifications");
-  return response.json();
-}
-
-async function markNotificationRead(id: string) {
-  const response = await fetch(`/api/v1/notifications/${id}/read`, {
-    method: "POST",
-    credentials: "include",
-  });
-  if (!response.ok) throw new Error("Failed to mark notification as read");
-  return response.json();
-}
-
-async function markAllNotificationsRead() {
-  const response = await fetch("/api/v1/notifications/mark-all-read", {
-    method: "POST",
-    credentials: "include",
-  });
-  if (!response.ok) throw new Error("Failed to mark all notifications as read");
-  return response.json();
 }
