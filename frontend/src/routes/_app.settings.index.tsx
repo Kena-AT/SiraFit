@@ -100,11 +100,14 @@ function SettingsIndex() {
 
   const handlePasswordSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    passwordMutation.mutate(formData);
-    if (passwordMutation.isSuccess) {
-      e.currentTarget.reset();
-    }
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    passwordMutation.mutate(formData, {
+      onSuccess: () => {
+        toast.success("Password updated successfully");
+        form.reset();
+      },
+    });
   };
 
   if (isLoading)
