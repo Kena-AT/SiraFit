@@ -98,5 +98,6 @@ export const regenerateCoverLetter = async (
 };
 
 export const exportCoverLetterPdf = (letterId: string): string => {
-  return `/api/v1/cover-letters/${letterId}/export?format=pdf`;
+  const apiBase = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+  return `${apiBase}/api/v1/cover-letters/${letterId}/export?format=pdf`;
 };
