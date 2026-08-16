@@ -97,16 +97,22 @@ def generate_analytics_metrics(db: Session, user_id: uuid.UUID) -> Dict[str, Any
     # Get all skills from jobs the user has applied to
     job_ids = [a.job_id for a in applications]
     all_job_skills = set()
+    skill_job_counts: Dict[str, int] = {}
     if job_ids:
         jobs = db.query(Job).filter(Job.id.in_(job_ids)).all()
         for job in jobs:
             if job.tags:
-                all_job_skills.update(s.lower() for s in job.tags)
+                for tag in job.tags:
+                    tag_lower = tag.lower()
+                    all_job_skills.add(tag_lower)
+                    skill_job_counts[tag_lower] = skill_job_counts.get(tag_lower, 0) + 1
 
+    total_applied_with_skills = len(jobs) if job_ids else 0
     skill_coverage = []
     for skill in all_job_skills:
         you = 100 if skill in user_skills else 0
-        market = 100  # placeholder - could be calculated from all jobs
+        # Market = proportion of applied jobs that have this skill, as a percentage
+        market = int(skill_job_counts.get(skill, 0) / max(1, total_applied_with_skills) * 100)
         skill_coverage.append(
             {
                 "skill": skill.title(),
@@ -152,19 +158,21 @@ def generate_analytics_metrics(db: Session, user_id: uuid.UUID) -> Dict[str, Any
     current_period_start = now - timedelta(days=30)
     previous_period_start = now - timedelta(days=60)
 
-    # Count jobs created by/imported by this user in current/previous periods
+    # Count jobs applied to by this user in current/previous periods
     current_count = (
         db.query(Job)
+        .join(JobApplication, JobApplication.job_id == Job.id)
         .filter(
-            Job.user_id == user_id,
+            JobApplication.user_id == user_id,
             Job.created_at >= current_period_start,
         )
         .count()
     )
     previous_count = (
         db.query(Job)
+        .join(JobApplication, JobApplication.job_id == Job.id)
         .filter(
-            Job.user_id == user_id,
+            JobApplication.user_id == user_id,
             Job.created_at >= previous_period_start,
             Job.created_at < current_period_start,
         )
@@ -179,7 +187,8 @@ def generate_analytics_metrics(db: Session, user_id: uuid.UUID) -> Dict[str, Any
     trend_str = f"{'+' if trend_pct >= 0 else ''}{trend_pct:.1f}%"
 
     for rank, (role, count) in enumerate(top_roles):
-        demand = max(10, 100 - rank * 10)
+        # Scale demand from postings count: each posting contributes ~10%, capped at 100%
+        demand = min(100, count * 10)
         market_demand.append(
             {
                 "role": role,
