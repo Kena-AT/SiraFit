@@ -15,12 +15,12 @@ class Notification(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     title = Column(String(255), nullable=False)
     body = Column(String(2000), nullable=False)
     kind = Column(String(50), nullable=False)  # alert, reminder, system_event
-    status = Column(String(20), nullable=False, default="unread")  # unread, read
+    status = Column(String(20), nullable=False, default="unread", index=True)  # unread, read
     read_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
