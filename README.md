@@ -40,14 +40,14 @@ SiraFit is your personal "Command Center" for job hunting. Instead of juggling s
 
 ## 🛠 Tech Stack
 
-| Layer              | Technology                                           |
-| ------------------ | ---------------------------------------------------- |
-| **Frontend** | React (TanStack Start), TypeScript, Tailwind CSS v4 |
-| **Backend**  | Python 3.12, FastAPI, SQLAlchemy, Pydantic           |
-| **Database** | PostgreSQL, Redis (for caching & background tasks)   |
-| **Worker**   | Celery + Redis for asynchronous processing           |
-| **Auth**     | Secure JWT with HttpOnly cookies & Refresh Tokens    |
-| **Email**    | Brevo SMTP for notifications and verification        |
+| Layer              | Technology                                             |
+| ------------------ | ------------------------------------------------------ |
+| **Frontend** | React 19 (TanStack Start), TypeScript, Tailwind CSS v4 |
+| **Backend**  | Python 3.12, FastAPI, SQLAlchemy, Pydantic             |
+| **Database** | PostgreSQL, Redis (for caching & background tasks)     |
+| **Worker**   | Celery + Redis for asynchronous processing             |
+| **Auth**     | Secure JWT with HttpOnly cookies & Refresh Tokens      |
+| **Email**    | Brevo SMTP for notifications and verification          |
 
 ---
 
