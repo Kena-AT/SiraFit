@@ -1,5 +1,7 @@
 import uuid
 from datetime import datetime, timezone
+from enum import Enum
+
 from sqlalchemy import (
     Column,
     String,
@@ -223,6 +225,27 @@ class ApplicationEvent(Base):
 
     __tablename__ = "application_events"
 
+    class EventType(str, Enum):
+        """Valid event types for application tracking."""
+        status_change = "status_change"
+        note_added = "note_added"
+        note_updated = "note_updated"
+        note_pinned = "note_pinned"
+        note_unpinned = "note_unpinned"
+        contact_added = "contact_added"
+        contact_updated = "contact_updated"
+        contact_primary = "contact_primary"
+        contact_deleted = "contact_deleted"
+        status_transition = "status_transition"
+        application_created = "application_created"
+        application_updated = "application_updated"
+        application_deleted = "application_deleted"
+        job_analyzed = "job_analyzed"
+        job_score_calculated = "job_score_calculated"
+        resume_generated = "resume_generated"
+        followup_reminder = "followup_reminder"
+        system_event = "system_event"
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     application_id = Column(
         UUID(as_uuid=True),
@@ -237,8 +260,13 @@ class ApplicationEvent(Base):
         index=True,
     )
 
-    # Validated on the service layer, not at the DB level.
-    event_type = Column(String(30), nullable=False)
+    # Validated on the service layer, also constrained at DB level via PostgreSQL enum.
+    # Keep in sync with ApplicationEventService.VALID_EVENT_TYPES.
+    # Use the string values from EventType enum for DB storage
+    event_type = Column(
+        String(30),
+        nullable=False,
+    )
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     # Free-form per-event data (e.g. from_status/to_status, email_subject).

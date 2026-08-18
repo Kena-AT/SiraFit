@@ -21,11 +21,19 @@ class ExperienceBase(ProfileBaseModel):
 
 
 class ExperienceCreate(ExperienceBase):
-    pass
+    """Create a new experience entry.
+
+    Inherits all fields from ExperienceBase; exists as a type marker so
+    isinstance checks and type hints work without redeclaring fields.
+    """
 
 
 class ExperienceUpdate(ExperienceBase):
-    pass
+    """Update experience fields.
+
+    Inherits all fields from ExperienceBase; exists as a type marker so
+    isinstance checks and type hints work without redeclaring fields.
+    """
 
 
 class ExperienceResponse(ExperienceBase):
@@ -43,11 +51,19 @@ class EducationBase(ProfileBaseModel):
 
 
 class EducationCreate(EducationBase):
-    pass
+    """Create a new education entry.
+
+    Inherits all fields from EducationBase; exists as a type marker so
+    isinstance checks and type hints work without redeclaring fields.
+    """
 
 
 class EducationUpdate(EducationBase):
-    pass
+    """Update education fields.
+
+    Inherits all fields from EducationBase; exists as a type marker so
+    isinstance checks and type hints work without redeclaring fields.
+    """
 
 
 class EducationResponse(EducationBase):
@@ -62,11 +78,19 @@ class SkillBase(ProfileBaseModel):
 
 
 class SkillCreate(SkillBase):
-    pass
+    """Create a new skill entry.
+
+    Inherits all fields from SkillBase; exists as a type marker so
+    isinstance checks and type hints work without redeclaring fields.
+    """
 
 
 class SkillUpdate(SkillBase):
-    pass
+    """Update skill fields.
+
+    Inherits all fields from SkillBase; exists as a type marker so
+    isinstance checks and type hints work without redeclaring fields.
+    """
 
 
 class SkillResponse(SkillBase):
@@ -83,11 +107,19 @@ class ProjectBase(ProfileBaseModel):
 
 
 class ProjectCreate(ProjectBase):
-    pass
+    """Create a new project entry.
+
+    Inherits all fields from ProjectBase; exists as a type marker so
+    isinstance checks and type hints work without redeclaring fields.
+    """
 
 
 class ProjectUpdate(ProjectBase):
-    pass
+    """Update project fields.
+
+    Inherits all fields from ProjectBase; exists as a type marker so
+    isinstance checks and type hints work without redeclaring fields.
+    """
 
 
 class ProjectResponse(ProjectBase):
@@ -105,11 +137,19 @@ class CertificationBase(ProfileBaseModel):
 
 
 class CertificationCreate(CertificationBase):
-    pass
+    """Create a new certification entry.
+
+    Inherits all fields from CertificationBase; exists as a type marker so
+    isinstance checks and type hints work without redeclaring fields.
+    """
 
 
 class CertificationUpdate(CertificationBase):
-    pass
+    """Update certification fields.
+
+    Inherits all fields from CertificationBase; exists as a type marker so
+    isinstance checks and type hints work without redeclaring fields.
+    """
 
 
 class CertificationResponse(CertificationBase):

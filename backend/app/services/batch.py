@@ -64,8 +64,8 @@ def _run_batch_job(batch_job_id: uuid.UUID) -> dict:
         params = batch_job.payload.get("params", {})
 
         for item_id in batch_job.payload["job_ids"]:
-            # Check cancel flag
-            db.refresh(batch_job)
+            # Check cancel flag (re-query to get latest cancel_requested state)
+            db.refresh(batch_job, attribute_names=["cancel_requested"])
             if batch_job.cancel_requested:
                 batch_job.status = "cancelled"
                 batch_job.completed_at = _utcnow()

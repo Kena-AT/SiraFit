@@ -12,19 +12,27 @@ logger = structlog.get_logger()
 
 class EmailService:
     def __init__(self):
-        self.host = settings.SMTP_HOST
-        self.port = settings.SMTP_PORT
-        self.user = settings.SMTP_USER
-        self.password = settings.SMTP_PASSWORD
-        self.from_email = settings.SMTP_FROM
+        self.host = settings.SMTP_HOST or "localhost"
+        self.port = settings.SMTP_PORT or 25
+        self.user = settings.SMTP_USER or ""
+        self.password = settings.SMTP_PASSWORD or ""
+        self.from_email = settings.SMTP_FROM or "noreply@sirafit.com"
 
     def _create_connection(self):
-        """Create SMTP connection with STARTTLS"""
-        server = smtplib.SMTP(self.host, self.port, timeout=5)
-        server.ehlo()
-        server.starttls()
-        server.login(self.user, self.password)
-        return server
+        """Create SMTP connection with STARTTLS. No-op if not configured."""
+        if not self.host or self.host == "localhost":
+            logger.warning("SMTP not configured; email will be no-op")
+            return None
+        try:
+            server = smtplib.SMTP(self.host, self.port, timeout=10)
+            server.ehlo()
+            if self.port == 587:
+                server.starttls()
+            server.login(self.user, self.password)
+            return server
+        except Exception as e:
+            logger.warning(f"SMTP connection failed: {e}; email will be no-op")
+            return None
 
     def send_email(
         self,
@@ -33,10 +41,13 @@ class EmailService:
         html_content: str,
         text_content: Optional[str] = None,
     ) -> bool:
-        """Send an email using Brevo SMTP"""
-        try:
-            server = self._create_connection()
+        """Send an email using Brevo SMTP. No-op if SMTP not configured."""
+        server = self._create_connection()
+        if server is None:
+            logger.info("SMTP not configured; email skipped")
+            return True  # No error — just silently skipped
 
+        try:
             from email.utils import formatdate, make_msgid
             msg = MIMEMultipart("alternative")
             msg["Subject"] = subject

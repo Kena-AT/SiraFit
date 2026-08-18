@@ -158,17 +158,10 @@ async def generate_cover_letter(
     )
 
     # Full 7-provider resolution, matching resume_generation.py / job_analysis.py.
-    # ponytail: duplicated provider-key map; extract to a shared helper if a
-    # 3rd caller appears.
-    setting_fields = {
-        "gemini": "GEMINI_API",
-        "openrouter": "OPENROUTER_API",
-        "anthropic": "ANTHROPIC_API",
-        "openai": "OPENAI_API",
-        "grok": "GROK_API",
-        "mistral": "MISTRAL_API",
-        "nvidia": "NVIDIA_API",
-    }
+    # Use shared provider-to-key mapping from config (config.PROVIDER_KEY_FIELDS)
+    # to avoid duplication across 3 service files.
+    from app.core.config import PROVIDER_KEY_FIELDS as setting_fields
+
     actual_provider = (provider or "").lower()
     actual_model = model or ""
     actual_key = api_key
