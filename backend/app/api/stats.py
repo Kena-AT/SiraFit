@@ -63,6 +63,7 @@ def _try_get_current_user(
         if user and user.is_active:
             return user
     except Exception:
+        db.rollback()
         logger.debug("Could not resolve authenticated user for landing stats", exc_info=True)
     return None
 
@@ -136,6 +137,7 @@ def get_landing_stats(
         return response
         
     except Exception as e:
+        db.rollback()
         # Log the error but don't crash the landing page
         # In production, you'd want proper error logging here
         raise HTTPException(
@@ -220,42 +222,46 @@ def _get_top_match_queue(
     if current_user is None:
         return []
 
-    profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
-    if not profile:
-        return []
+    try:
+        profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
+        if not profile:
+            return []
 
-    # Jobs the user has already applied to — exclude them from the queue
-    applied_job_ids = (
-        db.query(JobApplication.job_id)
-        .filter(JobApplication.user_id == current_user.id)
-        .subquery()
-    )
+        # Jobs the user has already applied to — exclude them from the queue
+        applied_job_ids = (
+            db.query(JobApplication.job_id)
+            .filter(JobApplication.user_id == current_user.id)
+            .subquery()
+        )
 
-    # Fetch recent candidate jobs the user hasn't seen yet (limit to 50 for
-    # scoring performance; the list is sorted and trimmed below).
-    candidate_jobs = (
-        db.query(Job)
-        .filter(Job.id.notin_(applied_job_ids))
-        .order_by(Job.created_at.desc())
-        .limit(50)
-        .all()
-    )
+        # Fetch recent candidate jobs the user hasn't seen yet (limit to 50 for
+        # scoring performance; the list is sorted and trimmed below).
+        candidate_jobs = (
+            db.query(Job)
+            .filter(Job.id.notin_(applied_job_ids))
+            .order_by(Job.created_at.desc())
+            .limit(50)
+            .all()
+        )
 
-    scored_matches: List[TopMatchItem] = []
-    for job in candidate_jobs:
-        score_data = calculate_match_score(profile, job)
-        if score_data["score"] >= 30:  # minimum threshold (mirrors jobs.py)
-            scored_matches.append(
-                TopMatchItem(
-                    company=job.company or "Unknown",
-                    role=job.title or "Untitled",
-                    match_score=score_data["score"] / 100.0,  # 0–1 range
-                    status="new",
+        scored_matches: List[TopMatchItem] = []
+        for job in candidate_jobs:
+            score_data = calculate_match_score(profile, job)
+            if score_data["score"] >= 30:  # minimum threshold (mirrors jobs.py)
+                scored_matches.append(
+                    TopMatchItem(
+                        company=job.company or "Unknown",
+                        role=job.title or "Untitled",
+                        match_score=score_data["score"] / 100.0,  # 0–1 range
+                        status="new",
+                    )
                 )
-            )
 
-    scored_matches.sort(key=lambda x: x.match_score, reverse=True)
-    return scored_matches[:4]
+        scored_matches.sort(key=lambda x: x.match_score, reverse=True)
+        return scored_matches[:4]
+    except Exception:
+        db.rollback()
+        return []
 
 
 # Add the router to the API

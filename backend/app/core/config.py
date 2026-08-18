@@ -52,6 +52,20 @@ class Settings(BaseSettings):
     # Data encryption for user-stored API keys (fall back to SECRET_KEY if not set)
     DATA_ENCRYPTION_KEY: str | None = None
 
+    # Provider-to-API-key mapping: maps AI provider names to their corresponding
+    # settings field names. Used by job_analysis.py, resume_generation.py, and
+    # cover_letter_generation.py to resolve which API key to use.
+    # Extracting this here avoids duplication across 3 service files.
+    PROVIDER_KEY_FIELDS: dict[str, str] = {
+        "gemini": "GEMINI_API",
+        "openrouter": "OPENROUTER_API",
+        "anthropic": "ANTHROPIC_API",
+        "openai": "OPENAI_API",
+        "grok": "GROK_API",
+        "mistral": "MISTRAL_API",
+        "nvidia": "NVIDIA_API",
+    }
+
     class Config:
         env_file = str(Path(__file__).resolve().parent.parent.parent.parent / ".env")
         case_sensitive = True

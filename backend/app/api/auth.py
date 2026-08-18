@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
-from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 import jwt
 import uuid
@@ -86,11 +85,31 @@ def login_access_token(
     request: Request,
     response: Response,
     db: Session = Depends(get_db),
-    form_data: OAuth2PasswordRequestForm = Depends(),
+    *,
+    body: dict[str, Any] = None,
 ) -> Any:
-    """OAuth2 compatible token login, get an access token for future requests."""
-    user = db.query(User).filter(User.email == form_data.username).first()
-    if not user or not verify_password(form_data.password, user.hashed_password):
+    """OAuth2 compatible token login, get an access token for future requests.
+
+    Accepts JSON payload with "email" and "password" fields, matching the
+    pattern used by other auth routes (register, forgot-password, etc.).
+    """
+    if not body:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Request body must contain 'email' and 'password' fields",
+        )
+
+    email = body.get("email")
+    password = body.get("password")
+
+    if not email or not password:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Request body must contain 'email' and 'password' fields",
+        )
+
+    user = db.query(User).filter(User.email == email).first()
+    if not user or not verify_password(password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
