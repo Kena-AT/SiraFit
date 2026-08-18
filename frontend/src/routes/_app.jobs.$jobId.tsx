@@ -58,25 +58,35 @@ function JobDetails() {
   // Load existing analysis and match score on mount
   useEffect(() => {
     if (!jobId) return;
-    getJobAnalysis(jobId)
-      .then((data) => {
-        if (data) setAnalysis(data);
-      })
-      .catch(() => {});
 
-    setMatchScoreLoading(true);
-    getCachedMatchScore(jobId)
-      .then((data) => setMatchScore(data))
-      .catch(() => {})
-      .finally(() => setMatchScoreLoading(false));
+    const fetchData = async () => {
+      try {
+        const analysisData = await getJobAnalysis(jobId);
+        if (analysisData) setAnalysis(analysisData);
+      } catch (e: any) {
+        console.error("Failed to fetch job analysis:", e.message);
+      }
 
-    // Load applications to check if this job is already in the pipeline
-    getApplications()
-      .then((apps: any[]) => {
+      try {
+        setMatchScoreLoading(true);
+        const matchScoreData = await getCachedMatchScore(jobId);
+        setMatchScore(matchScoreData);
+      } catch (e: any) {
+        console.error("Failed to fetch match score:", e.message);
+      } finally {
+        setMatchScoreLoading(false);
+      }
+
+      try {
+        const apps = await getApplications();
         const found = apps.find((a: any) => a.job_id === jobId);
         setExistingApplication(found ?? null);
-      })
-      .catch(() => {});
+      } catch (e: any) {
+        console.error("Failed to fetch applications:", e.message);
+      }
+    };
+
+    fetchData();
   }, [jobId]);
 
   // Polling helper

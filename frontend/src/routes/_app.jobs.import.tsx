@@ -84,9 +84,12 @@ function Import() {
     try {
       const res = await importJobs({ source_type: "url", data: url });
       setResult(res);
-      getImportHistory(0, 3)
-        .then(setRecentHistory)
-        .catch(() => {});
+      try {
+        const history = await getImportHistory(0, 3);
+        setRecentHistory(history);
+      } catch (e: any) {
+        console.error("Failed to fetch import history:", e.message);
+      }
     } catch (e: any) {
       setResult({ import_record: null as any, jobs: [], errors: [e.message] });
     } finally {
@@ -101,9 +104,12 @@ function Import() {
     try {
       const res = await importJobs({ source_type: "description", data: description });
       setResult(res);
-      getImportHistory(0, 3)
-        .then(setRecentHistory)
-        .catch(() => {});
+      try {
+        const history = await getImportHistory(0, 3);
+        setRecentHistory(history);
+      } catch (e: any) {
+        console.error("Failed to fetch import history:", e.message);
+      }
     } catch (e: any) {
       setResult({ import_record: null as any, jobs: [], errors: [e.message] });
     } finally {

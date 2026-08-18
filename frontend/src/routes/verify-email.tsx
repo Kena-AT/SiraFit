@@ -2,8 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AuthShell } from "@/components/sirafit/shell";
 import { Button } from "@/components/ui/button";
-
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+import { apiFetch, ApiError } from "@/lib/api/client";
 
 type VerifyEmailSearch = {
   token?: string;
@@ -38,24 +37,19 @@ function VerifyEmailPage() {
 
     const verify = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/v1/auth/verify-email`, {
+        const res = await apiFetch("/api/v1/auth/verify-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token: search.token }),
-          credentials: "include",
         });
 
-        if (res.ok) {
-          setVerifyState("success");
+        setVerifyState("success");
+      } catch (err) {
+        if (err instanceof ApiError) {
+          setErrorMessage(err.message || "The verification link is invalid or has expired.");
         } else {
-          const data = await res.json().catch(() => ({}));
-          setErrorMessage(
-            data.detail || "The verification link is invalid or has expired.",
-          );
-          setVerifyState("error");
+          setErrorMessage("Could not connect to the server. Please try again.");
         }
-      } catch {
-        setErrorMessage("Could not connect to the server. Please try again.");
         setVerifyState("error");
       }
     };
@@ -193,20 +187,19 @@ function WaitingForVerification({ email }: { email?: string }) {
     setIsLoading(true);
     setStatus(null);
     try {
-      const res = await fetch(`${API_URL}/api/v1/auth/resend-verification`, {
+      const res = await apiFetch("/api/v1/auth/resend-verification", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: inputEmail }),
-        credentials: "include",
       });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) {
-        setStatus({ type: "success", text: data.detail || "Verification email sent!" });
+      const data = await res.json();
+      setStatus({ type: "success", text: data.detail || "Verification email sent!" });
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setStatus({ type: "error", text: err.message || "Failed to resend." });
       } else {
-        setStatus({ type: "error", text: data.detail || "Failed to resend." });
+        setStatus({ type: "error", text: "Network error. Please try again." });
       }
-    } catch {
-      setStatus({ type: "error", text: "Network error. Please try again." });
     } finally {
       setIsLoading(false);
     }

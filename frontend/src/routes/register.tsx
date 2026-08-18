@@ -5,6 +5,7 @@ import { AuthShell } from "@/components/sirafit/shell";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { apiFetch, ApiError } from "@/lib/api/client";
 
 export const Route = createFileRoute("/register")({
   head: () => ({ meta: [{ title: "Create account · SiraFit" }] }),
@@ -61,29 +62,26 @@ function RegisterPage() {
     setIsLoading(true);
     setMessage(null);
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL ?? "http://localhost:8000"}/api/v1/auth/register`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            full_name: formData.full_name.trim(),
-            email: formData.email.trim().toLowerCase(),
-            password: formData.password,
-          }),
-        },
-      );
-      if (response.ok) {
-        setMessage({ type: "success", text: "Registration successful! Please verify your email." });
-        const registeredEmail = formData.email.trim().toLowerCase();
-        setFormData({ full_name: "", email: "", password: "", confirmPassword: "" });
-        setTimeout(() => navigate({ to: "/verify-email", search: { email: registeredEmail } }), 2000);
+      const response = await apiFetch("/api/v1/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          full_name: formData.full_name.trim(),
+          email: formData.email.trim().toLowerCase(),
+          password: formData.password,
+        }),
+      });
+
+      setMessage({ type: "success", text: "Registration successful! Please verify your email." });
+      const registeredEmail = formData.email.trim().toLowerCase();
+      setFormData({ full_name: "", email: "", password: "", confirmPassword: "" });
+      setTimeout(() => navigate({ to: "/verify-email", search: { email: registeredEmail } }), 2000);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setMessage({ type: "error", text: err.message || "Registration failed" });
       } else {
-        const errorData = await response.json();
-        setMessage({ type: "error", text: errorData.detail || "Registration failed" });
+        setMessage({ type: "error", text: "Network error. Please try again." });
       }
-    } catch {
-      setMessage({ type: "error", text: "Network error. Please try again." });
     } finally {
       setIsLoading(false);
     }

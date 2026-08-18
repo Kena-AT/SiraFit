@@ -4,6 +4,7 @@ import { AuthShell } from "@/components/sirafit/shell";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { apiFetch, ApiError } from "@/lib/api/client";
 
 type ResetPasswordSearch = {
   token?: string;
@@ -42,27 +43,25 @@ function ResetPasswordPage() {
     setMessage("");
 
     try {
-      const response = await fetch("/api/v1/auth/reset-password", {
+      const response = await apiFetch("/api/v1/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, new_password: password }),
       });
 
       const data = await response.json();
-
-      if (response.ok) {
-        setStatus("success");
-        setMessage("Password has been reset successfully. Redirecting to login...");
-        setTimeout(() => {
-          navigate({ to: "/login" });
-        }, 2000);
-      } else {
-        setStatus("error");
-        setMessage(data.detail || "Failed to reset password.");
-      }
+      setStatus("success");
+      setMessage("Password has been reset successfully. Redirecting to login...");
+      setTimeout(() => {
+        navigate({ to: "/login" });
+      }, 2000);
     } catch (err) {
       setStatus("error");
-      setMessage("A network error occurred. Please try again.");
+      if (err instanceof ApiError) {
+        setMessage(err.message || "Failed to reset password.");
+      } else {
+        setMessage("A network error occurred. Please try again.");
+      }
     }
   };
 

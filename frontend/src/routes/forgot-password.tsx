@@ -4,6 +4,7 @@ import { AuthShell } from "@/components/sirafit/shell";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { apiFetch, ApiError } from "@/lib/api/client";
 
 export const Route = createFileRoute("/forgot-password")({
   head: () => ({ meta: [{ title: "Reset password · SiraFit" }] }),
@@ -23,24 +24,22 @@ function ForgotPasswordPage() {
     setMessage("");
 
     try {
-      const response = await fetch("/api/v1/auth/forgot-password", {
+      const response = await apiFetch("/api/v1/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
 
       const data = await response.json();
-
-      if (response.ok) {
-        setStatus("success");
-        setMessage("If an account exists, a reset link has been sent to that email.");
-      } else {
-        setStatus("error");
-        setMessage(data.detail || "Failed to request password reset.");
-      }
+      setStatus("success");
+      setMessage("If an account exists, a reset link has been sent to that email.");
     } catch (err) {
       setStatus("error");
-      setMessage("A network error occurred. Please try again.");
+      if (err instanceof ApiError) {
+        setMessage(err.message || "Failed to request password reset.");
+      } else {
+        setMessage("A network error occurred. Please try again.");
+      }
     }
   };
 

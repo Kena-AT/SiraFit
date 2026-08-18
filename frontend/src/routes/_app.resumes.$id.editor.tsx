@@ -59,7 +59,7 @@ function ResumeEditorPage() {
     [],
   );
 
-  const handleFieldChange = (field: keyof Profile, value: any) => {
+  const handleFieldChange = (field: keyof Profile, value: string) => {
     if (!profile) return;
     const updated = { ...profile, [field]: value };
     setProfile(updated);
@@ -70,7 +70,7 @@ function ResumeEditorPage() {
     field: keyof Profile,
     index: number,
     subField: keyof T,
-    value: any,
+    value: string,
   ) => {
     if (!profile) return;
     const array = [...(profile[field] as T[])];

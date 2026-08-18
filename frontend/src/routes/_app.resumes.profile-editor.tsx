@@ -79,12 +79,12 @@ function ProfileEditorPage() {
     certifications: [],
   };
 
-  const updateField = (field: keyof Profile, val: any) => {
+  const updateField = (field: keyof Profile, val: string) => {
     if (!profile) return;
     setProfile({ ...profile, [field]: val });
   };
 
-  const updateExperience = (index: number, field: string, val: any) => {
+  const updateExperience = (index: number, field: keyof Profile["experiences"][0], val: string) => {
     if (!profile) return;
     const exps = [...(profile.experiences ?? [])];
     exps[index] = { ...exps[index], [field]: val };
