@@ -46,10 +46,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
+    // TODO: Add support for 2FA and CAPTCHA
     const response = await apiFetch("/api/v1/auth/login", {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ username: email, password }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
     });
 
     if (response.ok) {
@@ -107,14 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    return {
-      user: null,
-      isAuthenticated: false,
-      isLoading: false,
-      login: async () => {},
-      logout: async () => {},
-      register: async () => {},
-    };
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 }

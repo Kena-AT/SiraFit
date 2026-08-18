@@ -71,6 +71,13 @@ async function navigateToLogin(): Promise<void> {
 export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const url = path.startsWith("http") ? path : `${API_BASE_URL}${path}`;
 
+  // Determine if caller already provided a Content-Type header (case-insensitive)
+  const hasContentType = init.headers && (
+    (init.headers instanceof Headers && (init.headers.has("Content-Type") || init.headers.has("content-type"))) ||
+    (Array.isArray(init.headers) && init.headers.some(([k]) => k.toLowerCase() === "content-type")) ||
+    (typeof init.headers === "object" && Object.keys(init.headers).some(k => k.toLowerCase() === "content-type"))
+  );
+
   const mergedInit: RequestInit = {
     ...init,
     credentials: "include",
@@ -80,23 +87,49 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
         : Array.isArray(init.headers)
           ? Object.fromEntries(init.headers as [string, string][])
           : init.headers),
+      ...(hasContentType ? {} : { "Content-Type": "application/json" }), // Default only if not provided
     },
   };
 
-  let response = await fetch(url, mergedInit);
+  let response: Response;
+  try {
+    response = await fetch(url, mergedInit);
+  } catch (e: any) {
+    console.error("Network error during API fetch:", e.message);
+    throw new ApiError(0, "Network error. Please check your connection.");
+  }
 
-  if (response.status === 401) {
-    console.log("Request returned 401, attempting token refresh...");
-    const refreshed = await tryRefreshToken();
-    if (refreshed) {
-      console.log("Token refreshed, retrying request...");
-      response = await fetch(url, mergedInit);
+  if (!response.ok) {
+    let errorDetail = "An error occurred";
+    try {
+      const errorData = await response.json();
+      errorDetail = errorData.detail || errorDetail;
+    } catch {
+      errorDetail = await response.text();
     }
+
     if (response.status === 401) {
+      console.log("Request returned 401, attempting token refresh...");
+      const refreshed = await tryRefreshToken();
+      if (refreshed) {
+        console.log("Token refreshed, retrying request...");
+        try {
+          response = await fetch(url, mergedInit);
+          if (!response.ok) {
+            throw new ApiError(response.status, errorDetail);
+          }
+          return response;
+        } catch (e: any) {
+          console.error("Error after token refresh:", e.message);
+        }
+      }
       console.log("Request still failed after refresh, redirecting to login");
       navigateToLogin();
       throw new ApiError(401, "Session expired. Please log in again.");
     }
+
+    console.error(`API Error ${response.status}:`, errorDetail);
+    throw new ApiError(response.status, errorDetail);
   }
 
   return response;
