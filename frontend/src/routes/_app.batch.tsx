@@ -1,269 +1,30 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageBody } from "@/components/sirafit/shell";
-import { PageHeader, Panel, StatusPill, EmptyState } from "@/components/sirafit/bits";
-import { Plus } from "lucide-react";
+import { PageHeader } from "@/components/sirafit/bits";
+import { BatchJobList } from "@/components/sirafit/batch/BatchJobList";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  getBatchJobs,
-  createBatchJob,
-  cancelBatchJob,
-  type BatchJobCreateInput,
-  type BatchOperationType,
-} from "@/lib/api/batch";
-import { getJobs } from "@/lib/api/jobs";
-import { useState } from "react";
 
 export const Route = createFileRoute("/_app/batch")({
-  head: () => ({ meta: [{ title: "Batch processing · SiraFit" }] }),
-  component: BatchCenter,
+  component: BatchJobsPage,
 });
 
-function BatchCenter() {
-  const queryClient = useQueryClient();
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedOp, setSelectedOp] = useState<BatchOperationType>("analyze");
-  const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
-  const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [filterOp, setFilterOp] = useState<string>("all");
-  const [filterText, setFilterText] = useState("");
-
-  // Only fetch jobs when the modal is open — avoids a 500-job fetch on every page load
-  const { data: jobsData } = useQuery({
-    queryKey: ["jobs-for-batch"],
-    queryFn: () => getJobs({ limit: 500 }),
-    enabled: modalOpen,
-  });
-  const jobs = jobsData?.jobs ?? [];
-  const { data: batchData, isLoading } = useQuery({
-    queryKey: [
-      "batch-jobs",
-      filterStatus === "all" ? undefined : filterStatus,
-      filterOp === "all" ? undefined : filterOp,
-    ],
-    queryFn: () =>
-      getBatchJobs({
-        status: filterStatus === "all" ? undefined : filterStatus,
-        operation_type: filterOp === "all" ? undefined : filterOp,
-      }),
-  });
-
-  const batchJobs = batchData?.jobs ?? [];
-
-  // Client-side filter by text (operation type or status)
-  const visibleBatchJobs = filterText.trim()
-    ? batchJobs.filter(
-        (b) =>
-          b.operation_type.toLowerCase().includes(filterText.toLowerCase()) ||
-          b.status.toLowerCase().includes(filterText.toLowerCase())
-      )
-    : batchJobs;
-
-  const createMutation = useMutation({
-    mutationFn: createBatchJob,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["batch-jobs"] });
-      setModalOpen(false);
-    },
-  });
-
-  const cancelMutation = useMutation({
-    mutationFn: cancelBatchJob,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["batch-jobs"] }),
-  });
-
-  const handleCreate = (input: {
-    operation_type: BatchOperationType;
-    job_ids: string[];
-    params?: Record<string, unknown>;
-  }) => {
-    createMutation.mutate(input);
-  };
-
-  if (isLoading) {
-    return (
-      <PageBody>
-        <PageHeader eyebrow="Operations" title="Batch processing center" />
-        <div className="grid place-items-center py-20">Loading...</div>
-      </PageBody>
-    );
-  }
-
+function BatchJobsPage() {
   return (
     <PageBody>
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create new batch job</DialogTitle>
-            <DialogDescription>
-              Select an operation to run on selected jobs.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-                    <div className="space-y-1.5">
-                      <Label>Operation</Label>
-                      <Select value={selectedOp} onValueChange={(v) => setSelectedOp(v as BatchOperationType)}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="analyze">Analyze</SelectItem>
-                          <SelectItem value="score">Score</SelectItem>
-                          <SelectItem value="tag">Tag</SelectItem>
-                          <SelectItem value="archive">Archive</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2 max-h-60 overflow-y-auto border p-2 rounded">
-                      {jobs.map((job) => (
-                        <div key={job.id} className="flex items-center gap-2 text-xs">
-                          <input
-                            type="checkbox"
-                            checked={selectedJobIds.includes(job.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) setSelectedJobIds([...selectedJobIds, job.id]);
-                              else setSelectedJobIds(selectedJobIds.filter(id => id !== job.id));
-                            }}
-                          />
-                          {job.company} - {job.title}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button onClick={() => handleCreate({ operation_type: selectedOp, job_ids: selectedJobIds })}>
-                      {createMutation.isPending ? "Creating..." : "Create"}
-                    </Button>
-                  </DialogFooter>
-
-        </DialogContent>
-      </Dialog>
       <PageHeader
-        eyebrow="Operations"
-        title="Batch processing center"
-        description="Run high-volume operations across your pipeline. Bounded retries, no infinite loops."
+        eyebrow="Batch Processing"
+        title="Batch Jobs"
+        description="View and manage your batch operations."
         actions={
-          <Button onClick={() => setModalOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" /> New batch job
-          </Button>
+          <Link to="/jobs">
+            <Button variant="outline">Back to Jobs</Button>
+          </Link>
         }
       />
-      <div className="space-y-4">
-        <Panel title="Create batch job" className="border-border/50">
-          <Button variant="outline" onClick={() => setModalOpen(true)} className="w-full">
-            <Plus className="w-4 h-4 mr-2" /> Start new batch operation
-          </Button>
-        </Panel>
-
-        <Panel title="Recent batches">
-          <div className="mb-4 flex flex-wrap items-center gap-2">
-            <Input
-              placeholder="Filter batches..."
-              className="w-64"
-              value={filterText}
-              onChange={(e) => setFilterText(e.target.value)}
-            />
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="running">Running</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="partial">Partial</SelectItem>
-                <SelectItem value="failed">Failed</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterOp} onValueChange={setFilterOp}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All operations</SelectItem>
-                <SelectItem value="analyze">Analyze</SelectItem>
-                <SelectItem value="score">Score</SelectItem>
-                <SelectItem value="tag">Tag</SelectItem>
-                <SelectItem value="archive">Archive</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex flex-col gap-3">
-            {visibleBatchJobs.length === 0 ? (
-              <EmptyState
-                title={batchJobs.length === 0 ? "No batch jobs yet" : "No matches"}
-                body={
-                  batchJobs.length === 0
-                    ? "Create a batch job to process multiple items at once."
-                    : "Try a different filter."
-                }
-                action={
-                  batchJobs.length === 0 ? (
-                    <Button onClick={() => setModalOpen(true)} className="w-full">
-                      <Plus className="w-4 h-4 mr-2" /> Create batch job
-                    </Button>
-                  ) : undefined
-                }
-              />
-            ) : (
-              visibleBatchJobs.map((batchJob) => (
-                <div
-                  key={batchJob.id}
-                  className="flex items-center gap-4 p-4 rounded-lg bg-card ring-1 ring-border hover:ring-[color:var(--brand)]/40 transition-colors cursor-pointer"
-                  onClick={() => (window.location.href = `/batch/${batchJob.id}`)}
-                >
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <StatusPill status={batchJob.operation_type} className="shrink-0" />
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold truncate">
-                        {batchJob.operation_type.charAt(0).toUpperCase() +
-                          batchJob.operation_type.slice(1)}
-                      </div>
-                      <div className="text-[11px] text-muted-foreground">
-                        {batchJob.processed_items} / {batchJob.total_items} items
-                      </div>
-                    </div>
-                  </div>
-                  <div className="w-32 shrink-0">
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full bg-[color:var(--brand)]"
-                        style={{
-                          width: `${
-                            batchJob.total_items > 0
-                              ? Math.round((batchJob.processed_items / batchJob.total_items) * 100)
-                              : 0
-                          }%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <StatusPill status={batchJob.status} className="shrink-0" />
-                </div>
-              ))
-            )}
-          </div>
-        </Panel>
-      </div>
+      <BatchJobList onViewDetails={(jobId) => {
+        // Navigate to batch job details page (to be implemented)
+        console.log("View details for batch job:", jobId);
+      }} />
     </PageBody>
   );
 }

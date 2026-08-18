@@ -4,8 +4,11 @@ import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, Tag, EmptyState } from "@/components/sirafit/bits";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { getJobs, type JobSearchParams } from "@/lib/api/jobs";
-import type { JobListResponse } from "@/types/job";
+import { createBatchJob, type BatchOperationType } from "@/lib/api/batch";
+import { BatchCreateModal } from "@/components/sirafit/batch/BatchCreateModal";
+import type { JobListResponse, Job } from "@/types/job";
 
 export const Route = createFileRoute("/_app/jobs/")({
   head: () => ({ meta: [{ title: "Jobs Explorer · SiraFit" }] }),
@@ -16,6 +19,8 @@ function JobsExplorer() {
   const [data, setData] = useState<JobListResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedJobs, setSelectedJobs] = useState<Job[]>([]);
+  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
 
   // Search and filter state
   const [searchTerm, setSearchTerm] = useState("");
@@ -44,6 +49,7 @@ function JobsExplorer() {
   const fetchJobs = async () => {
     setLoading(true);
     setError(null);
+    setSelectedJobs([]); // Clear selection on new fetch
 
     const params: JobSearchParams = {
       skip: page * limit,
@@ -64,6 +70,36 @@ function JobsExplorer() {
       setError(e.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSelectJob = (job: Job, checked: boolean) => {
+    setSelectedJobs(prev => {
+      if (checked) {
+        return [...prev, job];
+      } else {
+        return prev.filter(j => j.id !== job.id);
+      }
+    });
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (!data) return;
+    if (checked) {
+      setSelectedJobs(data.jobs);
+    } else {
+      setSelectedJobs([]);
+    }
+  };
+
+  const handleBatchOperation = async (operationType: BatchOperationType, jobIds: string[]) => {
+    try {
+      await createBatchJob({ operation_type: operationType, job_ids: jobIds });
+      fetchJobs(); // Refresh the job list
+      // TODO: Navigate to batch jobs page or show a success toast
+    } catch (err) {
+      setError("Failed to create batch job.");
+      console.error("Error creating batch job:", err);
     }
   };
 
@@ -133,6 +169,14 @@ function JobsExplorer() {
             >
               Import history
             </Link>
+            <Button
+              variant="outline"
+              className="rounded-md bg-card px-3 py-1.5 text-sm font-medium ring-1 ring-border hover:bg-muted"
+              onClick={() => setIsBatchModalOpen(true)}
+              disabled={selectedJobs.length === 0}
+            >
+              Batch Operations ({selectedJobs.length})
+            </Button>
             <Link
               to="/jobs/import"
               className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background ring-1 ring-foreground hover:bg-foreground/90"
@@ -217,8 +261,15 @@ function JobsExplorer() {
         </div>
       </div>
 
-      <Panel>
-        {loading ? (
+       <BatchCreateModal
+         isOpen={isBatchModalOpen}
+         onClose={() => setIsBatchModalOpen(false)}
+         onSubmit={handleBatchOperation}
+         selectedJobs={selectedJobs}
+       />
+
+       <Panel>
+         {loading ? (
           <div className="flex items-center justify-center px-4 py-12 text-sm text-muted-foreground">
             <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-border border-t-foreground" />
             Loading jobs...
@@ -247,56 +298,68 @@ function JobsExplorer() {
           <>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="border-b border-border bg-muted/40 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                  <tr>
-                    <th className="px-4 py-2.5 font-semibold">#</th>
-                    <th className="px-4 py-2.5 font-semibold">Company</th>
-                    <th className="px-4 py-2.5 font-semibold">Role</th>
-                    <th className="px-4 py-2.5 font-semibold">Location</th>
-                    <th className="px-4 py-2.5 font-semibold">Salary</th>
-                    <th className="px-4 py-2.5 font-semibold">Source</th>
-                    <th className="px-4 py-2.5 font-semibold">Tags</th>
-                    <th className="px-4 py-2.5 font-semibold">Imported</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {data.jobs.map((j, i) => (
-                    <tr key={j.id} className="group hover:bg-muted/30">
-                      <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground tabular-nums">
-                        {String(page * limit + i + 1).padStart(3, "0")}
-                      </td>
-                      <td className="px-4 py-3 font-medium">{j.company}</td>
-                      <td className="px-4 py-3">
-                        <Link
-                          to="/jobs/$jobId"
-                          params={{ jobId: j.id }}
-                          className="text-muted-foreground hover:text-foreground hover:underline"
-                        >
-                          {j.title}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {j.location || "-"}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground tabular-nums">
-                        {formatSalary(j)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Tag>{j.source}</Tag>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-1">
-                          {j.tags.slice(0, 3).map((t) => (
-                            <Tag key={t}>{t}</Tag>
-                          ))}
-                          {j.tags.length > 3 && <Tag>+{j.tags.length - 3}</Tag>}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground tabular-nums">
-                        {formatDate(j.created_at)}
-                      </td>
-                    </tr>
-                  ))}
+               <thead className="border-b border-border bg-muted/40 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                 <tr>
+                   <th className="px-4 py-2.5 font-semibold">
+                     <Checkbox
+                       checked={selectedJobs.length > 0 && selectedJobs.length === data?.jobs.length}
+                       onCheckedChange={handleSelectAll}
+                       disabled={!data || data.jobs.length === 0}
+                     />
+                   </th>
+                   <th className="px-4 py-2.5 font-semibold">Company</th>
+                   <th className="px-4 py-2.5 font-semibold">Role</th>
+                   <th className="px-4 py-2.5 font-semibold">Location</th>
+                   <th className="px-4 py-2.5 font-semibold">Salary</th>
+                   <th className="px-4 py-2.5 font-semibold">Source</th>
+                   <th className="px-4 py-2.5 font-semibold">Tags</th>
+                   <th className="px-4 py-2.5 font-semibold">Imported</th>
+                 </tr>
+               </thead>
+                 <tbody className="divide-y divide-border">
+                   {data.jobs.map((j, i) => {
+                     const isSelected = selectedJobs.some(job => job.id === j.id);
+                     return (
+                       <tr key={j.id} className="group hover:bg-muted/30">
+                         <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground tabular-nums">
+                           <Checkbox
+                             checked={isSelected}
+                             onCheckedChange={(checked) => handleSelectJob(j, checked as boolean)}
+                           />
+                         </td>
+                         <td className="px-4 py-3 font-medium">{j.company}</td>
+                         <td className="px-4 py-3">
+                           <Link
+                             to="/jobs/$jobId"
+                             params={{ jobId: j.id }}
+                             className="text-muted-foreground hover:text-foreground hover:underline"
+                           >
+                             {j.title}
+                           </Link>
+                         </td>
+                         <td className="px-4 py-3 text-xs text-muted-foreground">
+                           {j.location || "-"}
+                         </td>
+                         <td className="px-4 py-3 text-xs text-muted-foreground tabular-nums">
+                           {formatSalary(j)}
+                         </td>
+                         <td className="px-4 py-3">
+                           <Tag>{j.source}</Tag>
+                         </td>
+                         <td className="px-4 py-3">
+                           <div className="flex flex-wrap gap-1">
+                             {j.tags.slice(0, 3).map((t) => (
+                               <Tag key={t}>{t}</Tag>
+                             ))}
+                             {j.tags.length > 3 && <Tag>+{j.tags.length - 3}</Tag>}
+                           </div>
+                         </td>
+                         <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground tabular-nums">
+                           {formatDate(j.created_at)}
+                         </td>
+                       </tr>
+                     );
+                   })}
                 </tbody>
               </table>
             </div>
