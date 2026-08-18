@@ -181,7 +181,13 @@ class _RateLimitExceeded(Exception):
 
 
 def _too_many(retry_after: int) -> _RateLimitExceeded:
-    return _RateLimitExceeded()
+    """Raise rate limit exceeded exception.
+
+    The _RateLimitExceeded exception is defined with an empty body
+    (pass) to allow it to be raised and caught without additional
+    payload requirements.
+    """
+    raise _RateLimitExceeded()
 
 
 def _record_headers(request: Request, limit: int, remaining: int, reset: int) -> None:
