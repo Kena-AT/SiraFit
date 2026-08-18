@@ -101,12 +101,15 @@ def check_and_send_reminders() -> int:
 
         for app in applications:
             # Check if we already sent a reminder for this follow-up
+            # Use a more specific body pattern match instead of fragile contains().
+            # The body format is: "Follow up on your application for {job.title} at {job.company} (due {date})"
+            body_marker = f"application for {app.job.title if app.job else 'unknown'} at"
             existing = (
                 db.query(Notification)
                 .filter(
                     Notification.user_id == app.user_id,
                     Notification.kind == "reminder",
-                    Notification.body.contains(f"{app.id}"),
+                    Notification.body.contains(body_marker),
                     Notification.created_at >= now - timedelta(hours=24),
                 )
                 .first()

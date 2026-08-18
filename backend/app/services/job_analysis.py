@@ -140,23 +140,12 @@ async def run_job_analysis(
 
         # Fall back to server env
         if not api_key:
-            from app.core.config import settings
-            
-            # Map provider to settings field
-            setting_fields = {
-                "gemini": "GEMINI_API",
-                "openrouter": "OPENROUTER_API",
-                "anthropic": "ANTHROPIC_API",
-                "openai": "OPENAI_API",
-                "grok": "GROK_API",
-                "mistral": "MISTRAL_API",
-                "nvidia": "NVIDIA_API",
-            }
-            
+            from app.core.config import PROVIDER_KEY_FIELDS as setting_fields
+
             # If provider is specified, use its specific key
             if actual_provider in setting_fields:
                 api_key = getattr(settings, setting_fields[actual_provider], None)
-            
+
             # If still no key and no provider was specified, try to find ANY available key
             if not api_key and not actual_provider:
                 for prov, field in setting_fields.items():

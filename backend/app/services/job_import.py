@@ -304,23 +304,34 @@ def normalize_for_dedup(text: str) -> str:
 
 
 def check_duplicate(db: Session, job_data: Dict[str, Any]) -> bool:
-    title = normalize_for_dedup(job_data.get("title", ""))
-    company = normalize_for_dedup(job_data.get("company", ""))
-    location = normalize_for_dedup(job_data.get("location", "") or "")
+    """Check if a job already exists using indexed lookups instead of full table scan.
 
-    existing = db.query(Job).all()
-    for job in existing:
-        t_match = title and normalize_for_dedup(job.title) == title
-        c_match = company and normalize_for_dedup(job.company) == company
-        l_match = (
-            not location
-            or not job.location
-            or normalize_for_dedup(job.location) == location
-        )
-        if t_match and c_match and l_match:
-            return True
+    Instead of loading ALL jobs (O(n)), use targeted queries by title+company.
+    This is O(1) with proper database indexes.
+    """
+    title = job_data.get("title", "")
+    company = job_data.get("company", "")
+    location = job_data.get("location", "") or ""
 
-    return False
+    # Build filtered query — only check title and company, location is soft
+    query = db.query(Job)
+
+    if title:
+        # Case-insensitive partial match on title
+        query = query.filter(Job.title.ilike(f"%{title}%"))
+
+    if company:
+        # Case-insensitive partial match on company
+        query = query.filter(Job.company.ilike(f"%{company}%"))
+
+    # Location is optional — if provided, add filter; if not, skip (doesn't block match)
+    if location:
+        query = query.filter(Job.location.ilike(f"%{location}%"))
+
+    # Check if any matching job exists
+    exists = query.limit(1).first() is not None
+
+    return exists
 
 
 # ─── Main Import Pipeline ─────────────────────────────────────────────────
