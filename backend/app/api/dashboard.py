@@ -7,7 +7,7 @@ from app.core.database import get_db
 from app.api.users import get_current_user
 from app.models.user import User
 from app.models.job import JobApplication, Resume, AuditLog
-from app.schemas.dashboard import DashboardStats
+from app.schemas.dashboard import DashboardStats, AuditLogItem
 from app.core.cache import cache_get, cache_set
 
 router = APIRouter()
@@ -56,13 +56,23 @@ def get_dashboard_stats(
     )
 
     # 4. Recent activity
-    recent_activity = (
+    recent_activity_records = (
         db.query(AuditLog)
         .filter(AuditLog.user_id == current_user.id)
         .order_by(AuditLog.created_at.desc())
         .limit(5)
         .all()
     )
+    recent_activity = [
+        AuditLogItem(
+            id=r.id,
+            action=r.action,
+            entity_type=r.entity_type,
+            created_at=r.created_at,
+            details=r.details,
+        )
+        for r in recent_activity_records
+    ]
 
     result = DashboardStats(
         active_applications=active_apps,
