@@ -2,6 +2,7 @@ import structlog
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from fastapi_csrf_protect import CsrfProtect
 from fastapi_csrf_protect.exceptions import CsrfProtectError
@@ -66,17 +67,23 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown events."""
-    # Enforce mandatory Redis connection check on startup
     from app.core.redis_client import get_redis_client
     redis_client = get_redis_client()
     if not redis_client:
-        logger.error("redis_connection_required_failed", extra={"redis_url": settings.REDIS_URL})
-        raise RuntimeError(f"FATAL: Redis connection could not be established at {settings.REDIS_URL}. Redis is required for backend startup.")
-    try:
-        redis_client.ping()
-    except Exception as e:
-        logger.error("redis_ping_failed", extra={"error": str(e)})
-        raise RuntimeError(f"FATAL: Redis ping failed at {settings.REDIS_URL}: {e}")
+        if settings.ENVIRONMENT == "production":
+            logger.error("redis_connection_required_failed", extra={"redis_url": settings.REDIS_URL})
+            raise RuntimeError(f"FATAL: Redis connection could not be established at {settings.REDIS_URL}. Redis is required in production.")
+        else:
+            logger.warning("redis_unavailable_using_memory_cache", extra={"redis_url": settings.REDIS_URL})
+    else:
+        try:
+            redis_client.ping()
+        except Exception as e:
+            if settings.ENVIRONMENT == "production":
+                logger.error("redis_ping_failed", extra={"error": str(e)})
+                raise RuntimeError(f"FATAL: Redis ping failed at {settings.REDIS_URL}: {e}")
+            else:
+                logger.warning("redis_ping_failed_using_memory_cache", extra={"error": str(e)})
 
     # Startup: create tables if they don't exist (dev convenience).
     # In production, rely on Alembic migrations exclusively.
@@ -108,6 +115,9 @@ app = FastAPI(
     description="SiraFit API - Career automation platform",
     lifespan=lifespan,
 )
+
+# GZip compression middleware for payloads > 1KB
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Request timing middleware (added first = innermost)
 app.add_middleware(RequestTimingMiddleware)
