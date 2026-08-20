@@ -1,10 +1,13 @@
 from typing import List, Any, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Header
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, cast, String
+from sqlalchemy import or_, cast, String, func
 import uuid
+import json
+import hashlib
 
 from app.core.database import get_db
+from app.core.cache import cache_get, cache_set
 from app.api.users import get_current_user
 from app.models.user import User
 from app.models.job import Job, JobApplication, JobImport, JobAnalysis
@@ -72,6 +75,19 @@ def list_ranked_jobs(
 # ---------------------------------------------------------------------------
 
 
+def _build_cache_key(user_id: str, **params) -> str:
+    """Build a deterministic cache key from filter parameters."""
+    # Sort params for determinism, exclude skip/limit (they don't affect total)
+    cache_params = {k: v for k, v in params.items() if k not in ("skip", "limit") and v is not None}
+    param_str = json.dumps(cache_params, sort_keys=True)
+    return f"jobs:list:{user_id}:{hashlib.md5(param_str.encode()).hexdigest()}"
+
+
+def _invalidate_job_cache(user_id: str) -> None:
+    """Invalidate all job list caches for a user."""
+    cache_delete_prefix(f"jobs:list:{user_id}:")
+
+
 @router.get("/", response_model=JobListResponse)
 def list_jobs(
     db: Session = Depends(get_db),
@@ -90,6 +106,36 @@ def list_jobs(
     include_archived: bool = Query(False, description="Include archived jobs"),
 ) -> Any:
     """List jobs with search, filtering, sorting, and pagination."""
+    # Ponytail: 30s Redis cache for job listings. Invalidate on import/analysis.
+    # Caches the total + jobs for a given filter set. skip/limit intentionally
+    # excluded from key so we can serve any page from the same cached response.
+    cache_key = _build_cache_key(
+        str(current_user.id),
+        search=search,
+        company=company,
+        location=location,
+        source=source,
+        tags=tags,
+        min_salary=min_salary,
+        max_salary=max_salary,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        include_archived=include_archived,
+    )
+
+    cached = cache_get(cache_key)
+    if cached:
+        total = cached["total"]
+        # Slice the cached jobs for the requested page
+        cached_jobs = cached["jobs"]
+        page_jobs = cached_jobs[skip : skip + limit]
+        return JobListResponse(
+            jobs=[JobResponse.model_validate(j) for j in page_jobs],
+            total=total,
+            skip=skip,
+            limit=limit,
+        )
+
     query = db.query(Job)
 
     if not include_archived:
@@ -126,11 +172,52 @@ def list_jobs(
             or_(Job.salary_max <= max_salary, Job.salary_min <= max_salary)
         )
 
-    total = query.count()
+    total = query.with_entities(func.count(Job.id)).order_by(None).scalar() or 0
 
     sort_col = getattr(Job, sort_by, Job.created_at)
     query = query.order_by(sort_col.asc() if sort_order == "asc" else sort_col.desc())
     jobs = query.offset(skip).limit(limit).all()
+
+    # Store full result set in cache (not just the paged subset)
+    # Re-use the same query with all filters — only remove skip/limit
+    full_query = db.query(Job)
+    if not include_archived:
+        full_query = full_query.filter(Job.is_archived == False)
+    if search:
+        term = f"%{search}%"
+        full_query = full_query.filter(
+            or_(
+                Job.title.ilike(term),
+                Job.company.ilike(term),
+                Job.description.ilike(term),
+                Job.location.ilike(term),
+            )
+        )
+    if company:
+        full_query = full_query.filter(Job.company.ilike(f"%{company}%"))
+    if location:
+        full_query = full_query.filter(Job.location.ilike(f"%{location}%"))
+    if source:
+        full_query = full_query.filter(Job.source == source)
+    if tags:
+        for tag in [t.strip() for t in tags.split(",")]:
+            full_query = full_query.filter(cast(Job.tags, String).like(f'%"{tag}"%'))
+    if min_salary is not None:
+        full_query = full_query.filter(
+            or_(Job.salary_min >= min_salary, Job.salary_max >= min_salary)
+        )
+    if max_salary is not None:
+        full_query = full_query.filter(
+            or_(Job.salary_max <= max_salary, Job.salary_min <= max_salary)
+        )
+
+    all_jobs = full_query.order_by(sort_col.asc() if sort_order == "asc" else sort_col.desc()).all()
+
+    cache_data = {
+        "total": total,
+        "jobs": [JobResponse.model_validate(j).model_dump(mode="json") for j in all_jobs],
+    }
+    cache_set(cache_key, cache_data, ttl=30)
 
     return JobListResponse(jobs=jobs, total=total, skip=skip, limit=limit)
 
@@ -209,6 +296,10 @@ def get_job(
     return job
 
 
+def _match_score_cache_key(user_id: str, job_id: str) -> str:
+    return f"match_score:{user_id}:{job_id}"
+
+
 @router.get("/{job_id}/match-score", response_model=JobMatchScoreResponse)
 def get_match_score(
     job_id: uuid.UUID,
@@ -216,6 +307,12 @@ def get_match_score(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """Calculate and get match score for a job."""
+    # Ponytail: 5min cache for match scores.
+    cache_key = _match_score_cache_key(str(current_user.id), str(job_id))
+    cached = cache_get(cache_key)
+    if cached:
+        return JobMatchScoreResponse.model_validate(cached)
+
     job = db.query(Job).filter(Job.id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -244,6 +341,7 @@ def get_match_score(
         existing_score.explanation = score_data["explanation"]
         db.commit()
         db.refresh(existing_score)
+        cache_set(cache_key, JobMatchScoreResponse.model_validate(existing_score).model_dump(mode="json"), ttl=300)
         return existing_score
     else:
         new_score = JobMatchScore(
@@ -256,6 +354,7 @@ def get_match_score(
         db.add(new_score)
         db.commit()
         db.refresh(new_score)
+        cache_set(cache_key, JobMatchScoreResponse.model_validate(new_score).model_dump(mode="json"), ttl=300)
         return new_score
 
 
@@ -270,6 +369,12 @@ def get_cached_match_score(
     Returns 404 if no score has been calculated yet. Use GET /{job_id}/match-score
     to calculate and store a score on demand.
     """
+    # Check cache first
+    cache_key = _match_score_cache_key(str(current_user.id), str(job_id))
+    cached = cache_get(cache_key)
+    if cached:
+        return JobMatchScoreResponse.model_validate(cached)
+
     score = (
         db.query(JobMatchScore)
         .filter(
@@ -283,6 +388,8 @@ def get_cached_match_score(
             status_code=404,
             detail="No match score found for this job. Trigger one via GET /{job_id}/match-score.",
         )
+    # Populate cache for next time
+    cache_set(cache_key, JobMatchScoreResponse.model_validate(score).model_dump(mode="json"), ttl=300)
     return score
 
 
@@ -387,6 +494,8 @@ def import_jobs(
         import_in.source_type,
         import_in.data,
     )
+    # Invalidate job cache since new jobs were added
+    _invalidate_job_cache(str(current_user.id))
     return ImportResultResponse(
         import_record=JobImportResponse.model_validate(import_record),
         jobs=[JobData(**job, is_duplicate=False) for job in jobs_data],
