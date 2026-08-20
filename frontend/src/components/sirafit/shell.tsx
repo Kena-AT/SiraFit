@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils";
 import { AgentDot } from "./bits";
 import { UserMenu } from "./user-menu";
 import { getLandingStats, getHealthStatus, LandingStatsResponse, HealthStatusResponse } from "@/lib/api/stats";
+import { useQuery } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/api/client";
 
 type NavItem = { label: string; to: string; badge?: string; match?: "exact" | "prefix" };
 type NavGroup = { header: string; items: NavItem[] };
@@ -243,6 +245,25 @@ export function PageBody({ children, className }: { children: ReactNode; classNa
 }
 
 export function MarketingShell({ children }: { children: ReactNode }) {
+  const { data: user, isLoading } = useQuery({
+    queryKey: ["users-me-session"],
+    queryFn: async () => {
+      try {
+        const res = await apiFetch("/api/v1/users/me");
+        if (res.ok) {
+          return await res.json();
+        }
+        return null;
+      } catch {
+        return null;
+      }
+    },
+    staleTime: 60 * 1000,
+    retry: false,
+  });
+
+  const isAuthenticated = !!user && user.is_active;
+
   return (
     <div
       className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 text-foreground relative overflow-x-hidden"
@@ -270,18 +291,34 @@ export function MarketingShell({ children }: { children: ReactNode }) {
             </Link>
           </nav>
           <div className="flex items-center gap-2">
-            <Link
-              to="/login"
-              className="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
-            >
-              Log in
-            </Link>
-            <Link
-              to="/dashboard"
-              className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background ring-1 ring-foreground transition-colors hover:bg-foreground/90"
-            >
-              Launch dashboard
-            </Link>
+            {isLoading ? (
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-16 animate-pulse rounded-md bg-muted" />
+                <div className="h-8 w-32 animate-pulse rounded-md bg-muted" />
+              </div>
+            ) : isAuthenticated ? (
+              <Link
+                to="/dashboard"
+                className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background ring-1 ring-foreground transition-colors hover:bg-foreground/90"
+              >
+                Launch dashboard
+              </Link>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+                >
+                  Log in
+                </Link>
+                <Link
+                  to="/register"
+                  className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background ring-1 ring-foreground transition-colors hover:bg-foreground/90"
+                >
+                  Sign up
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>

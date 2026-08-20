@@ -5,6 +5,7 @@ import { getLandingStats, getHealthStatus } from "@/lib/api/stats";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HealthStatusDot } from "@/components/sirafit/health-status";
+import { apiFetch } from "@/lib/api/client";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -224,6 +225,25 @@ function TopMatchQueue() {
 }
 
 function Landing() {
+  const { data: user, isLoading } = useQuery({
+    queryKey: ["users-me-session"],
+    queryFn: async () => {
+      try {
+        const res = await apiFetch("/api/v1/users/me");
+        if (res.ok) {
+          return await res.json();
+        }
+        return null;
+      } catch {
+        return null;
+      }
+    },
+    staleTime: 60 * 1000,
+    retry: false,
+  });
+
+  const isAuthenticated = !!user && user.is_active;
+
   return (
     <MarketingShell>
       <section className="relative border-b border-border overflow-hidden">
@@ -238,31 +258,57 @@ function Landing() {
             Gemini key.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-            <Link
-              to="/register"
-              className="group inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-6 py-3 text-sm font-semibold text-background shadow-lg ring-1 ring-foreground transition-all duration-200 hover:bg-foreground/90 hover:shadow-xl hover:scale-105"
-            >
-              Get Started
-              <svg
-                className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+            {isLoading ? (
+              <div className="h-11 w-44 animate-pulse rounded-lg bg-muted" />
+            ) : isAuthenticated ? (
+              <Link
+                to="/dashboard"
+                className="group inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-6 py-3 text-sm font-semibold text-background shadow-lg ring-1 ring-foreground transition-all duration-200 hover:bg-foreground/90 hover:shadow-xl hover:scale-105"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 7l5 5m0 0l-5 5m5-5H6"
-                />
-              </svg>
-            </Link>
-            <Link
-              to="/login"
-              className="inline-flex items-center justify-center rounded-lg bg-card px-6 py-3 text-sm font-semibold text-foreground ring-1 ring-border transition-all duration-200 hover:bg-muted hover:ring-2"
-            >
-              Sign In
-            </Link>
+                Launch dashboard
+                <svg
+                  className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 7l5 5m0 0l-5 5m5-5H6"
+                  />
+                </svg>
+              </Link>
+            ) : (
+              <>
+                <Link
+                  to="/register"
+                  className="group inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-6 py-3 text-sm font-semibold text-background shadow-lg ring-1 ring-foreground transition-all duration-200 hover:bg-foreground/90 hover:shadow-xl hover:scale-105"
+                >
+                  Sign up
+                  <svg
+                    className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 7l5 5m0 0l-5 5m5-5H6"
+                    />
+                  </svg>
+                </Link>
+                <Link
+                  to="/login"
+                  className="inline-flex items-center justify-center rounded-lg bg-card px-6 py-3 text-sm font-semibold text-foreground ring-1 ring-border transition-all duration-200 hover:bg-muted hover:ring-2"
+                >
+                  Sign In
+                </Link>
+              </>
+            )}
           </div>
           <StatsGrid />
         </div>
@@ -335,25 +381,49 @@ function Landing() {
           </div>
           <div className="flex items-center gap-3">
             <AgentDot />
-            <Link
-              to="/register"
-              className="group inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-6 py-3 text-sm font-semibold text-background shadow-lg ring-1 ring-foreground transition-all duration-200 hover:bg-foreground/90 hover:shadow-xl hover:scale-105"
-            >
-              Get Started
-              <svg
-                className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+            {isLoading ? (
+              <div className="h-11 w-36 animate-pulse rounded-lg bg-muted" />
+            ) : isAuthenticated ? (
+              <Link
+                to="/dashboard"
+                className="group inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-6 py-3 text-sm font-semibold text-background shadow-lg ring-1 ring-foreground transition-all duration-200 hover:bg-foreground/90 hover:shadow-xl hover:scale-105"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 7l5 5m0 0l-5 5m5-5H6"
-                />
-              </svg>
-            </Link>
+                Launch dashboard
+                <svg
+                  className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 7l5 5m0 0l-5 5m5-5H6"
+                  />
+                </svg>
+              </Link>
+            ) : (
+              <Link
+                to="/register"
+                className="group inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-6 py-3 text-sm font-semibold text-background shadow-lg ring-1 ring-foreground transition-all duration-200 hover:bg-foreground/90 hover:shadow-xl hover:scale-105"
+              >
+                Sign up
+                <svg
+                  className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 7l5 5m0 0l-5 5m5-5H6"
+                  />
+                </svg>
+              </Link>
+            )}
           </div>
         </div>
       </section>
