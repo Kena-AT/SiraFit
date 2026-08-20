@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, Tag, EmptyState } from "@/components/sirafit/bits";
 import { Input } from "@/components/ui/input";
@@ -16,9 +17,7 @@ export const Route = createFileRoute("/_app/jobs/")({
 });
 
 function JobsExplorer() {
-  const [data, setData] = useState<JobListResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const [selectedJobs, setSelectedJobs] = useState<Job[]>([]);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
 
@@ -46,66 +45,59 @@ function JobsExplorer() {
 
   const limit = 50;
 
-  const fetchJobs = async () => {
-    setLoading(true);
-    setError(null);
-    setSelectedJobs([]); // Clear selection on new fetch
-
-    const params: JobSearchParams = {
-      skip: page * limit,
-      limit,
-      sort_by: sortBy,
-      sort_order: sortOrder,
-    };
-
-    if (activeSearch) params.search = activeSearch;
-    if (companyFilter) params.company = companyFilter;
-    if (locationFilter) params.location = locationFilter;
-    if (sourceFilter) params.source = sourceFilter;
-
-    try {
-      const result = await getJobs(params);
-      setData(result);
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
+  // Build query params for the current filter state
+  const queryParams: JobSearchParams = {
+    skip: page * limit,
+    limit,
+    sort_by: sortBy,
+    sort_order: sortOrder,
   };
+  if (activeSearch) queryParams.search = activeSearch;
+  if (companyFilter) queryParams.company = companyFilter;
+  if (locationFilter) queryParams.location = locationFilter;
+  if (sourceFilter) queryParams.source = sourceFilter;
+
+  // Ponytail: useQuery with stable queryKey for caching & deduplication.
+  // The queryClient's staleTime (30s in router.tsx) handles memoization.
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["jobs", queryParams],
+    queryFn: () => getJobs(queryParams),
+    // Don't refetch on window focus - we're using staleTime instead
+  });
 
   const handleSelectJob = (job: Job, checked: boolean) => {
-    setSelectedJobs(prev => {
-      if (checked) {
-        return [...prev, job];
-      } else {
-        return prev.filter(j => j.id !== job.id);
-      }
-    });
+    setSelectedJobs(prev =>
+      checked ? [...prev, job] : prev.filter(j => j.id !== job.id)
+    );
   };
 
   const handleSelectAll = (checked: boolean) => {
     if (!data) return;
-    if (checked) {
-      setSelectedJobs(data.jobs);
-    } else {
-      setSelectedJobs([]);
-    }
+    setSelectedJobs(checked ? data.jobs : []);
   };
+
+  // Ponytail: useMutation with onMutate for optimistic updates + cache invalidation
+  const batchMutation = useMutation({
+    mutationFn: ({ operationType, jobIds }: { operationType: BatchOperationType; jobIds: string[] }) =>
+      createBatchJob({ operation_type: operationType, job_ids: jobIds }),
+    onMutate: async () => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["jobs"] });
+    },
+    onSettled: () => {
+      // Invalidate jobs cache to refetch fresh data after batch op completes
+      queryClient.invalidateQueries({ queryKey: ["jobs"] });
+    },
+  });
 
   const handleBatchOperation = async (operationType: BatchOperationType, jobIds: string[]) => {
     try {
-      await createBatchJob({ operation_type: operationType, job_ids: jobIds });
-      fetchJobs(); // Refresh the job list
-      // TODO: Navigate to batch jobs page or show a success toast
-    } catch (err) {
-      setError("Failed to create batch job.");
+      await batchMutation.mutateAsync({ operationType, jobIds });
+      setSelectedJobs([]); // Clear selection after batch op
+    } catch (err: any) {
       console.error("Error creating batch job:", err);
     }
   };
-
-  useEffect(() => {
-    fetchJobs();
-  }, [page, activeSearch, companyFilter, locationFilter, sourceFilter, sortBy, sortOrder]);
 
   const handleSearch = () => {
     setActiveSearch(searchTerm);
@@ -122,6 +114,8 @@ function JobsExplorer() {
     setSourceFilter("");
     setPage(0);
   };
+
+  const fetchJobs = () => refetch();
 
   const hasFilters = activeSearch || companyFilter || locationFilter || sourceFilter;
 
@@ -151,14 +145,16 @@ function JobsExplorer() {
     }
   };
 
+  const jobResponse = data || { jobs: [], total: 0 };
+
   return (
     <PageBody>
       <PageHeader
         eyebrow="Pipeline"
         title="Jobs Explorer"
         description={
-          data
-            ? `${data.total} jobs imported. Filter, search, and triage.`
+          jobResponse.total
+            ? `${jobResponse.total} jobs imported. Filter, search, and triage.`
             : "Browse and manage imported jobs"
         }
         actions={
@@ -194,10 +190,10 @@ function JobsExplorer() {
               placeholder="Search role, company, description…"
               className="h-9 bg-card"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              onChange={e => setSearchTerm(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleSearch()}
             />
-            <Button size="sm" onClick={handleSearch} disabled={loading}>
+            <Button size="sm" onClick={handleSearch} disabled={isLoading}>
               Search
             </Button>
           </div>
@@ -217,18 +213,18 @@ function JobsExplorer() {
             placeholder="Company"
             className="h-8 w-40 bg-card text-xs"
             value={companyInput}
-            onChange={(e) => setCompanyInput(e.target.value)}
+            onChange={e => setCompanyInput(e.target.value)}
           />
           <Input
             placeholder="Location"
             className="h-8 w-40 bg-card text-xs"
             value={locationInput}
-            onChange={(e) => setLocationInput(e.target.value)}
+            onChange={e => setLocationInput(e.target.value)}
           />
           <select
             className="h-8 rounded-md border border-border bg-card px-2 text-xs"
             value={sourceFilter}
-            onChange={(e) => {
+            onChange={e => {
               setSourceFilter(e.target.value);
               setPage(0);
             }}
@@ -245,7 +241,7 @@ function JobsExplorer() {
           <select
             className="h-8 rounded-md border border-border bg-card px-2 text-xs"
             value={`${sortBy}-${sortOrder}`}
-            onChange={(e) => {
+            onChange={e => {
               const [field, order] = e.target.value.split("-");
               setSortBy(field);
               setSortOrder(order as "asc" | "desc");
@@ -269,19 +265,19 @@ function JobsExplorer() {
        />
 
        <Panel>
-         {loading ? (
+         {isLoading ? (
           <div className="flex items-center justify-center px-4 py-12 text-sm text-muted-foreground">
             <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-border border-t-foreground" />
             Loading jobs...
           </div>
         ) : error ? (
           <div className="px-4 py-8 text-center">
-            <div className="text-sm text-destructive">{error}</div>
+            <div className="text-sm text-destructive">{error.message}</div>
             <Button variant="outline" size="sm" className="mt-3" onClick={fetchJobs}>
               Retry
             </Button>
           </div>
-        ) : !data || data.jobs.length === 0 ? (
+        ) : jobResponse.jobs.length === 0 ? (
           <EmptyState
             title="No jobs found"
             body={hasFilters ? "Try adjusting your filters" : "Import some jobs to get started"}
@@ -302,9 +298,9 @@ function JobsExplorer() {
                  <tr>
                    <th className="px-4 py-2.5 font-semibold">
                      <Checkbox
-                       checked={selectedJobs.length > 0 && selectedJobs.length === data?.jobs.length}
+                       checked={selectedJobs.length > 0 && selectedJobs.length === jobResponse.jobs.length}
                        onCheckedChange={handleSelectAll}
-                       disabled={!data || data.jobs.length === 0}
+                       disabled={jobResponse.jobs.length === 0}
                      />
                    </th>
                    <th className="px-4 py-2.5 font-semibold">Company</th>
@@ -317,14 +313,14 @@ function JobsExplorer() {
                  </tr>
                </thead>
                  <tbody className="divide-y divide-border">
-                   {data.jobs.map((j, i) => {
+                   {jobResponse.jobs.map((j, i) => {
                      const isSelected = selectedJobs.some(job => job.id === j.id);
                      return (
                        <tr key={j.id} className="group hover:bg-muted/30">
                          <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground tabular-nums">
                            <Checkbox
                              checked={isSelected}
-                             onCheckedChange={(checked) => handleSelectJob(j, checked as boolean)}
+                             onCheckedChange={checked => handleSelectJob(j, checked as boolean)}
                            />
                          </td>
                          <td className="px-4 py-3 font-medium">{j.company}</td>
@@ -348,9 +344,7 @@ function JobsExplorer() {
                          </td>
                          <td className="px-4 py-3">
                            <div className="flex flex-wrap gap-1">
-                             {j.tags.slice(0, 3).map((t) => (
-                               <Tag key={t}>{t}</Tag>
-                             ))}
+                             {j.tags.slice(0, 3).map(t => <Tag key={t}>{t}</Tag>)}
                              {j.tags.length > 3 && <Tag>+{j.tags.length - 3}</Tag>}
                            </div>
                          </td>
@@ -365,24 +359,24 @@ function JobsExplorer() {
             </div>
             <footer className="flex items-center justify-between border-t border-border bg-muted/30 px-4 py-2 text-[11px] text-muted-foreground">
               <div>
-                Showing {page * limit + 1}–{Math.min((page + 1) * limit, data.total)} of{" "}
-                {data.total}
+                Showing {page * limit + 1}–{Math.min((page + 1) * limit, jobResponse.total)} of{" "}
+                {jobResponse.total}
               </div>
               <div className="flex gap-1.5">
                 <button
                   className="rounded border border-border bg-card px-2 py-0.5 hover:bg-muted disabled:opacity-50"
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  onClick={() => setPage(p => Math.max(0, p - 1))}
                   disabled={page === 0}
                 >
                   ←
                 </button>
                 <span className="px-2">
-                  Page {page + 1} of {Math.ceil(data.total / limit)}
+                  Page {page + 1} of {Math.ceil(jobResponse.total / limit)}
                 </span>
                 <button
                   className="rounded border border-border bg-card px-2 py-0.5 hover:bg-muted disabled:opacity-50"
-                  onClick={() => setPage((p) => p + 1)}
-                  disabled={(page + 1) * limit >= data.total}
+                  onClick={() => setPage(p => p + 1)}
+                  disabled={(page + 1) * limit >= jobResponse.total}
                 >
                   →
                 </button>
