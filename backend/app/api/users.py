@@ -10,7 +10,8 @@ from pydantic import ValidationError
 
 from app.core.database import get_db
 from app.core.config import settings
-from app.models.user import User, UserPreference, DeviceSession
+from app.core.cache import cache_get, cache_set, cache_delete
+from app.models.user import User, UserPreference, DeviceSession, RefreshToken
 from app.schemas.user import (
     UserCreate, UserResponse, TokenPayload, PasswordChangeRequest,
     NotificationPreferencesBase, NotificationPreferences,
@@ -77,12 +78,27 @@ def get_current_user(
     return user
 
 
+def _user_me_cache_key(user_id: str) -> str:
+    return f"user:me:{user_id}"
+
+
+def _invalidate_user_me_cache(user_id: str) -> None:
+    cache_delete(_user_me_cache_key(user_id))
+
+
 @router.get("/me", response_model=UserResponse)
 def read_user_me(
     current_user: User = Depends(get_current_user),
 ) -> Any:
-    """Get current user profile."""
-    return current_user
+    """Get current user profile (cached for 5 minutes)."""
+    cache_key = _user_me_cache_key(str(current_user.id))
+    cached = cache_get(cache_key)
+    if cached:
+        return UserResponse.model_validate(cached)
+
+    response = UserResponse.model_validate(current_user)
+    cache_set(cache_key, response.model_dump(mode="json"), ttl=300)  # 5 min TTL
+    return response
 
 
 @router.put("/me", response_model=UserResponse)
@@ -100,6 +116,8 @@ def update_user_me(
         setattr(current_user, field, value)
     db.commit()
     db.refresh(current_user)
+    # Invalidate user/me cache
+    _invalidate_user_me_cache(str(current_user.id))
     return current_user
 
 
@@ -197,6 +215,8 @@ def change_password(
 
     db.commit()
     db.refresh(current_user)
+    # Invalidate user/me cache
+    _invalidate_user_me_cache(str(current_user.id))
 
     # Return success - client should invalidate local session and prompt re-login
     return {"message": "Password updated. Please log in again."}
