@@ -7,11 +7,15 @@ export const getRouter = () => {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
+        // Industry-standard 60s staleTime to prevent redundant refetches on navigation.
+        staleTime: 60_000,
+        gcTime: 10 * 60 * 1000,
         retry: (failureCount, error) => {
           if (error instanceof ApiError && error.status === 401) return false;
           return failureCount < 3;
         },
         refetchOnWindowFocus: false,
+        refetchOnMount: false,
       },
       mutations: {
         retry: false,
@@ -23,7 +27,9 @@ export const getRouter = () => {
     routeTree,
     context: { queryClient },
     scrollRestoration: true,
-    defaultPreloadStaleTime: 0,
+    // Preload routes on hover/touch for instant navigation
+    defaultPreload: "intent",
+    defaultPreloadStaleTime: 60_000,
   });
 
   return router;
