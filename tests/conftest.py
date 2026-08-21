@@ -132,7 +132,7 @@ def auth_tokens(client, registered_user):
     """Log in the fixture user per test and return the token pair."""
     response = client.post(
         "/api/v1/auth/login",
-        data={"username": "fixture@example.com", "password": "Password123!"},
+        json={"email": "fixture@example.com", "password": "Password123!"},
     )
     assert response.status_code == 200, response.text
     return response.json()

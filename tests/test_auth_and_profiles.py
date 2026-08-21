@@ -50,7 +50,7 @@ class TestLogin:
     def test_login_success(self, client, registered_user):
         resp = client.post(
             "/api/v1/auth/login",
-            data={"username": "fixture@example.com", "password": "Password123!"},
+            json={"email": "fixture@example.com", "password": "Password123!"},
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -61,14 +61,14 @@ class TestLogin:
     def test_login_wrong_password(self, client, registered_user):
         resp = client.post(
             "/api/v1/auth/login",
-            data={"username": "fixture@example.com", "password": "WrongPass!"},
+            json={"email": "fixture@example.com", "password": "WrongPass!"},
         )
         assert resp.status_code == 401
 
     def test_login_nonexistent_user(self, client):
         resp = client.post(
             "/api/v1/auth/login",
-            data={"username": "ghost@example.com", "password": "Password123!"},
+            json={"email": "ghost@example.com", "password": "Password123!"},
         )
         assert resp.status_code == 401
 

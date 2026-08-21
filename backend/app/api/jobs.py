@@ -1,5 +1,6 @@
 from typing import List, Any, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Header
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, cast, String, func
 import uuid
@@ -184,7 +185,7 @@ async def list_jobs(
     )
 
     async def fetch() -> JobListResponse:
-        result = await db.run_in_threadpool(
+        result = await run_in_threadpool(
             _list_jobs_query,
             db,
             current_user,

@@ -82,7 +82,7 @@ def register_user(
 def login_user(client: TestClient, email: str, password: str = "TestPass123!"):
     """Login and return tokens."""
     resp = client.post(
-        "/api/v1/auth/login", data={"username": email, "password": password}
+        "/api/v1/auth/login", json={"email": email, "password": password}
     )
     assert resp.status_code == 200, resp.text
     return resp.json()
@@ -232,7 +232,7 @@ class TestCompleteUserJourney:
 
         # Login should fail before verification
         login_resp = client.post(
-            "/api/v1/auth/login", data={"username": email, "password": "TestPass123!"}
+            "/api/v1/auth/login", json={"email": email, "password": "TestPass123!"}
         )
         assert login_resp.status_code == 403, login_resp.text
         assert "verif" in login_resp.json().get("detail", "").lower()
