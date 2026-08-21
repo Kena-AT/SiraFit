@@ -1,4 +1,4 @@
-import type { JobImportData, ImportResult, JobImportRecord } from "@/types/job";
+import type { JobImportData, ImportResult, JobImportRecord, RankedJobListResponse } from "@/types/job";
 import { apiFetch } from "./client";
 
 export const importJobs = async (data: JobImportData): Promise<ImportResult> => {
@@ -118,6 +118,26 @@ export const getRankedJobs = async (params: {
   const response = await apiFetch(`/api/v1/jobs/ranked?${queryParams.toString()}`);
   if (!response.ok) {
     throw new Error("Failed to fetch ranked jobs");
+  }
+  return response.json();
+};
+
+/**
+ * Single batched call returning every job pre-joined with its stored match
+ * score (or null). Replaces the previous N+1 pattern where the Match page
+ * fired one getCachedMatchScore request per job.
+ */
+export const getJobsWithScores = async (params: {
+  skip?: number;
+  limit?: number;
+} = {}): Promise<RankedJobListResponse> => {
+  const queryParams = new URLSearchParams();
+  if (params.skip !== undefined) queryParams.append("skip", params.skip.toString());
+  if (params.limit !== undefined) queryParams.append("limit", params.limit.toString());
+
+  const response = await apiFetch(`/api/v1/jobs/with-scores?${queryParams.toString()}`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch jobs with scores");
   }
   return response.json();
 };

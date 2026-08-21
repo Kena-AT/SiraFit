@@ -77,6 +77,45 @@ def list_ranked_jobs(
     return RankedJobListResponse(jobs=items, total=len(items))
 
 
+@router.get("/with-scores", response_model=RankedJobListResponse)
+def list_jobs_with_scores(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+) -> Any:
+    """List jobs with their match scores in a single batched call.
+
+    Returns each job pre-joined with its stored match score (or null) so the
+    Match page can render without firing a per-job score request (the previous
+    N+1 pattern). Scores are fetched in one IN()-query rather than one per job.
+    """
+    jobs = db.query(Job).order_by(Job.created_at.desc()).offset(skip).limit(limit).all()
+
+    job_ids = [j.id for j in jobs]
+    scores = (
+        db.query(JobMatchScore)
+        .filter(
+            JobMatchScore.user_id == current_user.id,
+            JobMatchScore.job_id.in_(job_ids),
+        )
+        .all()
+    )
+    score_map = {s.job_id: s for s in scores}
+
+    items = [
+        RankedJobResponse(
+            job=JobResponse.model_validate(job),
+            match_score=JobMatchScoreResponse.model_validate(score_map[job.id])
+            if job.id in score_map
+            else None,
+        )
+        for job in jobs
+    ]
+    items.sort(key=lambda r: r.match_score.score if r.match_score else 0, reverse=True)
+    return RankedJobListResponse(jobs=items, total=len(items))
+
+
 # ---------------------------------------------------------------------------
 # Job listing
 # ---------------------------------------------------------------------------

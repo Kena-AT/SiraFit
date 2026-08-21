@@ -86,6 +86,16 @@ export interface JobMatchScore {
   updated_at: string | null;
 }
 
+export interface RankedJob {
+  job: Job;
+  match_score: JobMatchScore | null;
+}
+
+export interface RankedJobListResponse {
+  jobs: RankedJob[];
+  total: number;
+}
+
 // --- Sprint 9 Application Types ---
 
 export interface JobApplication {

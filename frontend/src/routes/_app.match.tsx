@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, ScoreMeter, Tag } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
-import { getJobs, getCachedMatchScore, getMatchScore } from "@/lib/api/jobs";
+import { getJobsWithScores, getMatchScore } from "@/lib/api/jobs";
 import type { Job, JobMatchScore } from "@/types/job";
 
 interface JobWithScore {
@@ -18,36 +19,28 @@ export const Route = createFileRoute("/_app/match")({
 
 function MatchAnalysis() {
   const [items, setItems] = useState<JobWithScore[]>([]);
-  const [loading, setLoading] = useState(true);
   const [scoring, setScoring] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
 
-  // Load jobs then fetch all cached scores in parallel (no DB writes)
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const list = await getJobs({ limit: 200 });
-        const withScores: JobWithScore[] = await Promise.all(
-          list.jobs.map(async (job: Job) => {
-            const score = await getCachedMatchScore(job.id);
-            return { job, score };
-          })
-        );
-        withScores.sort((a, b) => (b.score?.score ?? -1) - (a.score?.score ?? -1));
-        setItems(withScores);
-      } catch (e: any) {
-        setError(e.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, []);
+  // Single batched call: every job pre-joined with its stored match score,
+  // replacing the old N+1 pattern (one getCachedMatchScore request per job).
+  const { data, isLoading, error: queryError } = useQuery({
+    queryKey: ["jobs-with-scores"],
+    queryFn: () => getJobsWithScores({ limit: 200 }),
+  });
 
-  // Re-score all jobs (writes to DB) — only on explicit user action
+  // Seed `items` from the single response (replacing the per-job fetch loop).
+  useEffect(() => {
+    if (!data) return;
+    const mapped: JobWithScore[] = data.jobs.map((r) => ({
+      job: r.job,
+      score: r.match_score ?? null,
+    }));
+    mapped.sort((a, b) => (b.score?.score ?? -1) - (a.score?.score ?? -1));
+    setItems(mapped);
+  }, [data]);
+
+  // Re-score all jobs (writes to DB) — only on explicit user action.
   const handleScoreAll = async () => {
     setScoring(true);
     try {
@@ -68,19 +61,13 @@ function MatchAnalysis() {
     }
   };
 
-  // Compute skill gaps correctly: collect job tags that are NOT in the user's
-  // profile skills. We derive "matched" skills from the score explanation
-  // which contains the matched count. For a precise diff we count tags only
-  // for jobs where skills score is 0 (no match at all) as definite gaps, and
-  // mark the rest as "partial gaps" — surfaces the most actionable ones first.
+  // Compute skill gaps: count job tags for jobs whose skill score is below
+  // full coverage, weighted by how severe the gap is (0% counts 2x).
   const skillGapCounts: Record<string, number> = {};
   for (const { job, score } of items) {
     if (!score) continue;
     const skillScore = score.breakdown?.skills ?? 100;
     if (skillScore < 100) {
-      // Only add tags that contributed to the gap (i.e., the job has tags
-      // and the profile doesn't fully cover them).  We weight by how bad
-      // the gap is: a 0% skill score counts 2x, partial counts 1x.
       const weight = skillScore === 0 ? 2 : 1;
       for (const tag of job.tags || []) {
         const key = tag.toLowerCase();
@@ -94,8 +81,9 @@ function MatchAnalysis() {
 
   const unscoredCount = items.filter((i) => !i.score).length;
   const displayItems = showAll ? items : items.slice(0, 20);
+  const error = queryError ? (queryError as Error).message : null;
 
-  if (loading) {
+  if (isLoading) {
     return (
       <PageBody>
         <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
