@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, Tag, EmptyState } from "@/components/sirafit/bits";
@@ -45,24 +45,26 @@ function JobsExplorer() {
 
   const limit = 50;
 
-  // Build query params for the current filter state
-  const queryParams: JobSearchParams = {
-    skip: page * limit,
-    limit,
-    sort_by: sortBy,
-    sort_order: sortOrder,
-  };
-  if (activeSearch) queryParams.search = activeSearch;
-  if (companyFilter) queryParams.company = companyFilter;
-  if (locationFilter) queryParams.location = locationFilter;
-  if (sourceFilter) queryParams.source = sourceFilter;
+  // Ponytail: stable, memoized queryKey to prevent unnecessary refetches on re-renders
+  const queryKey: [string, JobSearchParams] = useMemo(() => {
+    const params: JobSearchParams = {
+      skip: page * limit,
+      limit,
+      sort_by: sortBy,
+      sort_order: sortOrder,
+    };
+    if (activeSearch) params.search = activeSearch;
+    if (companyFilter) params.company = companyFilter;
+    if (locationFilter) params.location = locationFilter;
+    if (sourceFilter) params.source = sourceFilter;
+    return ["jobs", params];
+  }, [page, limit, sortBy, sortOrder, activeSearch, companyFilter, locationFilter, sourceFilter]);
 
-  // Ponytail: useQuery with stable queryKey for caching & deduplication.
-  // The queryClient's staleTime (30s in router.tsx) handles memoization.
+  const queryParams = queryKey[1];
+
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["jobs", queryParams],
+    queryKey,
     queryFn: () => getJobs(queryParams),
-    // Don't refetch on window focus - we're using staleTime instead
   });
 
   const handleSelectJob = (job: Job, checked: boolean) => {

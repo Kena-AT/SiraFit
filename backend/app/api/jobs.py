@@ -7,7 +7,7 @@ import json
 import hashlib
 
 from app.core.database import get_db
-from app.core.cache import cache_get, cache_set
+from app.core.cache import cache_get, cache_set, cache_delete_prefix, cache_get_or_compute
 from app.api.users import get_current_user
 from app.models.user import User
 from app.models.job import Job, JobApplication, JobImport, JobAnalysis
@@ -48,24 +48,30 @@ def list_ranked_jobs(
     limit: int = Query(100, ge=1, le=500),
 ) -> Any:
     """List all jobs with their match scores, ranked by score descending."""
+    # Fetch paginated jobs in one query.
     jobs = db.query(Job).order_by(Job.created_at.desc()).offset(skip).limit(limit).all()
-    items = []
-    for job in jobs:
-        score_record = (
-            db.query(JobMatchScore)
-            .filter(
-                JobMatchScore.user_id == current_user.id, JobMatchScore.job_id == job.id
-            )
-            .first()
+
+    # Batch-fetch match scores for all returned jobs in a single query (N+1 fix).
+    job_ids = [j.id for j in jobs]
+    scores = (
+        db.query(JobMatchScore)
+        .filter(
+            JobMatchScore.user_id == current_user.id,
+            JobMatchScore.job_id.in_(job_ids),
         )
-        items.append(
-            RankedJobResponse(
-                job=JobResponse.model_validate(job),
-                match_score=JobMatchScoreResponse.model_validate(score_record)
-                if score_record
-                else None,
-            )
+        .all()
+    )
+    score_map = {s.job_id: s for s in scores}
+
+    items = [
+        RankedJobResponse(
+            job=JobResponse.model_validate(job),
+            match_score=JobMatchScoreResponse.model_validate(score_map[job.id])
+            if job.id in score_map
+            else None,
         )
+        for job in jobs
+    ]
     items.sort(key=lambda r: r.match_score.score if r.match_score else 0, reverse=True)
     return RankedJobListResponse(jobs=items, total=len(items))
 
@@ -88,54 +94,13 @@ def _invalidate_job_cache(user_id: str) -> None:
     cache_delete_prefix(f"jobs:list:{user_id}:")
 
 
-@router.get("/", response_model=JobListResponse)
-def list_jobs(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=500),
-    search: Optional[str] = Query(None),
-    company: Optional[str] = Query(None),
-    location: Optional[str] = Query(None),
-    source: Optional[str] = Query(None),
-    tags: Optional[str] = Query(None),
-    min_salary: Optional[int] = Query(None, ge=0),
-    max_salary: Optional[int] = Query(None, ge=0),
-    sort_by: Optional[str] = Query("created_at"),
-    sort_order: Optional[str] = Query("desc"),
-    include_archived: bool = Query(False, description="Include archived jobs"),
-) -> Any:
-    """List jobs with search, filtering, sorting, and pagination."""
-    # Ponytail: 30s Redis cache for job listings. Invalidate on import/analysis.
-    # Caches the total + jobs for a given filter set. skip/limit intentionally
-    # excluded from key so we can serve any page from the same cached response.
-    cache_key = _build_cache_key(
-        str(current_user.id),
-        search=search,
-        company=company,
-        location=location,
-        source=source,
-        tags=tags,
-        min_salary=min_salary,
-        max_salary=max_salary,
-        sort_by=sort_by,
-        sort_order=sort_order,
-        include_archived=include_archived,
-    )
-
-    cached = cache_get(cache_key)
-    if cached:
-        total = cached["total"]
-        # Slice the cached jobs for the requested page
-        cached_jobs = cached["jobs"]
-        page_jobs = cached_jobs[skip : skip + limit]
-        return JobListResponse(
-            jobs=[JobResponse.model_validate(j) for j in page_jobs],
-            total=total,
-            skip=skip,
-            limit=limit,
-        )
-
+def _list_jobs_query(db: Session, current_user: User, skip: int, limit: int,
+                     search: Optional[str], company: Optional[str],
+                     location: Optional[str], source: Optional[str],
+                     tags: Optional[str], min_salary: Optional[int],
+                     max_salary: Optional[int], sort_by: Optional[str],
+                     sort_order: Optional[str], include_archived: bool) -> JobListResponse:
+    """Core job-listing query logic (sync, callable from sync or async paths)."""
     query = db.query(Job)
 
     if not include_archived:
@@ -178,48 +143,79 @@ def list_jobs(
     query = query.order_by(sort_col.asc() if sort_order == "asc" else sort_col.desc())
     jobs = query.offset(skip).limit(limit).all()
 
-    # Store full result set in cache (not just the paged subset)
-    # Re-use the same query with all filters — only remove skip/limit
-    full_query = db.query(Job)
-    if not include_archived:
-        full_query = full_query.filter(Job.is_archived == False)
-    if search:
-        term = f"%{search}%"
-        full_query = full_query.filter(
-            or_(
-                Job.title.ilike(term),
-                Job.company.ilike(term),
-                Job.description.ilike(term),
-                Job.location.ilike(term),
-            )
-        )
-    if company:
-        full_query = full_query.filter(Job.company.ilike(f"%{company}%"))
-    if location:
-        full_query = full_query.filter(Job.location.ilike(f"%{location}%"))
-    if source:
-        full_query = full_query.filter(Job.source == source)
-    if tags:
-        for tag in [t.strip() for t in tags.split(",")]:
-            full_query = full_query.filter(cast(Job.tags, String).like(f'%"{tag}"%'))
-    if min_salary is not None:
-        full_query = full_query.filter(
-            or_(Job.salary_min >= min_salary, Job.salary_max >= min_salary)
-        )
-    if max_salary is not None:
-        full_query = full_query.filter(
-            or_(Job.salary_max <= max_salary, Job.salary_min <= max_salary)
-        )
-
-    all_jobs = full_query.order_by(sort_col.asc() if sort_order == "asc" else sort_col.desc()).all()
-
-    cache_data = {
-        "total": total,
-        "jobs": [JobResponse.model_validate(j).model_dump(mode="json") for j in all_jobs],
-    }
-    cache_set(cache_key, cache_data, ttl=30)
-
     return JobListResponse(jobs=jobs, total=total, skip=skip, limit=limit)
+
+
+@router.get("/", response_model=JobListResponse)
+async def list_jobs(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+    search: Optional[str] = Query(None),
+    company: Optional[str] = Query(None),
+    location: Optional[str] = Query(None),
+    source: Optional[str] = Query(None),
+    tags: Optional[str] = Query(None),
+    min_salary: Optional[int] = Query(None, ge=0),
+    max_salary: Optional[int] = Query(None, ge=0),
+    sort_by: Optional[str] = Query("created_at"),
+    sort_order: Optional[str] = Query("desc"),
+    include_archived: bool = Query(False, description="Include archived jobs"),
+) -> Any:
+    """List jobs with search, filtering, sorting, and pagination.
+
+    Ponytail: 30s Redis cache behind singleflight dedup. Concurrent
+    identical requests coalesce to a single DB round-trip on cache miss,
+    preventing thundering-herd load.
+    """
+    cache_key = _build_cache_key(
+        str(current_user.id),
+        search=search,
+        company=company,
+        location=location,
+        source=source,
+        tags=tags,
+        min_salary=min_salary,
+        max_salary=max_salary,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        include_archived=include_archived,
+    )
+
+    async def fetch() -> JobListResponse:
+        result = await db.run_in_threadpool(
+            _list_jobs_query,
+            db,
+            current_user,
+            skip,
+            limit,
+            search,
+            company,
+            location,
+            source,
+            tags,
+            min_salary,
+            max_salary,
+            sort_by,
+            sort_order,
+            include_archived,
+        )
+        return result
+
+    # Singleflight: dedupe concurrent fetches for the same cache key.
+    # On cache hit, the cached dict is re-hydrated into a JobListResponse.
+    cached = cache_get(cache_key)
+    if cached:
+        return JobListResponse(
+            jobs=[JobResponse(**j) for j in cached["jobs"]],
+            total=cached["total"],
+            skip=cached["skip"],
+            limit=cached["limit"],
+        )
+
+    result = await cache_get_or_compute(cache_key, 30, fetch)
+    return result
 
 
 # ---------------------------------------------------------------------------

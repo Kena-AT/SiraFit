@@ -9,9 +9,11 @@ Values are JSON-serialised, so only JSON-safe structures should be cached.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import time
+from datetime import datetime
 
 from app.core.config import settings
 from app.core.redis_client import get_redis_client
@@ -19,6 +21,9 @@ from app.core.redis_client import get_redis_client
 logger = logging.getLogger(__name__)
 
 _MEMORY: dict[str, tuple[object, float]] = {}
+# In-process singleflight locks, keyed by cache key.
+# NOTE: these dedupe only within a single process/worker — see plan 3.2 caveat.
+_flight: dict[str, asyncio.Lock] = {}
 
 
 def _cache_enabled() -> bool:
@@ -90,3 +95,53 @@ def cache_delete_prefix(prefix: str) -> None:
     for k in list(_MEMORY.keys()):
         if k.startswith(prefix):
             _MEMORY.pop(k, None)
+
+
+async def cache_get_or_compute(
+    key: str, ttl: int, func, *args, **kwargs
+):
+    """Return cached value for ``key``, or compute via ``func`` if absent.
+
+    Deduplicates concurrent requests for the same key using an asyncio.Lock
+    (singleflight pattern). Prevents thundering-herd DB hits on cold cache.
+
+    Caveat: dedupes within a single process/worker only. With multiple
+    Uvicorn/Gunicorn workers, cross-process hits may still occur — consider
+    a Redis-based distributed lock if that becomes a concern at scale.
+    """
+    val = cache_get(key)
+    if val is not None:
+        return val
+
+    lock = _flight.setdefault(key, asyncio.Lock())
+    try:
+        async with lock:
+            # Double-check after acquiring the lock — another request may have
+            # already computed and stored the value while we waited.
+            val = cache_get(key)
+            if val is not None:
+                return val
+            result = await func(*args, **kwargs) if asyncio.iscoroutinefunction(func) else func(*args, **kwargs)
+            cache_set(key, _to_json_safe(result), ttl)
+            return result
+    finally:
+        # Cleanup: pop the lock if no one else is using it, to avoid unbounded
+        # memory growth of the _flight dict under high key cardinality.
+        if not lock.locked():
+            _flight.pop(key, None)
+
+
+def _to_json_safe(obj):
+    """Convert Pydantic models/datetimes to JSON-serializable structures."""
+    try:
+        json.dumps(obj)
+        return obj
+    except (TypeError, ValueError):
+        pass
+    # Pydantic v2 models
+    if hasattr(obj, "model_dump"):
+        return obj.model_dump(mode="json")
+    # Datetimes
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    return obj
