@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    // TODO: Add support for 2FA and CAPTCHA
+    // TODO: Add support for 2FA and CAPTCHA (tracked in SiraFit_Remediation_Plan.md backlog).
     const response = await apiFetch("/api/v1/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

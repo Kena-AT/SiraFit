@@ -1,8 +1,12 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { AppShell } from "@/components/sirafit/shell";
+import { RouteErrorBoundary } from "@/components/sirafit/route-error";
 import { apiFetch, ApiError, setAutoRedirect } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_app")({
+  // Catch a crash in any authed route here so it shows a recoverable screen
+  // instead of bubbling to the root boundary and blanking the whole app.
+  errorComponent: RouteErrorBoundary,
   beforeLoad: async ({ context, location }) => {
     // Disable automatic login redirect during beforeLoad
     // We handle redirects explicitly to avoid double navigation

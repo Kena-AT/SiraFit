@@ -59,6 +59,9 @@ services:
   redis:
     image: redis:7-alpine
     container_name: sirafit-redis
+    # Bound key growth: evict least-recently-used keys instead of exhausting
+    # memory (Remediation Plan Phase 4 — Redis key growth).
+    command: ["redis-server", "--maxmemory-policy", "allkeys-lru"]
     ports:
       - "6381:6379"
     volumes:
