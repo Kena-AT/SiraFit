@@ -37,18 +37,18 @@ def mock_batch_job(db: Session) -> BatchJob:
 
 def test_run_batch_job_success(db: Session, mock_batch_job: BatchJob):
     batch_job_id = mock_batch_job.id
-    
+
     async def mock_analyze(*args, **kwargs):
         return {"score": 85, "status": "done"}
 
     with patch("app.core.database.SessionLocal", return_value=db), \
          patch("app.services.batch_operations.batch_analyze_item", side_effect=mock_analyze):
-        
+
         result = _run_batch_job(batch_job_id)
-        
+
         assert result["status"] == "completed"
         assert result["processed"] == 2
-        
+
         # Verify the batch job was updated (query fresh)
         updated_job = db.query(BatchJob).filter(BatchJob.id == batch_job_id).first()
         assert updated_job is not None
@@ -60,7 +60,7 @@ def test_run_batch_job_success(db: Session, mock_batch_job: BatchJob):
 
 def test_run_batch_job_partial_failure(db: Session, mock_batch_job: BatchJob):
     batch_job_id = mock_batch_job.id
-    
+
     async def mock_analyze(*args, **kwargs):
         # Fail on second call
         if mock_analyze.calls == 1:
@@ -72,12 +72,12 @@ def test_run_batch_job_partial_failure(db: Session, mock_batch_job: BatchJob):
 
     with patch("app.core.database.SessionLocal", return_value=db), \
          patch("app.services.batch_operations.batch_analyze_item", side_effect=mock_analyze):
-        
+
         result = _run_batch_job(batch_job_id)
-        
+
         assert result["status"] == "partial"
         assert result["processed"] == 2
-        
+
         # Verify the batch job was updated (query fresh)
         updated_job = db.query(BatchJob).filter(BatchJob.id == batch_job_id).first()
         assert updated_job is not None
@@ -89,14 +89,14 @@ def test_run_batch_job_partial_failure(db: Session, mock_batch_job: BatchJob):
 
 def test_run_batch_job_cancelled(db: Session, mock_batch_job: BatchJob):
     batch_job_id = mock_batch_job.id
-    
+
     # Set cancel_requested to True
     mock_batch_job.cancel_requested = True
     db.commit()
-    
+
     with patch("app.core.database.SessionLocal", return_value=db):
         result = _run_batch_job(batch_job_id)
-    
+
     assert result["status"] == "cancelled"
     assert result["processed"] == 0
 
@@ -105,9 +105,9 @@ def test_enqueue_batch_job_success(db: Session, mock_batch_job: BatchJob):
     with patch("app.worker.celery_app.celery_app") as mock_celery:
         mock_send_task = MagicMock()
         mock_celery.send_task = mock_send_task
-        
+
         enqueue_batch_job(mock_batch_job.id)
-        
+
         mock_send_task.assert_called_once_with(
             "app.worker.tasks.process_batch_job",
             kwargs={"batch_job_id": str(mock_batch_job.id)},
@@ -119,7 +119,7 @@ def test_enqueue_batch_job_fallback(db: Session, mock_batch_job: BatchJob):
     with patch("app.worker.celery_app.celery_app.send_task", side_effect=Exception("Celery unavailable")), \
          patch("app.core.database.SessionLocal", return_value=db), \
          patch("app.services.batch._run_batch_job") as mock_run:
-        
+
         enqueue_batch_job(mock_batch_job.id)
-        
+
         mock_run.assert_called_once_with(mock_batch_job.id)

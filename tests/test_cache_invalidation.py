@@ -6,6 +6,11 @@ real cache contents. Instead we monkeypatch the low-level ``cache_delete`` /
 the batch runner) requests deletion of the correct keys. This proves both the
 key construction inside the centralized helpers and that the endpoints are wired
 to invoke them.
+
+Migrated from the legacy ``backend/tests`` suite into the canonical
+``tests/`` suite. Uses the shared fixtures (``db``, ``test_user``, ``client``,
+``auth_headers``) provided by ``tests/conftest.py``; the ``db`` fixture is
+required at import time so the test DB schema is built before these tests run.
 """
 
 import uuid
@@ -22,6 +27,7 @@ from app.models.batch import BatchJob
 
 
 client = TestClient(app)
+
 TEST_USER_ID = uuid.uuid4()
 
 
