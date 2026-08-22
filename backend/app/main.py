@@ -1,6 +1,7 @@
 import structlog
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, status
+from sqlalchemy.exc import OperationalError, TimeoutError as SQLATimeoutError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
@@ -168,6 +169,23 @@ async def csrf_protect_exception_handler(request: Request, exc: CsrfProtectError
     return JSONResponse(
         status_code=403,
         content={"detail": "CSRF token validation failed."},
+    )
+
+
+@app.exception_handler(OperationalError)
+@app.exception_handler(SQLATimeoutError)
+async def db_unavailable_handler(request: Request, exc: Exception):
+    """Return 503 when the DB pool is exhausted or unreachable.
+
+    Pool exhaustion / connection timeouts are transient and retryable; surfacing
+    them as 503 (with Retry-After) lets clients and load balancers back off,
+    instead of the generic 500 from the catch-all handler.
+    """
+    logger.warning("db_unavailable", path=request.url.path, method=request.method, error=str(exc))
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content={"detail": "Database temporarily unavailable. Please retry shortly."},
+        headers={"Retry-After": "10"},
     )
 
 
