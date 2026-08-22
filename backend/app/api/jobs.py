@@ -16,6 +16,7 @@ from app.core.cache import (
     invalidate_job_related,
 )
 from app.api.users import get_current_user
+from app.api.dependencies import get_user_profile
 from app.models.user import User
 from app.models.job import Job, JobApplication, JobImport, JobAnalysis
 from app.models.score import JobMatchScore
@@ -266,14 +267,10 @@ async def list_jobs(
 def get_top_matches(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    profile: Profile = Depends(get_user_profile),
     limit: int = Query(4, ge=1, le=10),
 ) -> Any:
     """Get the user's top job matches based on profile scoring."""
-    profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
-    if not profile:
-        raise HTTPException(
-            status_code=404, detail="Profile not found. Create a profile first."
-        )
 
     # Get job IDs the user has already applied to or saved
     applied_job_ids = (
@@ -340,6 +337,7 @@ def get_match_score(
     job_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    profile: Profile = Depends(get_user_profile),
 ) -> Any:
     """Calculate and get match score for a job."""
     # Ponytail: 5min cache for match scores.
@@ -351,12 +349,6 @@ def get_match_score(
     job = db.query(Job).filter(Job.id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-
-    profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
-    if not profile:
-        raise HTTPException(
-            status_code=404, detail="Profile not found. Create a profile first."
-        )
 
     # Calculate score
     score_data = calculate_match_score(profile, job)

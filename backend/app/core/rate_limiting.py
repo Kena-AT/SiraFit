@@ -77,6 +77,8 @@ RATE_LIMITS: Dict[str, Tuple[int, int]] = {
     "api_write": (30, 60),
     "api_import": (10, 60),
     "api_export": (10, 60),  # Stricter limit for file downloads
+    "ai_analyze": (10, 3600),  # AI job analysis (10 / hour per user)
+    "ai_generate": (10, 3600),  # AI resume/cover-letter generation (10 / hour per user)
 }
 
 
@@ -95,6 +97,13 @@ def get_client_ip(request: Request) -> str:
 
 def _limit_type_for(path: str, method: str) -> Optional[str]:
     p = path.lower()
+    # Route AI analysis/generation endpoints to their own tighter budgets
+    # (Phase 3.2). Checked before the POST/PUT/PATCH/DELETE -> api_write
+    # fallback so /analyze and /generate don't get bucketed as generic writes.
+    if "/analyze" in p:
+        return "ai_analyze"
+    if "/generate" in p:
+        return "ai_generate"
     if "/auth/login" in p:
         return "auth_login"
     if "/auth/register" in p:

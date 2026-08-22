@@ -18,16 +18,15 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from sqlalchemy import case, func, text
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import get_db
 from app.core.config import settings
 from app.core.cache import cache_get, cache_set
 from app.models.job import Job, JobApplication
-from app.models.profile import Profile
+from app.models.score import JobMatchScore
 from app.models.user import User
 from app.services.agent_api import check_agent_api_connection
-from app.services.matching_engine import calculate_match_score
 
 router = APIRouter()
 
@@ -211,22 +210,19 @@ def _get_top_match_queue(
     db: Session, current_user: Optional[User] = None
 ) -> List[TopMatchItem]:
     """
-    Get the top 4 job matches for the current user.
+    Get the top persisted job matches for the current user's landing queue.
 
     If no user is authenticated (anonymous landing-page visitor), returns an
-    empty list.  When authenticated, mirrors the scoring logic from
-    ``jobs.get_top_matches``: pull the user's profile, exclude jobs they've
-    already applied to, score the remaining candidates with the deterministic
-    matching engine, and return the top 4 above the minimum threshold.
+    empty list. When authenticated, reads the user's materialized
+    ``JobMatchScore`` rows (produced by the matching engine / batch scoring),
+    excludes jobs they've already applied to, and returns the highest-scoring
+    matches above the 30-point threshold without re-running the scoring
+    engine per request (Phase 3.5).
     """
     if current_user is None:
         return []
 
     try:
-        profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
-        if not profile:
-            return []
-
         # Jobs the user has already applied to — exclude them from the queue
         applied_job_ids = (
             db.query(JobApplication.job_id)
@@ -234,31 +230,31 @@ def _get_top_match_queue(
             .subquery()
         )
 
-        # Fetch recent candidate jobs the user hasn't seen yet (limit to 50 for
-        # scoring performance; the list is sorted and trimmed below).
-        candidate_jobs = (
-            db.query(Job)
-            .filter(Job.id.notin_(applied_job_ids))
-            .order_by(Job.created_at.desc())
-            .limit(50)
+        # Read persisted scores (materialized by the matching engine) instead
+        # of scoring up to 50 jobs live on every landing request.
+        scored_matches = (
+            db.query(JobMatchScore)
+            .options(joinedload(JobMatchScore.job))
+            .filter(JobMatchScore.user_id == current_user.id)
+            .filter(JobMatchScore.job_id.notin_(applied_job_ids))
+            .filter(JobMatchScore.score >= 30)
+            .order_by(
+                JobMatchScore.score.desc(),
+                JobMatchScore.updated_at.desc(),
+            )
+            .limit(4)
             .all()
         )
 
-        scored_matches: List[TopMatchItem] = []
-        for job in candidate_jobs:
-            score_data = calculate_match_score(profile, job)
-            if score_data["score"] >= 30:  # minimum threshold (mirrors jobs.py)
-                scored_matches.append(
-                    TopMatchItem(
-                        company=job.company or "Unknown",
-                        role=job.title or "Untitled",
-                        match_score=score_data["score"] / 100.0,  # 0–1 range
-                        status="new",
-                    )
-                )
-
-        scored_matches.sort(key=lambda x: x.match_score, reverse=True)
-        return scored_matches[:4]
+        return [
+            TopMatchItem(
+                company=(s.job.company if s.job else None) or "Unknown",
+                role=(s.job.title if s.job else None) or "Untitled",
+                match_score=s.score / 100.0,  # normalize 0-100 int -> 0-1 float
+                status="new",
+            )
+            for s in scored_matches
+        ]
     except Exception:
         db.rollback()
         return []

@@ -26,11 +26,18 @@ def get_redis_client():
         # hard dependency — when Redis is down (common in local dev/CI) we
         # must not stall the landing page for 2s on every cold path. Fall
         # back to the in-memory cache fast.
-        client = redis.Redis.from_url(
+        # Explicit, bounded connection pool so a cold/landing request can never
+        # exhaust Redis connections under burst load (was relying on the
+        # implicit default pool before Phase 3.6).
+        pool = redis.ConnectionPool.from_url(
             settings.REDIS_URL,
+            max_connections=20,
+            decode_responses=True,
+        )
+        client = redis.Redis(
+            connection_pool=pool,
             socket_connect_timeout=0.2,
             socket_timeout=0.5,
-            decode_responses=True,
         )
         client.ping()
         _client = client

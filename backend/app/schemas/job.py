@@ -59,7 +59,7 @@ class JobData(BaseModel):
 # --- Job Import ---
 class JobImportCreate(BaseModel):
     source_type: str  # "url", "description", "csv"
-    data: str  # The URL or the full description text
+    data: str = Field(..., max_length=100000)  # The URL or the full description text
 
 
 class JobImportResponse(BaseModel):

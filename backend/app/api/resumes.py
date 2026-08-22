@@ -6,6 +6,7 @@ import uuid
 from app.core.database import get_db
 from app.core.cache import invalidate_job_related
 from app.api.users import get_current_user
+from app.api.dependencies import get_user_profile
 from app.models.user import User
 from app.models.job import Resume, ResumeVersion, Job, AuditLog
 from app.models.profile import Profile
@@ -256,6 +257,7 @@ async def generate_resume(
     template: str = Query("minimal", description="Template name"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    profile: Profile = Depends(get_user_profile),
 ) -> Any:
     """
     Generate a tailored resume version for a specific job.
@@ -277,12 +279,6 @@ async def generate_resume(
     job = db.query(Job).filter(Job.id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-
-    profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
-    if not profile:
-        raise HTTPException(
-            status_code=404, detail="Profile not found. Create a profile first."
-        )
 
     # Get next version number
     latest = (

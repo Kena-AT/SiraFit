@@ -11,8 +11,10 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.cache import invalidate_job_related
 from app.api.users import get_current_user
+from app.api.dependencies import get_user_profile
 from app.models.user import User
 from app.models.cover_letter import CoverLetter
+from app.models.profile import Profile
 from app.schemas.cover_letter import (
     CoverLetterCreate,
     CoverLetterResponse,
@@ -224,21 +226,15 @@ async def generate_cover_letter_new(
     letter_in: CoverLetterGenerateRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    profile: Profile = Depends(get_user_profile),
 ) -> Any:
     """Generate a brand-new cover letter using AI (creates a new record)."""
     from app.models.job import Job
-    from app.models.profile import Profile
     from app.services.cover_letter_generation import generate_cover_letter as _generate
 
     job = db.query(Job).filter(Job.id == letter_in.job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-
-    profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
-    if not profile:
-        raise HTTPException(
-            status_code=404, detail="Profile required to generate cover letter"
-        )
 
     body = await _generate(profile, job, tone=letter_in.tone or "matching")
 
@@ -269,10 +265,10 @@ async def regenerate_cover_letter(
     letter_in: CoverLetterGenerateRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    profile: Profile = Depends(get_user_profile),
 ) -> Any:
     """Re-generate an existing cover letter using AI (updates the existing record)."""
     from app.models.job import Job
-    from app.models.profile import Profile
     from app.services.cover_letter_generation import generate_cover_letter as _generate
 
     # Verify ownership of the existing letter
@@ -290,12 +286,6 @@ async def regenerate_cover_letter(
     job = db.query(Job).filter(Job.id == letter_in.job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-
-    profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
-    if not profile:
-        raise HTTPException(
-            status_code=404, detail="Profile required to generate cover letter"
-        )
 
     body = await _generate(profile, job, tone=letter_in.tone or "matching")
 

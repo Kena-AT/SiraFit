@@ -38,6 +38,7 @@ class HealthStatusResponse(BaseModel):
     color: str  # Color code for the overall status
     message: str  # Human-readable status message
     pool_utilization_pct: Optional[float] = None  # Pool exhaustion signal (Phase 2.5)
+    worker_healthy: Optional[bool] = None  # Celery worker liveness (Phase 3.7)
 
 
 @router.get("/live")
@@ -125,6 +126,9 @@ def health_status(db: Session = Depends(get_db)):
         
         pool_utilization_pct = pool_stats.get("utilization_pct") if pool_stats else None
 
+        # Celery worker liveness (Phase 3.7) — None in dev/CI, True/False in prod.
+        worker_healthy = _check_worker()
+
         return HealthStatusResponse(
             frontend=frontend_healthy,
             backend=backend_healthy,
@@ -136,6 +140,8 @@ def health_status(db: Session = Depends(get_db)):
             message=message,
             # Pool exhaustion monitoring (Phase 2.5)
             pool_utilization_pct=pool_utilization_pct,
+            # Celery worker liveness (Phase 3.7)
+            worker_healthy=worker_healthy,
         )
         
     except Exception as e:
@@ -149,6 +155,7 @@ def health_status(db: Session = Depends(get_db)):
             checked_at=datetime.utcnow().isoformat(),
             color="red",
             message="Health check failed",
+            worker_healthy=None,
         )
 
 
@@ -181,6 +188,27 @@ def _check_deployment() -> bool:
         if os.getenv("COMMIT_SHA") or os.getenv("DEPLOYMENT_ID"):
             return True
         return True  # Assume healthy if no specific check is implemented
+    except Exception:
+        return False
+
+
+def _check_worker() -> Optional[bool]:
+    """Check whether at least one Celery worker is alive.
+
+    Returns ``None`` when the check is intentionally skipped (local dev / CI,
+    where no worker runs), and ``True``/``False`` in production. Celery is
+    lazy-imported so the worker runtime is never pulled into the API process
+    at import time, and any failure degrades to ``False`` rather than raising.
+    """
+    if settings.ENVIRONMENT in ("testing", "test", "development"):
+        return None
+    try:
+        from app.worker.celery_app import celery_app
+
+        inspect = celery_app.control.inspect(timeout=1.0)
+        if inspect is None:
+            return False
+        return bool(inspect.active())
     except Exception:
         return False
 
