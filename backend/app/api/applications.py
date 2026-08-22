@@ -5,6 +5,7 @@ from sqlalchemy import asc
 import uuid
 
 from app.core.database import get_db
+from app.core.cache import invalidate_job_related, invalidate_match_score
 from app.api.users import get_current_user
 from app.models.user import User
 from app.models.job import JobApplication, Job, AuditLog
@@ -117,6 +118,8 @@ async def create_application(
 
     db.commit()
     db.refresh(application)
+    invalidate_job_related(current_user.id)
+    invalidate_match_score(current_user.id, app_in.job_id)
     return application
 
 
@@ -288,6 +291,8 @@ def transition_status(
         )
     )
     db.commit()
+    invalidate_job_related(current_user.id)
+    invalidate_match_score(current_user.id, application.job_id)
     return application
 
 

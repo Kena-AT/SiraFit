@@ -315,7 +315,7 @@ function JobsExplorer() {
                  </tr>
                </thead>
                  <tbody className="divide-y divide-border">
-                   {jobResponse.jobs.map((j, i) => {
+                    {jobResponse.jobs.map((j: Job, i: number) => {
                      const isSelected = selectedJobs.some(job => job.id === j.id);
                      return (
                        <tr key={j.id} className="group hover:bg-muted/30">

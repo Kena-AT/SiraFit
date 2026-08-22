@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, Tag } from "@/components/sirafit/bits";
 import { getCoverLetters, deleteCoverLetter } from "@/lib/api/cover-letters";
@@ -11,24 +12,30 @@ export const Route = createFileRoute("/_app/cover-letters/")({
 });
 
 function CoverLettersPage() {
-  const [letters, setLetters] = useState<CoverLetter[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    getCoverLetters()
-      .then(setLetters)
-      .catch((e) => setError(e.message || "Failed to load cover letters"))
-      .finally(() => setLoading(false));
-  }, []);
+  const queryClient = useQueryClient();
+  // Inherits the global 60s staleTime from the QueryClient config.
+  const {
+    data: letters = [],
+    isLoading: loading,
+    error,
+  } = useQuery({
+    queryKey: ["cover-letters"],
+    queryFn: () => getCoverLetters(),
+  });
+  const loadError = error instanceof Error ? error.message : null;
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this cover letter?")) return;
     try {
       await deleteCoverLetter(id);
-      setLetters((prev) => prev.filter((l) => l.id !== id));
+      queryClient.setQueryData(
+        ["cover-letters"],
+        (prev: CoverLetter[] = []) => prev.filter((l) => l.id !== id),
+      );
+      setActionError(null);
     } catch (e: any) {
-      setError(e.message || "Failed to delete");
+      setActionError(e.message || "Failed to delete");
     }
   };
 
@@ -60,9 +67,14 @@ function CoverLettersPage() {
         }
       />
 
-      {error && (
+      {loadError && (
         <div className="mb-4 rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
+          {loadError}
+        </div>
+      )}
+      {actionError && (
+        <div className="mb-4 rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {actionError}
         </div>
       )}
 

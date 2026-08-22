@@ -14,6 +14,7 @@ from app.models.profile import Profile
 from app.models.score import JobMatchScore
 from app.services.job_analysis import run_job_analysis
 from app.services.matching_engine import calculate_match_score
+from app.core.cache import invalidate_job_related
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +116,7 @@ def batch_tag_item(
 
     job.tags = list(current_tags)
     db.commit()
+    invalidate_job_related(user_id)
     return {"tags": job.tags, "action": action}
 
 
@@ -146,6 +148,7 @@ def batch_archive_item(
             raise ValueError(f"Application {job_id} not found")
         app.status = "archived"
         db.commit()
+        invalidate_job_related(user_id)
         return {"archived": True, "target": "applications"}
     else:
         raise ValueError(f"Invalid target: {target}")

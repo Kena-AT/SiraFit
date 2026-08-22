@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.core.database import get_db, get_pool_stats, engine
 from app.core.config import settings
 from app.services.agent_api import check_agent_api_connection
 
@@ -37,6 +37,7 @@ class HealthStatusResponse(BaseModel):
     checked_at: datetime
     color: str  # Color code for the overall status
     message: str  # Human-readable status message
+    pool_utilization_pct: Optional[float] = None  # Pool exhaustion signal (Phase 2.5)
 
 
 @router.get("/live")
@@ -105,7 +106,10 @@ def health_status(db: Session = Depends(get_db)):
         
         # 4. Agent API check
         agent_api_status = check_agent_api_connection()
-        
+
+        # 5. Pool exhaustion monitoring (Phase 2.5)
+        pool_stats = get_pool_stats() if engine else None
+
         # 5. Frontend check (self-reported by client, but we include it in the response)
         # The frontend will set this based on its own health
         frontend_healthy = True  # Placeholder - frontend will override
@@ -119,6 +123,8 @@ def health_status(db: Session = Depends(get_db)):
             agent_api_status.connected,
         )
         
+        pool_utilization_pct = pool_stats.get("utilization_pct") if pool_stats else None
+
         return HealthStatusResponse(
             frontend=frontend_healthy,
             backend=backend_healthy,
@@ -128,6 +134,8 @@ def health_status(db: Session = Depends(get_db)):
             checked_at=datetime.utcnow().isoformat(),
             color=color,
             message=message,
+            # Pool exhaustion monitoring (Phase 2.5)
+            pool_utilization_pct=pool_utilization_pct,
         )
         
     except Exception as e:

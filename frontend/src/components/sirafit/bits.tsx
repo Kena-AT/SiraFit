@@ -95,9 +95,9 @@ export function StatusPill({ status, className }: { status: string; className?: 
   );
 }
 
-export function Tag({ children }: { children: ReactNode }) {
+export function Tag({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <span className="inline-flex items-center rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">
+    <span className={cn("inline-flex items-center rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground", className)}>
       {children}
     </span>
   );

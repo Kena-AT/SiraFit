@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.cache import invalidate_job_related
 from app.api.users import get_current_user
 from app.models.user import User
 from app.models.cover_letter import CoverLetter
@@ -55,6 +56,7 @@ def create_cover_letter(
     letter = CoverLetter(user_id=current_user.id, **letter_in.model_dump())
     db.add(letter)
     db.commit()
+    invalidate_job_related(current_user.id)
     db.refresh(letter)
     return letter
 
@@ -104,6 +106,7 @@ def update_cover_letter(
 
     db.add(letter)
     db.commit()
+    invalidate_job_related(current_user.id)
     db.refresh(letter)
     return letter
 
@@ -128,6 +131,7 @@ def delete_cover_letter(
 
     db.delete(letter)
     db.commit()
+    invalidate_job_related(current_user.id)
 
 
 # ---------------------------------------------------------------------------
@@ -306,6 +310,7 @@ async def regenerate_cover_letter(
 
     db.add(letter)
     db.commit()
+    invalidate_job_related(current_user.id)
     db.refresh(letter)
 
     return {

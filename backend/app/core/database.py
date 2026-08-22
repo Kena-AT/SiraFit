@@ -13,7 +13,7 @@ if DATABASE_URL.startswith("postgres"):
     engine_kwargs["max_overflow"] = 10            # Burst capacity beyond pool_size
     engine_kwargs["pool_pre_ping"] = True         # Detect stale connections
     engine_kwargs["pool_recycle"] = 300           # 5 min — recycle before Neon idle-kills
-    engine_kwargs["pool_timeout"] = 30            # Fail fast if pool is exhausted
+    engine_kwargs["pool_timeout"] = 10            # Fail fast if pool is exhausted (was 30s)
     engine_kwargs["connect_args"] = {
         "connect_timeout": 10,                    # TCP connect timeout
         "application_name": "sirafit-api",        # Identify in pg_stat_activity
@@ -24,6 +24,38 @@ elif DATABASE_URL.startswith("sqlite"):
 
 engine = create_engine(DATABASE_URL, **engine_kwargs)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+def get_pool_stats():
+    """Return current connection pool utilization stats.
+
+    Used by the health endpoint to expose pool utilization % so operators can
+    monitor before hitting the timeout threshold (pool_timeout=10s). Alert at
+    80% utilisation. Reads from the live engine pool — never creates a new
+    engine, which would produce a detached, always-empty pool and misleading 0%
+    stats.
+    """
+    try:
+        pool = engine.pool
+        size = pool.size() or 1
+        checked_out = pool.checkedout()
+        return {
+            "pool_size": pool.size(),
+            "checked_in": pool.checkedin(),
+            "checked_out": checked_out,
+            "overflow": pool.overflow(),
+            "utilization_pct": round(checked_out / size * 100, 1),
+        }
+    except Exception:
+        # Never let pool stats crash the health endpoint.
+        return {
+            "pool_size": None,
+            "checked_in": None,
+            "checked_out": None,
+            "overflow": None,
+            "utilization_pct": None,
+        }
+
 
 Base = declarative_base()
 

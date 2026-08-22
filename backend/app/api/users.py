@@ -10,7 +10,7 @@ from pydantic import ValidationError
 
 from app.core.database import get_db
 from app.core.config import settings
-from app.core.cache import cache_get, cache_set, cache_delete
+from app.core.cache import cache_get, cache_set, cache_delete, invalidate_user_profile
 from app.models.user import User, UserPreference, DeviceSession, RefreshToken
 from app.schemas.user import (
     UserCreate, UserResponse, TokenPayload, PasswordChangeRequest,
@@ -339,6 +339,7 @@ def update_notification_preferences(
         setattr(prefs, field, value)
     db.commit()
     db.refresh(prefs)
+    invalidate_user_profile(current_user.id)
     return prefs
 
 
@@ -365,6 +366,7 @@ def update_resume_defaults(
         setattr(prefs, field, value)
     db.commit()
     db.refresh(prefs)
+    invalidate_user_profile(current_user.id)
     return prefs
 
 
@@ -430,6 +432,7 @@ def update_ai_provider_keys(
 
     db.commit()
     db.refresh(prefs)
+    invalidate_user_profile(current_user.id)
 
     return AIProviderKeysRead(
         gemini_configured=bool(prefs.encrypted_gemini_key),

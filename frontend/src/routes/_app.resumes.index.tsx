@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, ScorePill, Tag } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
@@ -12,15 +12,12 @@ export const Route = createFileRoute("/_app/resumes/")({
 });
 
 function ResumeVersions() {
-  const [resumes, setResumes] = useState<Resume[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    getResumes()
-      .then(setResumes)
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
+  // Inherits the global 60s staleTime from the QueryClient config — navigating
+  // away and back within 60s renders instantly from cache with no refetch.
+  const { data: resumes = [], isLoading: loading } = useQuery({
+    queryKey: ["resumes"],
+    queryFn: () => getResumes(),
+  });
 
   if (loading) {
     return (
@@ -49,6 +46,7 @@ function ResumeVersions() {
             </Link>
             <Link
               to="/resumes/builder"
+              search={{ jobId: undefined }}
               className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background ring-1 ring-foreground hover:bg-foreground/90"
             >
               New resume
@@ -65,6 +63,7 @@ function ResumeVersions() {
           </p>
           <Link
             to="/resumes/builder"
+            search={{ jobId: undefined }}
             className="mt-4 inline-block rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background"
           >
             Create Resume →

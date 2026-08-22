@@ -14,6 +14,7 @@ import json
 import logging
 import time
 from datetime import datetime
+from typing import Any
 
 from app.core.config import settings
 from app.core.redis_client import get_redis_client
@@ -95,6 +96,28 @@ def cache_delete_prefix(prefix: str) -> None:
     for k in list(_MEMORY.keys()):
         if k.startswith(prefix):
             _MEMORY.pop(k, None)
+
+
+def invalidate_job_related(user_id: Any) -> None:
+    """Invalidate caches that depend on a user's job list or dashboard data.
+
+    Called after any mutation that can change what the job list or dashboard
+    shows: importing jobs, creating/transitioning applications, tagging or
+    archiving jobs in a batch, and creating/updating/deleting resumes.
+    """
+    cache_delete_prefix(f"jobs:list:{user_id}:")
+    cache_delete(f"dashboard:stats:{user_id}")
+
+
+def invalidate_match_score(user_id: Any, job_id: Any) -> None:
+    """Invalidate the per-job match-score cache plus the dashboard stats."""
+    cache_delete(f"match_score:{user_id}:{job_id}")
+    cache_delete(f"dashboard:stats:{user_id}")
+
+
+def invalidate_user_profile(user_id: Any) -> None:
+    """Invalidate the cached ``GET /users/me`` response for a user."""
+    cache_delete(f"user:me:{user_id}")
 
 
 async def cache_get_or_compute(

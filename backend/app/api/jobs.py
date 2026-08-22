@@ -8,7 +8,13 @@ import json
 import hashlib
 
 from app.core.database import get_db
-from app.core.cache import cache_get, cache_set, cache_delete_prefix, cache_get_or_compute
+from app.core.cache import (
+    cache_get,
+    cache_set,
+    cache_delete_prefix,
+    cache_get_or_compute,
+    invalidate_job_related,
+)
 from app.api.users import get_current_user
 from app.models.user import User
 from app.models.job import Job, JobApplication, JobImport, JobAnalysis
@@ -48,25 +54,23 @@ def list_ranked_jobs(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
 ) -> Any:
-    """List all jobs with their match scores, ranked by score descending."""
-    # Fetch paginated jobs in one query.
-    jobs = db.query(Job).order_by(Job.created_at.desc()).offset(skip).limit(limit).all()
+    """List all jobs with their match scores, ranked by score descending.
 
-    # Batch-fetch match scores for all returned jobs in a single query (N+1 fix).
+    Fetches jobs and their per-user match scores in two bounded queries
+    (one for the jobs, one IN()-lookup for the scores) to avoid the N+1
+    pattern where each score was previously fetched individually.
+    """
+    jobs = db.query(Job).order_by(Job.created_at.desc()).offset(skip).limit(limit).all()
     job_ids = [j.id for j in jobs]
     scores = (
         db.query(JobMatchScore)
-        .filter(
-            JobMatchScore.user_id == current_user.id,
-            JobMatchScore.job_id.in_(job_ids),
-        )
+        .filter(JobMatchScore.user_id == current_user.id, JobMatchScore.job_id.in_(job_ids))
         .all()
     )
     score_map = {s.job_id: s for s in scores}
-
     items = [
         RankedJobResponse(
-            job=JobResponse.model_validate(job),
+            job=job,
             match_score=JobMatchScoreResponse.model_validate(score_map[job.id])
             if job.id in score_map
             else None,
@@ -127,11 +131,6 @@ def _build_cache_key(user_id: str, **params) -> str:
     cache_params = {k: v for k, v in params.items() if k not in ("skip", "limit") and v is not None}
     param_str = json.dumps(cache_params, sort_keys=True)
     return f"jobs:list:{user_id}:{hashlib.md5(param_str.encode()).hexdigest()}"
-
-
-def _invalidate_job_cache(user_id: str) -> None:
-    """Invalidate all job list caches for a user."""
-    cache_delete_prefix(f"jobs:list:{user_id}:")
 
 
 def _list_jobs_query(db: Session, current_user: User, skip: int, limit: int,
@@ -530,8 +529,8 @@ def import_jobs(
         import_in.source_type,
         import_in.data,
     )
-    # Invalidate job cache since new jobs were added
-    _invalidate_job_cache(str(current_user.id))
+    # Invalidate job + dashboard caches since new jobs were added
+    invalidate_job_related(str(current_user.id))
     return ImportResultResponse(
         import_record=JobImportResponse.model_validate(import_record),
         jobs=[JobData(**job, is_duplicate=False) for job in jobs_data],

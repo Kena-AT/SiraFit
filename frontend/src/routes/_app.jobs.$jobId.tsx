@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, Tag, EmptyState, StatusPill } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
@@ -14,20 +15,37 @@ export const Route = createFileRoute("/_app/jobs/$jobId")({
   component: JobDetails,
 });
 
-// Poll interval in ms while analysis is processing
-const POLL_INTERVAL = 2500;
-
 function JobDetails() {
   const { jobId } = Route.useParams();
+  const queryClient = useQueryClient();
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Analysis state
-  const [analysis, setAnalysis] = useState<JobAnalysis | null>(null);
-  const [analysisLoading, setAnalysisLoading] = useState(false);
-  const [analysisError, setAnalysisError] = useState<string | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Analysis: loaded via React Query and polled only while processing.
+  // refetchInterval returns a number (ms) while status === "processing" and
+  // `false` otherwise, so polling stops on completion/failure with no orphaned
+  // timers. Inherits the global 60s staleTime from the QueryClient config.
+  const {
+    data: analysis,
+    isLoading: analysisLoading,
+    error: analysisQueryError,
+  } = useQuery({
+    queryKey: ["job-analysis", jobId],
+    queryFn: () => getJobAnalysis(jobId),
+    refetchInterval: (query) =>
+      query.state.data?.status === "processing" ? 2500 : false,
+    refetchIntervalInBackground: false,
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
+  });
+
+  const analysisError =
+    analysis?.status === "failed"
+      ? (analysis as any).summary || "Analysis failed. Please try again."
+      : analysisQueryError
+        ? String((analysisQueryError as any)?.message ?? analysisQueryError)
+        : null;
 
   // Match score state
   const [matchScore, setMatchScore] = useState<JobMatchScore | null>(null);
@@ -55,18 +73,11 @@ function JobDetails() {
     fetchJob();
   }, [jobId]);
 
-  // Load existing analysis and match score on mount
+  // Load match score + existing application on mount
   useEffect(() => {
     if (!jobId) return;
 
     const fetchData = async () => {
-      try {
-        const analysisData = await getJobAnalysis(jobId);
-        if (analysisData) setAnalysis(analysisData);
-      } catch (e: any) {
-        console.error("Failed to fetch job analysis:", e.message);
-      }
-
       try {
         setMatchScoreLoading(true);
         const matchScoreData = await getCachedMatchScore(jobId);
@@ -89,51 +100,17 @@ function JobDetails() {
     fetchData();
   }, [jobId]);
 
-  // Polling helper
-  const startPolling = () => {
-    if (pollRef.current) clearInterval(pollRef.current);
-    pollRef.current = setInterval(async () => {
-      try {
-        const data = await getJobAnalysis(jobId);
-        if (data) {
-          setAnalysis(data);
-          if (data.status === "done" || data.status === "failed") {
-            clearInterval(pollRef.current!);
-            setAnalysisLoading(false);
-            if (data.status === "failed") {
-              setAnalysisError("Analysis failed. Please try again.");
-            }
-          }
-        }
-      } catch {
-        clearInterval(pollRef.current!);
-        setAnalysisLoading(false);
-      }
-    }, POLL_INTERVAL);
-  };
-
-  // Cleanup polling on unmount
-  useEffect(
-    () => () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    },
-    [],
-  );
-
   const handleRunAnalysis = async (forceRefresh = false) => {
-    setAnalysisLoading(true);
-    setAnalysisError(null);
     try {
       const stub = await triggerAnalysis(jobId, forceRefresh);
-      setAnalysis(stub);
-      if (stub.status !== "done") {
-        startPolling();
-      } else {
-        setAnalysisLoading(false);
-      }
+      // Reflect the processing stub immediately so polling begins without a flash.
+      queryClient.setQueryData(["job-analysis", jobId], stub);
     } catch (e: any) {
-      setAnalysisError(e.message || "Failed to start analysis");
-      setAnalysisLoading(false);
+      queryClient.setQueryData(["job-analysis", jobId], (prev: JobAnalysis | null) => ({
+        ...(prev ?? ({} as JobAnalysis)),
+        status: "failed",
+        summary: e.message || "Failed to start analysis",
+      }));
     }
   };
 
@@ -229,7 +206,7 @@ function JobDetails() {
     );
   }
 
-  const isProcessing = analysisLoading || analysis?.status === "processing";
+  const isProcessing = analysis?.status === "processing";
 
   return (
     <PageBody>
@@ -275,6 +252,7 @@ function JobDetails() {
             )}
             <Link
               to="/resumes/builder"
+              search={{ jobId: undefined }}
               className="rounded-md bg-card px-3 py-1.5 text-sm font-medium ring-1 ring-border hover:bg-muted"
             >
               Tailor resume

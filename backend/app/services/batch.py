@@ -7,6 +7,7 @@ import inspect
 import uuid
 import logging
 from datetime import datetime, timezone
+from app.core.cache import invalidate_job_related
 from app.models.batch import BatchJob
 
 
@@ -90,6 +91,11 @@ def _run_batch_job(batch_job_id: uuid.UUID) -> dict:
             # Commit progress every 10 items
             if batch_job.processed_items % 10 == 0:
                 db.commit()
+
+        # Tag/archive operations change what the job list and dashboard show,
+        # so invalidate those caches for the user once the batch completes.
+        if batch_job.operation_type in ("tag", "archive"):
+            invalidate_job_related(str(batch_job.user_id))
 
         # Final status
         if batch_job.failed_items == 0:

@@ -24,7 +24,7 @@ function ResumeEditorPage() {
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        const data = await getProfile(id ?? undefined);
+        const data = await getProfile();
         setProfile(data);
       } catch (error) {
         console.error("Failed to load profile:", error);
