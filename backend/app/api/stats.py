@@ -24,9 +24,11 @@ from app.core.database import get_db
 from app.core.config import settings
 from app.core.cache import cache_get, cache_set
 from app.models.job import Job, JobApplication
+from app.models.profile import Profile
 from app.models.score import JobMatchScore
 from app.models.user import User
 from app.services.agent_api import check_agent_api_connection
+from app.services.matching_engine import calculate_match_score
 
 router = APIRouter()
 
@@ -216,8 +218,9 @@ def _get_top_match_queue(
     empty list. When authenticated, reads the user's materialized
     ``JobMatchScore`` rows (produced by the matching engine / batch scoring),
     excludes jobs they've already applied to, and returns the highest-scoring
-    matches above the 30-point threshold without re-running the scoring
-    engine per request (Phase 3.5).
+    matches above the 30-point threshold (Phase 3.5). For cold users with no
+    materialized scores yet, falls back to scoring recent unmatched jobs on
+    the fly so the queue is never empty.
     """
     if current_user is None:
         return []
@@ -246,7 +249,7 @@ def _get_top_match_queue(
             .all()
         )
 
-        return [
+        top_matches = [
             TopMatchItem(
                 company=(s.job.company if s.job else None) or "Unknown",
                 role=(s.job.title if s.job else None) or "Untitled",
@@ -255,6 +258,36 @@ def _get_top_match_queue(
             )
             for s in scored_matches
         ]
+
+        # Fallback for cold users who have no materialized scores yet: score the
+        # recent unmatched jobs on the fly (mirrors the original behaviour) so
+        # the landing queue is never suddenly empty. Warm users never reach
+        # this branch; it only runs when the persisted read came back empty.
+        if not top_matches:
+            profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
+            if profile is not None:
+                candidate_jobs = (
+                    db.query(Job)
+                    .filter(Job.id.notin_(applied_job_ids))
+                    .order_by(Job.created_at.desc())
+                    .limit(50)
+                    .all()
+                )
+                for job in candidate_jobs:
+                    score_data = calculate_match_score(profile, job)
+                    if score_data["score"] >= 30:  # minimum threshold
+                        top_matches.append(
+                            TopMatchItem(
+                                company=job.company or "Unknown",
+                                role=job.title or "Untitled",
+                                match_score=score_data["score"] / 100.0,
+                                status="new",
+                            )
+                        )
+                top_matches.sort(key=lambda x: x.match_score, reverse=True)
+                top_matches = top_matches[:4]
+
+        return top_matches
     except Exception:
         db.rollback()
         return []
