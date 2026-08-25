@@ -13,7 +13,7 @@ from app.core.security import (
     create_refresh_token,
     get_password_hash,
 )
-from app.models.user import User, RefreshToken
+from app.models.user import User, RefreshToken, DeviceSession
 from app.schemas.user import Token, UserCreate, UserResponse
 from app.api.users import get_current_user
 from app.schemas.auth import (
@@ -425,9 +425,43 @@ def refresh_token(
             detail="Refresh token has been revoked or is invalid",
         )
 
-    # Revoke old token (rotation)
+    # Revoke old token (rotation) — do this FIRST so the session is clean
     stored_token.is_revoked = True
 
+    # Inline device session: create or update the user's active device session
+    # within the same transaction so we avoid a separate DB round-trip.
+    user_agent = request.headers.get("user-agent", "")
+    ip_address = request.client.host if request.client else None
+
+    existing = (
+        db.query(DeviceSession)
+        .filter(
+            DeviceSession.user_id == user.id,
+            DeviceSession.user_agent == user_agent,
+            DeviceSession.is_active.is_(True),
+        )
+        .first()
+    )
+
+    if existing:
+        existing.last_seen = datetime.now(timezone.utc)
+        db.add(existing)
+    else:
+        # Deactivate any existing active sessions for this user (one active session)
+        db.query(DeviceSession).filter(
+            DeviceSession.user_id == user.id, DeviceSession.is_active.is_(True)
+        ).update({DeviceSession.is_active: False})
+
+        device = DeviceSession(
+            user_id=user.id,
+            device_name=user_agent[:64] if user_agent else "Unknown device",
+            user_agent=user_agent,
+            ip_address=ip_address,
+            is_active=True,
+        )
+        db.add(device)
+
+    # Build new tokens
     new_access_token = create_access_token(user.id)
     new_refresh_token = create_refresh_token(user.id)
 
@@ -439,6 +473,8 @@ def refresh_token(
         + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
     )
     db.add(db_token)
+
+    # Single commit: rotate old token, write device session, persist new refresh token
     db.commit()
 
     _set_auth_cookies(response, new_access_token, new_refresh_token)

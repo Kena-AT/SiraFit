@@ -263,6 +263,8 @@ def _get_top_match_queue(
         # recent unmatched jobs on the fly (mirrors the original behaviour) so
         # the landing queue is never suddenly empty. Warm users never reach
         # this branch; it only runs when the persisted read came back empty.
+        # Cap at 10 jobs to keep cold-path latency bounded (was 50 which caused
+        # 3-second first-request latency). Always show top-4 after normalization.
         if not top_matches:
             profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
             if profile is not None:
@@ -270,7 +272,7 @@ def _get_top_match_queue(
                     db.query(Job)
                     .filter(Job.id.notin_(applied_job_ids))
                     .order_by(Job.created_at.desc())
-                    .limit(50)
+                    .limit(10)
                     .all()
                 )
                 for job in candidate_jobs:

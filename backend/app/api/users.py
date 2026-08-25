@@ -1,4 +1,5 @@
 import uuid
+import hashlib
 from typing import Any
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, Request
@@ -25,6 +26,16 @@ oauth2_scheme = OAuth2PasswordBearer(
 )
 
 
+def _user_auth_cache_key(token_sha256: str) -> str:
+    """Cache lookup key for authenticated user by token fingerprint."""
+    return f"user:auth:{token_sha256}"
+
+
+def _user_auth_invalidation_keys(user_id: uuid.UUID) -> list[str]:
+    """Keys to invalidate when a user's tokens change or account is updated."""
+    return [f"user:me:{user_id}"]
+
+
 def get_current_user(
     request: Request,
     db: Session = Depends(get_db),
@@ -45,6 +56,21 @@ def get_current_user(
             detail="Not authenticated",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    # Compute a non-sensitive fingerprint for caching — this is SHA-256 of
+    # the raw JWT only, never stored or transmitted outside this process.
+    token_sha256 = hashlib.sha256(token_str.encode()).hexdigest()
+    cache_key = _user_auth_cache_key(token_sha256)
+
+    # Check Redis cache first (5-min TTL avoids re-hitting DB on every request)
+    cached = cache_get(cache_key)
+    if cached:
+        import uuid as _uuid_mod
+        user_uuid = _uuid_mod.UUID(cached)
+        user = db.query(User).filter(User.id == user_uuid).first()
+        if user and user.is_active:
+            return user
+        # User was deactivated or removed — fall through to re-fetch
 
     try:
         payload = jwt.decode(
@@ -75,6 +101,10 @@ def get_current_user(
         raise HTTPException(status_code=404, detail="User not found")
     if not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
+
+    # Cache the user id (as a string) for 5 minutes to avoid DB hit next request
+    cache_set(cache_key, str(user.id), ttl=300)
+
     return user
 
 

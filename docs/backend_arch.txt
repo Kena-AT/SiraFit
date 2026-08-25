@@ -1,3 +1,12 @@
+NOTE (as-built, 2026-08-22): The module layout described below (apps/api, apps/worker,
+apps/scheduler, apps/agent; modules/*; shared/*) is the ORIGINAL DESIGN and is NOT what shipped.
+The actual backend is a flat package at backend/app/ with: api/ (route handlers), core/ (cache,
+database, redis_client, security, rate_limiting, settings, logging, health), models/, schemas/,
+services/ (matching_engine, resume_generation, cover_letter_generation, batch, batch_operations, ai,
+agent_api, notification, job_import, scoring), worker/ (celery_app, tasks), migrations/. The
+'scraping runtime' and 'sync engine' listed below are described in the PRD/Technical Design but are
+NOT implemented. When onboarding, trust the code and SIRAFIT_OVERVIEW.md, not this layout.
+
 Backend Architecture
 1. Backend Architecture Overview
 Architecture Style

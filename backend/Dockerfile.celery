@@ -13,6 +13,10 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Optional: Scrapling browser engines for JS-heavy job boards (LinkedIn, etc.)
+# Uncomment to enable Fetcher's adaptive browser fallback (needs ~Chromium download):
+# RUN scrapling install
+
 # Copy application code
 COPY app ./app
 COPY migrations ./migrations

@@ -1,7 +1,13 @@
-// Same-origin by default: the Vite dev proxy forwards /api → backend:8000,
-// so cookies are same-origin (Lax cookies work on plain HTTP). Set
-// VITE_API_URL to an absolute URL only for cross-origin dev without a proxy.
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+// In the browser, default to same-origin so requests go through the Vite dev
+// proxy (/api → backend:8000). The backend's set_auth_cookies() uses
+// SameSite=Lax in dev, which only travels on first-party (same-origin) requests,
+// so cross-origin absolute URLs would drop the auth cookie and return 401.
+// During SSR, there is no browser origin, so fall back to the absolute URL.
+// Set VITE_API_URL to an absolute URL only for explicit cross-origin dev
+// without the proxy.
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL ??
+  (import.meta.env.SSR ? "http://localhost:8000" : "");
 
 let isRefreshing = false;
 let refreshPromise: Promise<boolean> | null = null;

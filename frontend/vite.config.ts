@@ -11,11 +11,17 @@ export default defineConfig({
   },
   vite: {
     server: {
+      host: true,
+      hmr: {
+        protocol: 'ws',
+        host: 'localhost',
+      },
       proxy: {
         '/api': {
           target: 'http://localhost:8000',
           changeOrigin: true,
           secure: false,
+          ws: true,
         }
       }
     }

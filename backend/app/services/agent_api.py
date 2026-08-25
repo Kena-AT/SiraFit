@@ -8,15 +8,21 @@ key-prefix heuristics — the field name already identifies the provider.
 A lightweight authenticated `GET <provider>/models` (via httpx, 5s timeout) is
 used as the reachability probe. No provider SDKs are imported here; this module
 must stay cheap to import (it runs on every landing-page health check).
+
+Caveat: results are cached for 60 s in Redis so that the landing-page /health/status
+probe does not re-dial every provider on every poll (~once per minute). The cache key
+includes provider name so each provider gets its own slot.
 """
 
 from __future__ import annotations
 
 from typing import Optional
 
+import hashlib
 import httpx
 from pydantic import BaseModel
 
+from app.core.cache import cache_get, cache_set
 from app.core.config import settings
 
 
@@ -128,7 +134,16 @@ def check_agent_api_connection() -> AgentAPIStatus:
 
 
 def _ping(provider: dict, key: str) -> bool:
-    """Return True if the provider's /models endpoint responds 2xx."""
+    """Return True if the provider's /models endpoint responds 2xx.
+
+    Checks Redis cache first with 60 s TTL so the /health/status probe
+    doesn't re-dial the same provider on every landing-page poll.
+    """
+    cache_key = f"agent_api:{provider['id']}:{hashlib.sha256(key.encode()).hexdigest()[:16]}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     url = provider["url"]
     headers: dict[str, str] = {}
     auth = provider["auth"]
@@ -145,8 +160,13 @@ def _ping(provider: dict, key: str) -> bool:
 
     try:
         response = httpx.get(url, headers=headers, timeout=5.0)
-        return 200 <= response.status_code < 300
+        result = 200 <= response.status_code < 300
+        # Cache result for 60 s so the next health-check poll doesn't re-dial
+        cache_set(cache_key, result, ttl=60)
+        return result
     except Exception:
+        # Cache the negative result too so we don't spend 5 s timing out every poll
+        cache_set(cache_key, False, ttl=60)
         return False
 
 

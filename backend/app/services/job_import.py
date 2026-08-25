@@ -3,9 +3,22 @@ import uuid
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
+import json
+
 from sqlalchemy.orm import Session
 
 from app.models.job import Job, JobImport
+
+# ─── Scrapling (optional scraping engine) ───────────────────────────────────
+# Scrapling provides stealthy + adaptive web fetching/parsing. It is an OPTIONAL
+# dependency: if it isn't installed, the importer falls back to the heuristic URL
+# parser below (title/company guessed from the URL, no page fetch).
+try:
+    from scrapling import Fetcher, Selector
+
+    _SCRAPLING_AVAILABLE = True
+except Exception:  # pragma: no cover - optional dependency
+    _SCRAPLING_AVAILABLE = False
 
 
 # ─── URL Platform Detection ───────────────────────────────────────────────
@@ -91,6 +104,147 @@ def parse_job_from_url(url: str) -> Dict[str, Any]:
         "salary_max": None,
         "currency": None,
         "tags": [platform] if platform else [],
+        "url": url,
+        "source": platform or "url",
+        "external_id": str(job_id or uuid.uuid4()),
+    }
+
+
+# ─── Scrapling fetch + parse ────────────────────────────────────────────────
+
+
+def _clean_html_to_text(html_fragment: str) -> str:
+    """Strip HTML tags and collapse whitespace into plain text."""
+    text = re.sub(r"<[^>]+>", " ", html_fragment or "")
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def fetch_job_html(url: str, timeout: int = 15) -> Optional[str]:
+    """Fetch a job page with Scrapling; return raw HTML or None on any failure.
+
+    Uses the stealthy (curl_cffi) engine — no browser binaries required. To also
+    use the adaptive browser fallback for JS-heavy boards, run ``scrapling install``
+    and configure ``Fetcher.configure(adaptive=True, stealthy=True)`` instead.
+    """
+    if not _SCRAPLING_AVAILABLE:
+        return None
+    try:
+        Fetcher.configure(stealthy=True)
+        response = Fetcher.get(
+            url, timeout=timeout, follow_redirects=True, retries=2
+        )
+        if response is None:
+            return None
+        body = getattr(response, "body", None)
+        if not body:
+            return None
+        return body if isinstance(body, str) else body.decode("utf-8", "replace")
+    except Exception:
+        return None
+
+
+def parse_job_html(html: str, url: str) -> Dict[str, Any]:
+    """Extract structured job fields from fetched HTML using Scrapling.
+
+    Strategy: JSON-LD JobPosting → meta/Open-Graph tags → DOM heuristics.
+    Returns the same dict shape as ``parse_job_from_url`` so the two merge cleanly.
+    """
+    platform = detect_platform(url)
+    job_id = extract_job_id_from_url(url)
+    sel = Selector(html, adaptive=True, url=url)
+
+    title = company = location = description = None
+    salary_min = salary_max = None
+    currency = "USD"
+
+    # 1) JSON-LD JobPosting (many boards embed this structured data)
+    try:
+        for block in sel.css('script[type="application/ld+json"]::text').getall():
+            try:
+                data = json.loads(block)
+            except Exception:
+                continue
+            items = data if isinstance(data, list) else [data]
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                if item.get("@type") not in ("JobPosting", ["JobPosting"]):
+                    continue
+                jp = item
+                title = title or jp.get("title")
+                org = jp.get("hiringOrganization")
+                if isinstance(org, dict):
+                    company = company or org.get("name")
+                loc = jp.get("jobLocation")
+                if isinstance(loc, dict):
+                    addr = loc.get("address")
+                    if isinstance(addr, dict):
+                        location = location or (
+                            addr.get("addressLocality") or addr.get("addressRegion")
+                        )
+                desc = jp.get("description")
+                if desc and not description:
+                    description = _clean_html_to_text(desc) if "<" in desc else desc
+                bs = jp.get("baseSalary")
+                if isinstance(bs, dict):
+                    val = bs.get("value")
+                    if isinstance(val, dict):
+                        salary_min = salary_min or val.get("minValue")
+                        salary_max = salary_max or val.get("maxValue")
+                        currency = val.get("currency", currency)
+                break
+    except Exception:
+        pass
+
+    # 2) Meta / Open-Graph fallbacks
+    if not title:
+        title = (
+            sel.css('meta[property="og:title"]::attr(content)').get()
+            or sel.css("h1 ::text").get()
+        )
+    if not company:
+        company = sel.css('meta[property="og:site_name"]::attr(content)').get()
+    if not location:
+        location = sel.css('meta[property="og:locale"]::attr(content)').get()
+
+    # 3) Description: explicit job-description container, else body text
+    if not description:
+        parts = sel.css(
+            "#job-description ::text, "
+            "[class*='job-description'] ::text, "
+            "[class*='description'] ::text"
+        ).getall()
+        if parts:
+            description = " ".join(p.strip() for p in parts if p.strip())
+    if not description:
+        description = " ".join(sel.css("body ::text").getall())
+    if description:
+        description = _clean_html_to_text(description)
+
+    # 4) Salary from free text when still missing
+    if description and salary_min is None:
+        salary_text = extract_field_from_text(
+            description, "salary", ["salary", "compensation", "pay", "range"]
+        )
+        if salary_text:
+            nums = re.findall(r"\d[\d,]*", salary_text.replace(",", ""))
+            if len(nums) >= 2:
+                salary_min = int(nums[0])
+                salary_max = int(nums[1])
+            elif len(nums) == 1:
+                salary_max = int(nums[0])
+
+    tags = extract_tags_from_text(description or "")
+
+    return {
+        "title": title or "Unknown Position",
+        "company": company or "Unknown Company",
+        "location": location,
+        "description": description,
+        "salary_min": salary_min,
+        "salary_max": salary_max,
+        "currency": currency,
+        "tags": tags,
         "url": url,
         "source": platform or "url",
         "external_id": str(job_id or uuid.uuid4()),
@@ -358,6 +512,28 @@ def process_import(
     try:
         if source_type == "url":
             parsed = parse_job_from_url(data)
+            # Enrich with a real page fetch when Scrapling is available. Any
+            # failure (no network, parse error) is non-fatal: we keep the
+            # heuristic parse so the import still succeeds.
+            html = fetch_job_html(data)
+            if html:
+                try:
+                    enriched = parse_job_html(html, data)
+                except Exception:
+                    enriched = None
+                if enriched:
+                    for key in (
+                        "title",
+                        "company",
+                        "location",
+                        "description",
+                        "salary_min",
+                        "salary_max",
+                        "currency",
+                        "tags",
+                    ):
+                        if enriched.get(key):
+                            parsed[key] = enriched[key]
         elif source_type == "description":
             if len(data.strip()) < 100:
                 raise ValueError("Description must be at least 100 characters")

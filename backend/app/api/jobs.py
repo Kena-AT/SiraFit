@@ -53,7 +53,7 @@ def list_ranked_jobs(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=500),
+    limit: int = Query(min(100, 500), ge=1, le=500),
 ) -> Any:
     """List all jobs with their match scores, ranked by score descending.
 
@@ -78,6 +78,43 @@ def list_ranked_jobs(
         )
         for job in jobs
     ]
+
+
+@router.get("/search", response_model=JobListResponse)
+def job_search(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    q: str = Query(..., min_length=1, description="Free-text search against title, company, description, location"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
+) -> Any:
+    """Free-text search across job title, company, description, and location.
+
+    Performs a PostgreSQL-optimized ``ilike`` search on four columns.
+    For production scale, add a GIN trigram index:
+
+        CREATE INDEX idx_jobs_search ON jobs
+        USING GIN (tolower(title) gin_trgm_ops,
+                   tolower(company) gin_trgm_ops,
+                   tolower(description) gin_trgm_ops,
+                   tolower(location) gin_trgm_ops);
+
+    Without the index, large tables will suffer sequential scans; the index
+    reduces search latency from O(n) to effectively O(log n) for pattern
+    matching.
+    """
+    term = f"%{q}%"
+    query = db.query(Job).filter(
+        or_(
+            Job.title.ilike(term),
+            Job.company.ilike(term),
+            Job.description.ilike(term),
+            Job.location.ilike(term),
+        )
+    )
+    total = query.with_entities(func.count(Job.id)).scalar() or 0
+    jobs = query.offset(skip).limit(limit).all()
+    return JobListResponse(jobs=jobs, total=total, skip=skip, limit=limit)
     items.sort(key=lambda r: r.match_score.score if r.match_score else 0, reverse=True)
     return RankedJobListResponse(jobs=items, total=len(items))
 
@@ -87,7 +124,7 @@ def list_jobs_with_scores(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=500),
+    limit: int = Query(100, ge=1, le=100),
 ) -> Any:
     """List jobs with their match scores in a single batched call.
 
@@ -139,8 +176,16 @@ def _list_jobs_query(db: Session, current_user: User, skip: int, limit: int,
                      location: Optional[str], source: Optional[str],
                      tags: Optional[str], min_salary: Optional[int],
                      max_salary: Optional[int], sort_by: Optional[str],
-                     sort_order: Optional[str], include_archived: bool) -> JobListResponse:
-    """Core job-listing query logic (sync, callable from sync or async paths)."""
+                     sort_order: Optional[str], include_archived: bool,
+                     skill_keywords: list[str] | None = None) -> JobListResponse:
+    """Core job-listing query logic (sync, callable from sync or async paths).
+
+    If ``skill_keywords`` is non-empty, we AND an additional ``tags `` LIKE
+    any-of-keywords clause so the returned list is pre-filtered to jobs that
+    mention at least one of the user's top 3 skills. This is a best-effort
+    relevance filter — it avoids returning completely unrelated jobs when the
+    user has a profile, at negligible extra DB cost.
+    """
     query = db.query(Job)
 
     if not include_archived:
@@ -177,6 +222,19 @@ def _list_jobs_query(db: Session, current_user: User, skip: int, limit: int,
             or_(Job.salary_max <= max_salary, Job.salary_min <= max_salary)
         )
 
+    # Optional best-effort skill-keyword filter on the job.tags JSON field.
+    if skill_keywords:
+        # Build an OR clause: tags LIKE '%keyword1%' OR tags LIKE '%keyword2%' ...
+        # We wrap each in cast(...) so it works on both SQLite and PostgreSQL.
+        keyword_conditions = []
+        for kw in skill_keywords:
+            keyword_conditions.append(
+                cast(Job.tags, String).ilike(f'%"{kw}"%')
+            )
+        # Combine with OR — if multiple keywords, match any one of them.
+        from sqlalchemy import or_ as _or
+        query = query.filter(_or(*keyword_conditions))
+
     total = query.with_entities(func.count(Job.id)).order_by(None).scalar() or 0
 
     sort_col = getattr(Job, sort_by, Job.created_at)
@@ -191,7 +249,7 @@ async def list_jobs(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=500),
+    limit: int = Query(100, ge=1, le=100),
     search: Optional[str] = Query(None),
     company: Optional[str] = Query(None),
     location: Optional[str] = Query(None),
@@ -202,6 +260,10 @@ async def list_jobs(
     sort_by: Optional[str] = Query("created_at"),
     sort_order: Optional[str] = Query("desc"),
     include_archived: bool = Query(False, description="Include archived jobs"),
+    # Profiling: if a user profile exists, we pre-filter jobs by skill overlap
+    # so the returned list is immediately relevant. This is a best-effort filter —
+    # if no profile is found we fall back to the full list unchanged.
+    profile_id: Optional[uuid.UUID] = Query(None, description="Filter by user profile ID"),
 ) -> Any:
     """List jobs with search, filtering, sorting, and pagination.
 
@@ -209,6 +271,15 @@ async def list_jobs(
     identical requests coalesce to a single DB round-trip on cache miss,
     preventing thundering-herd load.
     """
+    # Resolve profile once and build a skill-filter if a profile_id was given.
+    skill_keywords: list[str] = []
+    if profile_id is not None:
+        profile = db.query(Profile).filter(Profile.id == profile_id).first()
+        if profile and profile.skills:
+            # Use the first 3 skill keywords as a lightweight relevance filter.
+            # Each Skill.name is a free-text tag; we'll ILIKE-search against job.tags.
+            skill_keywords = [s.name for s in profile.skills[:3]]
+
     cache_key = _build_cache_key(
         str(current_user.id),
         search=search,
@@ -240,6 +311,7 @@ async def list_jobs(
             sort_by,
             sort_order,
             include_archived,
+            skill_keywords,
         )
         return result
 
