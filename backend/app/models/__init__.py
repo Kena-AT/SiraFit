@@ -1,7 +1,9 @@
-from app.models.user import User, UserPreference, RefreshToken
+from app.models.user import User, UserPreference, RefreshToken, DeviceSession
 from app.models.job import (
     Job,
     JobApplication,
+    JobImport,
+    JobAnalysis,
     Resume,
     AuditLog,
     ResumeVersion,
@@ -24,26 +26,36 @@ from app.models.notification import Notification
 from app.models.analytics import AnalyticsSnapshot
 
 __all__ = [
+    # users
     "User",
     "UserPreference",
     "RefreshToken",
+    "DeviceSession",
+    # jobs
     "Job",
     "JobApplication",
+    "JobImport",
+    "JobAnalysis",
     "Resume",
     "AuditLog",
     "ResumeVersion",
     "ApplicationEvent",
     "ApplicationNote",
     "ApplicationContact",
+    # documents
     "CoverLetter",
+    # profile
     "Profile",
     "Experience",
     "Education",
     "Skill",
     "Project",
     "Certification",
+    # intelligence
     "JobMatchScore",
+    # operations
     "BatchJob",
+    # notifications & analytics
     "Notification",
     "AnalyticsSnapshot",
 ]

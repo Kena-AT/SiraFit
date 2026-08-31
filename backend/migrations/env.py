@@ -18,8 +18,38 @@ if config.config_file_name is not None:
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 from app.core.database import Base
-from app.models.user import User, UserPreference, RefreshToken
-from app.models.job import Job, JobApplication, Resume, AuditLog, ResumeVersion
+
+# Import every model so Alembic autogenerate sees the full schema.
+# Adding a new model here is enough to make `alembic revision --autogenerate`
+# detect it; no other env.py change is needed.
+from app.models import (  # noqa: F401 — side-effect imports register metadata
+    User,
+    UserPreference,
+    RefreshToken,
+    DeviceSession,
+    Job,
+    JobApplication,
+    JobImport,
+    JobAnalysis,
+    Resume,
+    AuditLog,
+    ResumeVersion,
+    ApplicationEvent,
+    ApplicationNote,
+    ApplicationContact,
+    CoverLetter,
+    Profile,
+    Experience,
+    Education,
+    Skill,
+    Project,
+    Certification,
+    JobMatchScore,
+    BatchJob,
+    Notification,
+    AnalyticsSnapshot,
+)
+
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
