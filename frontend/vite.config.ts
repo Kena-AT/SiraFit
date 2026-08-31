@@ -10,11 +10,17 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
+    resolve: {
+      tsconfigPaths: true,
+    },
     server: {
       host: true,
-      hmr: {
-        protocol: 'ws',
-        host: 'localhost',
+      // Let Vite pick the next free port rather than hard-failing when 8081
+      // is already in use (e.g. a previous dev server still running).
+      port: 8081,
+      strictPort: false,
+      ws: {
+        // Use the native ws config instead of the deprecated hmr.* options.
       },
       proxy: {
         '/api': {
