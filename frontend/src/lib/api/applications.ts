@@ -63,11 +63,11 @@ export const getApplications = async () => {
   return response.json();
 };
 
-export const createApplication = async (jobId: string) => {
+export const createApplication = async (jobId: string, status?: string) => {
   const response = await apiFetch("/api/v1/applications", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ job_id: jobId }),
+    body: JSON.stringify({ job_id: jobId, ...(status ? { status } : {}) }),
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({ detail: "Failed to create application" }));
