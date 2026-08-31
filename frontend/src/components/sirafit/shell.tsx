@@ -1,4 +1,4 @@
-import { Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useState, useRef, useEffect, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { AgentDot } from "./bits";
@@ -6,6 +6,14 @@ import { UserMenu } from "./user-menu";
 import { getLandingStats, getHealthStatus, LandingStatsResponse, HealthStatusResponse } from "@/lib/api/stats";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api/client";
+import {
+  CommandDialog,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from "@/components/ui/command";
 
 type NavItem = { label: string; to: string; badge?: string; match?: "exact" | "prefix" };
 type NavGroup = { header: string; items: NavItem[] };
@@ -206,6 +214,19 @@ export function AppShell() {
 
 function TopBar({ pathname }: { pathname: string }) {
   const segs = pathname.split("/").filter(Boolean);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
   return (
     <header className="sticky top-0 z-20 flex h-12 items-center justify-between gap-4 border-b border-border bg-background/90 px-4 backdrop-blur md:px-6">
       <div className="flex items-center gap-3 md:hidden">
@@ -225,14 +246,105 @@ function TopBar({ pathname }: { pathname: string }) {
         ))}
       </nav>
       <div className="ml-auto flex items-center gap-3">
-        <div className="hidden h-7 items-center gap-2 rounded-md bg-card px-2.5 text-[11px] ring-1 ring-border md:flex">
+        <button
+          type="button"
+          onClick={() => setPaletteOpen(true)}
+          className="hidden h-7 cursor-text items-center gap-2 rounded-md bg-card px-2.5 text-[11px] ring-1 ring-border hover:bg-muted/50 md:flex"
+        >
           <span className="font-mono text-muted-foreground">⌘K</span>
           <span className="text-muted-foreground">Search jobs, apps, resumes…</span>
-        </div>
+        </button>
         <AgentDot label="Gemini · connected" />
         <UserMenu />
       </div>
+
+      {/* Command palette (⌘K / Ctrl+K) */}
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </header>
+  );
+}
+
+const PALETTE_ITEMS: { group: string; label: string; to: string }[] = [
+  ...NAV.flatMap((g) =>
+    g.items.map((i) => ({ group: g.header, label: i.label, to: i.to })),
+  ),
+  { group: "Actions", label: "Import jobs", to: "/jobs/import" },
+  { group: "Actions", label: "View import history", to: "/jobs/history" },
+  { group: "Actions", label: "Edit master profile", to: "/resumes/profile-editor" },
+  { group: "Actions", label: "AI & provider settings", to: "/settings/ai" },
+];
+
+function CommandPalette({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const navigate = useNavigate();
+  const [jobs, setJobs] = useState<{ id: string; title: string; company: string }[]>([]);
+  const [applications, setApplications] = useState<{ id: string; status?: string; job?: { title: string; company: string } }[]>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = () => onOpenChange(false);
+    window.addEventListener("route-change-close-palette", close);
+
+    apiFetch("/api/v1/jobs?limit=50")
+      .then((res) => (res.ok ? res.json() : { jobs: [] }))
+      .then((data) => setJobs(data.jobs ?? []))
+      .catch(() => {});
+
+    apiFetch("/api/v1/applications?limit=50")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => setApplications(Array.isArray(data) ? data : []))
+      .catch(() => {});
+
+    return () => window.removeEventListener("route-change-close-palette", close);
+  }, [open, onOpenChange]);
+
+  const dynamicItems = [
+    ...PALETTE_ITEMS,
+    ...jobs.map((j) => ({
+      group: "Jobs",
+      label: `${j.title} at ${j.company}`,
+      to: `/jobs/${j.id}`,
+    })),
+    ...applications.map((app) => ({
+      group: "Applications",
+      label: app.job ? `${app.job.title} — ${app.job.company} (${app.status || "saved"})` : `Application ${app.id.slice(0, 8)}`,
+      to: `/applications/${app.id}`,
+    })),
+  ];
+
+  const groups = dynamicItems.reduce<Record<string, typeof dynamicItems>>((acc, item) => {
+    (acc[item.group] ??= []).push(item);
+    return acc;
+  }, {});
+
+  return (
+    <CommandDialog open={open} onOpenChange={onOpenChange}>
+      <CommandInput placeholder="Jump to jobs, applications, resumes, settings…" />
+      <CommandList>
+        <CommandEmpty>No results found.</CommandEmpty>
+        {Object.entries(groups).map(([group, items]) => (
+          <CommandGroup key={group} heading={group}>
+            {items.map((item) => (
+              <CommandItem
+                key={item.to + item.label}
+                value={item.label}
+                onSelect={() => {
+                  navigate({ to: item.to });
+                  onOpenChange(false);
+                }}
+              >
+                {item.label}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        ))}
+      </CommandList>
+    </CommandDialog>
   );
 }
 
