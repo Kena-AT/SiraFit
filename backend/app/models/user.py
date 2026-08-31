@@ -74,6 +74,10 @@ class UserPreference(Base):
     # Provider and model preferences (plain text, no sensitive data)
     ai_provider = Column(String(50), nullable=True, default="gemini")
     ai_model = Column(String(255), nullable=True, default="gemini-1.5-flash")
+    # Ordered list of providers to try when the chosen one is unavailable.
+    # Stored as a JSON array (e.g. '["gemini","openai","anthropic"]') or NULL
+    # to use the built-in DEFAULT_FALLBACK_ORDER.
+    ai_fallback_order = Column(Text, nullable=True)
 
     user = relationship("User", back_populates="preferences")
 

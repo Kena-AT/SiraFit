@@ -236,7 +236,13 @@ async def generate_cover_letter_new(
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    body = await _generate(profile, job, tone=letter_in.tone or "matching")
+    body = await _generate(
+        profile,
+        job,
+        tone=letter_in.tone or "matching",
+        user_id=current_user.id,
+        db=db,
+    )
 
     letter = CoverLetter(
         user_id=current_user.id,
@@ -287,7 +293,13 @@ async def regenerate_cover_letter(
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    body = await _generate(profile, job, tone=letter_in.tone or "matching")
+    body = await _generate(
+        profile,
+        job,
+        tone=letter_in.tone or "matching",
+        user_id=current_user.id,
+        db=db,
+    )
 
     # Update the EXISTING letter instead of creating a new one
     letter.body = body

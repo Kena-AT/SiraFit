@@ -405,8 +405,16 @@ def get_ai_provider_keys(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Any:
-    """Get current user's AI provider key configuration status."""
+    """Get current user's AI provider key configuration status.
+
+    Reports both keys stored via the UI (``*_configured``) and keys available
+    from the server / user env file (``*_env``), without ever returning the
+    keys themselves.
+    """
     prefs = _get_or_create_prefs(db, current_user.id)
+    from app.services.ai_keys import available_providers
+
+    env = available_providers()
     return AIProviderKeysRead(
         gemini_configured=bool(prefs.encrypted_gemini_key),
         openrouter_configured=bool(prefs.encrypted_openrouter_key),
@@ -415,6 +423,13 @@ def get_ai_provider_keys(
         grok_configured=bool(prefs.encrypted_grok_key),
         mistral_configured=bool(prefs.encrypted_mistral_key),
         nvidia_configured=bool(prefs.encrypted_nvidia_key),
+        gemini_env=env["gemini"]["env"],
+        openrouter_env=env["openrouter"]["env"],
+        anthropic_env=env["anthropic"]["env"],
+        openai_env=env["openai"]["env"],
+        grok_env=env["grok"]["env"],
+        mistral_env=env["mistral"]["env"],
+        nvidia_env=env["nvidia"]["env"],
     )
 
 

@@ -78,6 +78,8 @@ def list_ranked_jobs(
         )
         for job in jobs
     ]
+    items.sort(key=lambda r: r.match_score.score if r.match_score else 0, reverse=True)
+    return RankedJobListResponse(jobs=items, total=len(items))
 
 
 @router.get("/search", response_model=JobListResponse)
@@ -115,8 +117,6 @@ def job_search(
     total = query.with_entities(func.count(Job.id)).scalar() or 0
     jobs = query.offset(skip).limit(limit).all()
     return JobListResponse(jobs=jobs, total=total, skip=skip, limit=limit)
-    items.sort(key=lambda r: r.match_score.score if r.match_score else 0, reverse=True)
-    return RankedJobListResponse(jobs=items, total=len(items))
 
 
 @router.get("/with-scores", response_model=RankedJobListResponse)
@@ -124,7 +124,7 @@ def list_jobs_with_scores(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100),
+    limit: int = Query(100, ge=1, le=500),
 ) -> Any:
     """List jobs with their match scores in a single batched call.
 

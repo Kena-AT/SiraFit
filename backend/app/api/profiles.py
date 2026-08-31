@@ -1,10 +1,11 @@
 from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.api.users import get_current_user
-from app.models.user import User
+from app.models.user import User, UserPreference
 from app.models.profile import (
     Profile,
     Experience,
@@ -16,6 +17,60 @@ from app.models.profile import (
 from app.schemas.profile import ProfileResponse, ProfileUpdate
 
 router = APIRouter()
+
+
+class BulletPolishRequest(BaseModel):
+    text: str = Field(..., min_length=3, max_length=2000)
+
+
+@router.post("/me/polish-bullet")
+async def polish_resume_bullet(
+    body: BulletPolishRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """
+    Rewrite resume achievement bullet(s) with AI using the STAR method.
+
+    Resolves the API key via the shared multi-provider resolver (request has
+    no header key here, so: user's UI-stored key -> env key -> fallback
+    providers). Falls back across providers/models automatically.
+    """
+    from app.services.ai_keys import build_candidates
+    from app.services.ai import complete_with_fallback
+
+    prefs = (
+        db.query(UserPreference)
+        .filter(UserPreference.user_id == current_user.id)
+        .first()
+    )
+    provider = (prefs.ai_provider if prefs else None) or None
+    model = (prefs.ai_model if prefs else None) or None
+
+    candidates = build_candidates(
+        db=db, user_id=current_user.id, provider=provider, model=model
+    )
+    if not candidates:
+        raise HTTPException(
+            status_code=503,
+            detail="No AI API key configured. Add one in Settings → AI or set provider keys in your env file.",
+        )
+
+    system_prompt = (
+        "You are an expert technical resume writer. Rewrite the user's resume achievement "
+        "bullet points using the STAR method: strong past-tense action verbs, concrete "
+        "technologies, and quantified impact. Where a metric is unknown, insert a realistic "
+        "placeholder metric. Return ONLY the rewritten bullets, one per line, each starting "
+        "with '• '. No preamble, no explanation."
+    )
+    try:
+        polished = await complete_with_fallback(
+            body.text, candidates, system=system_prompt, max_tokens=512
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"All AI providers failed: {exc}")
+
+    return {"polished": polished.strip()}
 
 
 @router.get("/me", response_model=ProfileResponse)

@@ -90,3 +90,12 @@ class AIProviderKeysRead(BaseModel):
     grok_configured: bool
     mistral_configured: bool
     nvidia_configured: bool
+    # Whether a key is also available from the server / user env file (so the
+    # user knows a provider works even if they haven't pasted a key in the UI).
+    gemini_env: bool = False
+    openrouter_env: bool = False
+    anthropic_env: bool = False
+    openai_env: bool = False
+    grok_env: bool = False
+    mistral_env: bool = False
+    nvidia_env: bool = False

@@ -1,17 +1,18 @@
 """
 Settings API routes.
-Provides CRUD for user-stored AI configuration (encrypted API keys).
+Provides CRUD for user-stored AI configuration (provider/model, fallback order).
+API keys are managed via the /users/me/preferences/ai-keys endpoint.
 """
 
+import json
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.api.users import get_current_user
 from app.models.user import User, UserPreference
-from app.core.security import encrypt_value
 
 router = APIRouter()
 
@@ -22,19 +23,18 @@ router = APIRouter()
 
 
 class AIConfigResponse(BaseModel):
-    has_gemini_key: bool = False
-    has_openrouter_key: bool = False
     provider: Optional[str] = None
     model: Optional[str] = None
+    fallback_order: Optional[list[str]] = None
 
     model_config = {"from_attributes": True}
 
 
 class AIConfigUpdate(BaseModel):
-    gemini_key: Optional[str] = None
-    openrouter_key: Optional[str] = None
     provider: Optional[str] = None
     model: Optional[str] = None
+    # Ordered list of provider names to try when the chosen one is unavailable.
+    fallback_order: Optional[list[str]] = None
 
 
 # ---------------------------------------------------------------------------
@@ -47,7 +47,7 @@ def get_ai_config(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Get the current user's AI configuration. Actual API keys are NEVER returned."""
+    """Get the current user's AI configuration (provider, model, fallback order)."""
     prefs = (
         db.query(UserPreference)
         .filter(UserPreference.user_id == current_user.id)
@@ -56,11 +56,17 @@ def get_ai_config(
     if prefs is None:
         return AIConfigResponse()
 
+    fallback_order = None
+    if prefs.ai_fallback_order:
+        try:
+            fallback_order = json.loads(prefs.ai_fallback_order)
+        except Exception:
+            fallback_order = None
+
     return AIConfigResponse(
-        has_gemini_key=bool(prefs.encrypted_gemini_key),
-        has_openrouter_key=bool(prefs.encrypted_openrouter_key),
         provider=prefs.ai_provider,
         model=prefs.ai_model,
+        fallback_order=fallback_order,
     )
 
 
@@ -70,7 +76,7 @@ def save_ai_config(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Save AI configuration. API keys are encrypted before storage."""
+    """Save AI configuration (provider, model, and optional fallback order)."""
     prefs = (
         db.query(UserPreference)
         .filter(UserPreference.user_id == current_user.id)
@@ -80,43 +86,27 @@ def save_ai_config(
         prefs = UserPreference(user_id=current_user.id)
         db.add(prefs)
 
-    if body.gemini_key is not None:
-        if body.gemini_key:
-            encrypted = encrypt_value(body.gemini_key)
-            if encrypted is None:
-                raise HTTPException(
-                    status_code=500,
-                    detail="Encryption is not configured. Set DATA_ENCRYPTION_KEY in your environment.",
-                )
-            prefs.encrypted_gemini_key = encrypted
-        else:
-            prefs.encrypted_gemini_key = None
-
-    if body.openrouter_key is not None:
-        if body.openrouter_key:
-            encrypted = encrypt_value(body.openrouter_key)
-            if encrypted is None:
-                raise HTTPException(
-                    status_code=500,
-                    detail="Encryption is not configured. Set DATA_ENCRYPTION_KEY in your environment.",
-                )
-            prefs.encrypted_openrouter_key = encrypted
-        else:
-            prefs.encrypted_openrouter_key = None
-
     if body.provider is not None:
         prefs.ai_provider = body.provider
     if body.model is not None:
         prefs.ai_model = body.model
+    if body.fallback_order is not None:
+        # Only store known providers, de-duplicated, in the given order.
+        from app.services.ai_keys import _parse_fallback_order
+
+        cleaned = _parse_fallback_order(body.fallback_order)
+        prefs.ai_fallback_order = json.dumps(cleaned) if cleaned else None
 
     db.commit()
     db.refresh(prefs)
 
+    fallback_order = (
+        json.loads(prefs.ai_fallback_order) if prefs.ai_fallback_order else None
+    )
     return AIConfigResponse(
-        has_gemini_key=bool(prefs.encrypted_gemini_key),
-        has_openrouter_key=bool(prefs.encrypted_openrouter_key),
         provider=prefs.ai_provider,
         model=prefs.ai_model,
+        fallback_order=fallback_order,
     )
 
 
@@ -125,17 +115,16 @@ def delete_ai_config(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Delete the user's AI configuration (clear encrypted keys and reset preferences)."""
+    """Reset the user's AI configuration (clear provider/model/fallback prefs)."""
     prefs = (
         db.query(UserPreference)
         .filter(UserPreference.user_id == current_user.id)
         .first()
     )
     if prefs:
-        prefs.encrypted_gemini_key = None
-        prefs.encrypted_openrouter_key = None
         prefs.ai_provider = None
         prefs.ai_model = None
+        prefs.ai_fallback_order = None
         db.commit()
 
     return AIConfigResponse()
