@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, Tag, StatusPill, EmptyState } from "@/components/sirafit/bits";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { importJobs, getImportHistory } from "@/lib/api/jobs";
+import { JobNavTabs } from "@/components/sirafit/job-nav-tabs";
 import type { ImportResult, JobData, JobImportRecord } from "@/types/job";
 
 export const Route = createFileRoute("/_app/jobs/import")({
@@ -76,6 +77,29 @@ function Import() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [recentHistory, setRecentHistory] = useState<JobImportRecord[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFileName, setSelectedFileName] = useState("");
+
+  const handleFile = async (file: File) => {
+    setSelectedFileName(file.name);
+    setLoading(true);
+    setResult(null);
+    try {
+      const text = await file.text();
+      const res = await importJobs({ source_type: "csv", data: text });
+      setResult(res);
+      try {
+        const history = await getImportHistory(0, 3);
+        setRecentHistory(history);
+      } catch (e: any) {
+        console.error("Failed to fetch import history:", e.message);
+      }
+    } catch (e: any) {
+      setResult({ import_record: null as any, jobs: [], errors: [e.message] });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleImportUrl = async () => {
     if (!url.trim()) return;
@@ -119,6 +143,7 @@ function Import() {
 
   return (
     <PageBody>
+      <JobNavTabs />
       <PageHeader
         eyebrow="Pipeline"
         title="Import jobs"
@@ -232,16 +257,39 @@ function Import() {
       )}
 
       <Panel title="Batch import (CSV)">
-        <div className="m-4 grid place-items-center rounded-lg border border-dashed border-border bg-muted/30 px-6 py-12 text-center">
+        <div 
+          className="m-4 grid place-items-center rounded-lg border border-dashed border-border bg-muted/30 px-6 py-12 text-center cursor-pointer hover:bg-muted/50 transition-colors"
+          onClick={() => fileInputRef.current?.click()}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+              handleFile(e.dataTransfer.files[0]);
+            }
+          }}
+        >
+          <input 
+            type="file" 
+            accept=".csv,.txt" 
+            ref={fileInputRef} 
+            className="hidden" 
+            onChange={(e) => {
+              if (e.target.files && e.target.files[0]) {
+                handleFile(e.target.files[0]);
+              }
+            }}
+          />
           <div className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-            Drop file
+            {loading ? "Importing batch..." : "Drop file"}
           </div>
-          <div className="mt-1 text-sm font-medium">Drop a CSV of URLs or job IDs here</div>
+          <div className="mt-1 text-sm font-medium">
+            {selectedFileName ? `Selected: ${selectedFileName}` : "Drop a CSV of URLs or job IDs here"}
+          </div>
           <div className="mt-1 text-[11px] text-muted-foreground">
             Max 500 rows per batch · processed locally
           </div>
-          <Button variant="outline" className="mt-3">
-            Choose file
+          <Button variant="outline" className="mt-3 pointer-events-none">
+            {loading ? "Processing..." : "Choose file"}
           </Button>
         </div>
       </Panel>

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getJobs, type JobSearchParams } from "@/lib/api/jobs";
+import { JobNavTabs } from "@/components/sirafit/job-nav-tabs";
 import { createBatchJob, type BatchOperationType } from "@/lib/api/batch";
 import { BatchCreateModal } from "@/components/sirafit/batch/BatchCreateModal";
 import type { JobListResponse, Job } from "@/types/job";
@@ -151,6 +152,7 @@ function JobsExplorer() {
 
   return (
     <PageBody>
+      <JobNavTabs />
       <PageHeader
         eyebrow="Pipeline"
         title="Jobs Explorer"

@@ -126,7 +126,9 @@ function RootShell({ children }: { children: ReactNode }) {
           by browser extensions (e.g. VS Code DevTools) injecting attributes like
           class="vsc-initialized" onto <body> before React hydrates. */}
       <body suppressHydrationWarning>
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
         <Scripts />
       </body>
     </html>
@@ -139,10 +141,8 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AuthProvider>
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
-        </AuthProvider>
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
       </TooltipProvider>
     </QueryClientProvider>
   );

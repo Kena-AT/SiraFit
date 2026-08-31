@@ -4,6 +4,7 @@ import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, StatusPill, EmptyState } from "@/components/sirafit/bits";
 import { getImportHistory } from "@/lib/api/jobs";
 import { Button } from "@/components/ui/button";
+import { JobNavTabs } from "@/components/sirafit/job-nav-tabs";
 import type { JobImportRecord } from "@/types/job";
 
 export const Route = createFileRoute("/_app/jobs/history")({
@@ -45,6 +46,7 @@ function History() {
 
   return (
     <PageBody>
+      <JobNavTabs />
       <PageHeader
         eyebrow="Pipeline"
         title="Import history"

@@ -89,12 +89,9 @@ function NotificationsSettings() {
               <tr key={row.id}>
                 <td className="px-4 py-3">{row.label}</td>
                 <td className="px-4 py-3">
-                  <input
-                    type="checkbox"
-                    checked={row.inAppEnabled}
-                    disabled
-                    className="h-4 w-4"
-                  />
+                  <span className="text-[11px] text-muted-foreground">
+                    {row.inAppEnabled ? "Always on" : "Off"}
+                  </span>
                 </td>
                 <td className="px-4 py-3">
                   <input
