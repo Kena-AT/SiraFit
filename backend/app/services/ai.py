@@ -85,23 +85,79 @@ def _parse_and_validate(text: str) -> AnalysisOutput:
 # ---------------------------------------------------------------------------
 
 
+def _is_retryable(exc) -> bool:
+    """Classify whether an AI failure is worth retrying.
+
+    Permanent errors (auth failure, unknown provider, malformed output) are NOT
+    retried — they will not succeed on a later attempt and should instead
+    trigger a fallback to a different provider/model.
+    """
+    if isinstance(exc, ValueError):
+        return False  # unknown provider, etc.
+    if isinstance(exc, (json.JSONDecodeError, ValidationError)):
+        return False  # malformed model output — fall back, don't retry
+    if isinstance(exc, httpx.HTTPStatusError):
+        code = exc.response.status_code if exc.response is not None else 0
+        if code in (401, 403):
+            return False  # auth/permission — permanent for this key
+        return code >= 500 or code == 429  # server busy / rate limited
+    if isinstance(exc, (httpx.TransportError, httpx.TimeoutException)):
+        return True  # network blip
+    return False
+
+
 async def _with_retry(fn, max_attempts: int = 3):
-    """Call async fn up to max_attempts times with exponential backoff."""
+    """Call async fn up to max_attempts times with exponential backoff.
+
+    Only retryable errors (see ``_is_retryable``) are retried; permanent errors
+    propagate immediately so callers can fall back to another candidate.
+    """
     last_exc = None
     for attempt in range(max_attempts):
         try:
             return await fn()
-        except (json.JSONDecodeError, ValidationError, KeyError) as e:
-            last_exc = e
-            logger.warning(f"AI parse/validation error attempt {attempt + 1}: {e}")
-            if attempt < max_attempts - 1:
-                await asyncio.sleep(2**attempt)  # 1s, 2s, 4s
         except Exception as e:
             last_exc = e
+            if not _is_retryable(e):
+                raise
             logger.warning(f"AI call error attempt {attempt + 1}: {e}")
             if attempt < max_attempts - 1:
-                await asyncio.sleep(2**attempt)
+                await asyncio.sleep(2**attempt)  # 1s, 2s, 4s
     raise last_exc
+
+
+async def complete_with_fallback(
+    prompt: str,
+    candidates: list,
+    system: Optional[str] = None,
+    max_tokens: int = 1024,
+    parse_fn=None,
+):
+    """Try each (provider, model, key) candidate in order, returning first success.
+
+    ``candidates`` is the ordered list from ``app.services.ai_keys.build_candidates``.
+    Each candidate is attempted with retry/backoff for transient errors; permanent
+    errors or exhaustion move on to the next candidate. ``parse_fn`` (if given) is
+    applied to the successful candidate's text and its result returned.
+
+    Raises the last error if every candidate fails.
+    """
+    last_exc = None
+    for provider, model, api_key in candidates:
+        try:
+            text = await _with_retry(
+                lambda: complete(prompt, api_key, provider, model, system, max_tokens),
+                max_attempts=2,
+            )
+            return parse_fn(text) if parse_fn is not None else text
+        except Exception as exc:
+            logger.warning(
+                "AI candidate %s/%s failed; trying next: %s", provider, model, exc
+            )
+            last_exc = exc
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError("No AI candidates were available")
 
 
 # ---------------------------------------------------------------------------
@@ -233,20 +289,56 @@ async def analyze_job(
     model: Optional[str] = None,
     prompt_version: str = CURRENT_PROMPT_VERSION,
 ) -> AnalysisOutput:
-    """Generic dispatcher for job analysis across multiple providers."""
-    provider = provider.lower()
+    """Generic dispatcher for job analysis across multiple providers.
 
+    Tries the single (provider, model, key) given; kept for callers that have
+    already resolved one candidate (e.g. scoring.py). New callers should build
+    a candidate list with ``ai_keys.build_candidates`` and use
+    ``analyze_job_with_fallback`` to get cross-provider resilience.
+    """
+    provider = (provider or "").lower()
     if provider not in DEFAULT_MODELS:
         logger.warning(f"Unknown provider: {provider}, falling back to keyword analysis")
         return keyword_fallback("Job", "Unknown provider requested")
 
+    candidates = [(provider, model or DEFAULT_MODELS.get(provider, ""), api_key)]
+    return await analyze_job_with_fallback(prompt_context, candidates, prompt_version)
+
+
+async def analyze_job_with_fallback(
+    prompt_context: str,
+    candidates: list,
+    prompt_version: str = CURRENT_PROMPT_VERSION,
+) -> AnalysisOutput:
+    """Run job analysis over an ordered candidate list, returning the first valid result.
+
+    Each candidate is ``(provider, model, key)``. On transient failure the
+    candidate is retried; on a permanent failure or exhaustion the next
+    candidate is tried. A malformed response also advances to the next
+    candidate rather than failing the whole analysis.
+    """
     system_prompt = PROMPTS.get(prompt_version, PROMPTS[CURRENT_PROMPT_VERSION])
-
-    async def _call():
-        text = await complete(prompt_context, api_key, provider, model=model, system=system_prompt)
-        return _parse_and_validate(text)
-
-    return await _with_retry(_call)
+    last_exc = None
+    for provider, model, api_key in candidates:
+        try:
+            text = await _with_retry(
+                lambda: complete(
+                    prompt_context, api_key, provider, model=model, system=system_prompt
+                ),
+                max_attempts=2,
+            )
+            return _parse_and_validate(text)
+        except Exception as exc:
+            logger.warning(
+                "Job analysis candidate %s/%s failed; trying next: %s",
+                provider,
+                model,
+                exc,
+            )
+            last_exc = exc
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError("No AI candidates were available for job analysis")
 
 
 async def analyze_job_gemini(

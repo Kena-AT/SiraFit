@@ -1,5 +1,7 @@
 import re
 import uuid
+import csv
+import io
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
@@ -419,6 +421,89 @@ def parse_job_from_description(description: str) -> Dict[str, Any]:
     }
 
 
+def parse_job_csv(csv_content: str) -> List[Dict[str, Any]]:
+    jobs = []
+    try:
+        f = io.StringIO(csv_content.strip())
+        sample = f.read(2048)
+        f.seek(0)
+        try:
+            dialect = csv.Sniffer().sniff(sample)
+            reader = csv.DictReader(f, dialect=dialect)
+        except Exception:
+            f.seek(0)
+            reader = csv.DictReader(f)
+
+        if reader.fieldnames:
+            fieldnames_lower = [fn.lower().strip() for fn in reader.fieldnames]
+            has_url_col = any("url" in fn or "link" in fn for fn in fieldnames_lower)
+            has_title_col = any("title" in fn for fn in fieldnames_lower)
+
+            if not has_url_col and not has_title_col and len(reader.fieldnames) == 1:
+                f.seek(0)
+                for line in f:
+                    line = line.strip()
+                    if line and not line.lower().startswith("url") and not line.lower().startswith("link"):
+                        if line.startswith("http://") or line.startswith("https://"):
+                            jobs.append(parse_job_from_url(line))
+                        else:
+                            jobs.append(parse_job_from_description(line))
+                return jobs
+
+            for row in reader:
+                row_lower = {k.lower().strip(): v for k, v in row.items() if k}
+                url = row_lower.get("url") or row_lower.get("link") or row_lower.get("job_url")
+                title = row_lower.get("title") or row_lower.get("job_title") or row_lower.get("position")
+                company = row_lower.get("company") or row_lower.get("employer") or row_lower.get("organization")
+                location = row_lower.get("location") or row_lower.get("place") or row_lower.get("office")
+                description = row_lower.get("description") or row_lower.get("desc") or row_lower.get("details")
+
+                if url and not title:
+                    parsed_url_job = parse_job_from_url(url)
+                    if company:
+                        parsed_url_job["company"] = company
+                    if location:
+                        parsed_url_job["location"] = location
+                    jobs.append(parsed_url_job)
+                elif title or description:
+                    jobs.append({
+                        "title": title or "Unknown Position",
+                        "company": company or "Unknown Company",
+                        "location": location,
+                        "description": description or (f"Position: {title} at {company}" if title and company else "Imported from CSV"),
+                        "salary_min": None,
+                        "salary_max": None,
+                        "currency": "USD",
+                        "tags": extract_tags_from_text(description or title or ""),
+                        "url": url,
+                        "source": "csv",
+                        "external_id": str(uuid.uuid4()),
+                    })
+                elif url:
+                    jobs.append(parse_job_from_url(url))
+        else:
+            f.seek(0)
+            for line in f:
+                line = line.strip()
+                if line:
+                    if line.startswith("http://") or line.startswith("https://"):
+                        jobs.append(parse_job_from_url(line))
+                    else:
+                        jobs.append(parse_job_from_description(line))
+    except Exception as e:
+        for line in csv_content.split("\n"):
+            line = line.strip()
+            if line:
+                if line.startswith("http://") or line.startswith("https://"):
+                    jobs.append(parse_job_from_url(line))
+                else:
+                    try:
+                        jobs.append(parse_job_from_description(line))
+                    except Exception:
+                        pass
+    return jobs
+
+
 # ─── Normalization Pipeline ────────────────────────────────────────────────
 
 
@@ -510,11 +595,15 @@ def process_import(
     jobs_data = []
 
     try:
+        parsed_list = []
         if source_type == "url":
             parsed = parse_job_from_url(data)
-            # Enrich with a real page fetch when Scrapling is available. Any
-            # failure (no network, parse error) is non-fatal: we keep the
-            # heuristic parse so the import still succeeds.
+            # ── Enrichment-first: try scrapping, fall back to heuristic ──────
+            # We always attempt a real-page fetch when Scrapling is available.
+            # On success, enriched fields (title, company, description, salary,
+            # tags) override the heuristic parser values.  On any failure
+            # (no network, parse error, resistant board) the heuristic data
+            # is kept intact — the import never breaks because scrapping failed.
             html = fetch_job_html(data)
             if html:
                 try:
@@ -532,43 +621,58 @@ def process_import(
                         "currency",
                         "tags",
                     ):
-                        if enriched.get(key):
+                        # Only override when the enriched value is not None.
+                        # This prevents a zero-value or empty-string from the
+                        # scraper from silently replacing the heuristic parser's
+                        # result (which may be None or a valid non-zero value).
+                        if enriched.get(key) is not None:
                             parsed[key] = enriched[key]
+                # if enriched is None: keep heuristic data as-is
+            # if html is None (scrapling unavailable / network error):
+            #   — keep the heuristic parse from parse_job_from_url as-is
+            parsed_list.append(parsed)
         elif source_type == "description":
             if len(data.strip()) < 100:
                 raise ValueError("Description must be at least 100 characters")
-            parsed = parse_job_from_description(data)
+            parsed_list.append(parse_job_from_description(data))
+        elif source_type == "csv":
+            if not data.strip():
+                raise ValueError("CSV data cannot be empty")
+            parsed_list = parse_job_csv(data)
+            if not parsed_list:
+                raise ValueError("No valid jobs found in CSV")
         else:
             raise ValueError(f"Unsupported source type: {source_type}")
 
-        normalized = normalize_job(parsed)
+        for parsed in parsed_list:
+            normalized = normalize_job(parsed)
 
-        is_dup = check_duplicate(db, normalized)
+            is_dup = check_duplicate(db, normalized)
 
-        if is_dup:
-            job_import.fail_count += 1
-            errors.append(
-                f"Duplicate job: {normalized['title']} at {normalized['company']}"
-            )
-        else:
-            job = Job(
-                external_id=normalized["external_id"],
-                title=normalized["title"],
-                company=normalized["company"],
-                location=normalized.get("location"),
-                description=normalized.get("description"),
-                salary_min=normalized.get("salary_min"),
-                salary_max=normalized.get("salary_max"),
-                currency=normalized.get("currency"),
-                tags=normalized.get("tags", []),
-                url=normalized.get("url"),
-                source=normalized.get("source", source_type),
-            )
-            db.add(job)
-            db.commit()
-            db.refresh(job)
-            job_import.ok_count += 1
-            jobs_data.append(normalized)
+            if is_dup:
+                job_import.fail_count += 1
+                errors.append(
+                    f"Duplicate job: {normalized['title']} at {normalized['company']}"
+                )
+            else:
+                job = Job(
+                    external_id=normalized["external_id"],
+                    title=normalized["title"],
+                    company=normalized["company"],
+                    location=normalized.get("location"),
+                    description=normalized.get("description"),
+                    salary_min=normalized.get("salary_min"),
+                    salary_max=normalized.get("salary_max"),
+                    currency=normalized.get("currency"),
+                    tags=normalized.get("tags", []),
+                    url=normalized.get("url"),
+                    source=normalized.get("source", source_type),
+                )
+                db.add(job)
+                db.commit()
+                db.refresh(job)
+                job_import.ok_count += 1
+                jobs_data.append(normalized)
 
         job_import.total_found = job_import.ok_count + job_import.fail_count
         job_import.status = "completed"

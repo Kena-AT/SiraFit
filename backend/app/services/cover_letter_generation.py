@@ -135,6 +135,8 @@ async def generate_cover_letter(
     api_key: Optional[str] = None,
     provider: Optional[str] = None,
     model: Optional[str] = None,
+    user_id: Optional[str] = None,
+    db=None,
 ) -> str:
     """
     Generate a tailored cover letter.
@@ -143,11 +145,17 @@ async def generate_cover_letter(
         profile: User's master profile
         job: Target job
         tone: "matching", "conversational", or "formal"
-        api_key: Optional API key override
-        provider: "gemini" or "openrouter"
+        api_key: Optional API key override (request header)
+        provider: Preferred provider ("gemini", "openai", ...)
+        model: Preferred model for the provider
+        user_id: Optional user id, used to resolve the user's UI-stored keys
+        db: Optional DB session (required if user_id is given)
 
     Returns:
         Plain text cover letter body
+
+    Resolves keys via the shared multi-provider resolver and falls back across
+    providers/models when one is unavailable.
     """
     profile_text = _serialize_profile(profile)
     job_text = _serialize_job(job)
@@ -157,36 +165,30 @@ async def generate_cover_letter(
         tone=tone,
     )
 
-    # Full 7-provider resolution, matching resume_generation.py / job_analysis.py.
-    # Use shared provider-to-key mapping from config (config.PROVIDER_KEY_FIELDS)
-    # to avoid duplication across 3 service files.
-    from app.core.config import PROVIDER_KEY_FIELDS as setting_fields
+    from app.services.ai import complete_with_fallback
+    from app.services.ai_keys import build_candidates
 
-    actual_provider = (provider or "").lower()
-    actual_model = model or ""
-    actual_key = api_key
+    actual_provider = (provider or "").lower() or None
+    actual_model = model or None
 
-    if not actual_key:
-        if actual_provider in setting_fields:
-            actual_key = getattr(settings, setting_fields[actual_provider], None)
-        if not actual_key and not actual_provider:
-            for prov, field in setting_fields.items():
-                key = getattr(settings, field, None)
-                if key:
-                    actual_key = key
-                    actual_provider = prov
-                    break
-
-    if not actual_key or not actual_provider:
+    candidates = build_candidates(
+        db=db,
+        user_id=user_id,
+        provider=actual_provider,
+        model=actual_model,
+        request_api_key=api_key,
+    )
+    if not candidates:
         raise ValueError("No AI API key configured for cover letter generation")
 
-    body = await _with_retry(
-        lambda: _generate_cover_letter_text(
-            prompt, actual_key, actual_provider, actual_model
-        ),
+    body = await complete_with_fallback(
+        prompt,
+        candidates,
+        system="You are an expert cover letter writer. Return only plain text.",
+        max_tokens=2048,
     )
 
-    return body
+    return body.strip()
 
 
 # ---------------------------------------------------------------------------

@@ -11,12 +11,12 @@ from sqlalchemy.orm import Session
 from app.models.job import Job, JobAnalysis
 from app.models.user import UserPreference
 from app.services.ai import (
-    analyze_job,
+    analyze_job_with_fallback,
     keyword_fallback,
     CURRENT_PROMPT_VERSION,
     AnalysisOutput,
 )
-from app.core.security import decrypt_value
+from app.services.ai_keys import build_candidates, get_user_fallback_order
 
 logger = logging.getLogger(__name__)
 
@@ -95,70 +95,31 @@ async def run_job_analysis(
     result: AnalysisOutput
 
     try:
-        actual_provider = (provider or "").lower()
-        actual_model = model or ""
+        actual_provider = (provider or "").lower() or None
+        actual_model = model or None
 
-        # Resolve API key from user-stored encrypted key or server env
-        if not api_key:
-            # Try user-stored encrypted key first
-            if user_id:
-                try:
-                    user_uuid = (
-                        __import__("uuid").UUID(user_id)
-                        if isinstance(user_id, str)
-                        else user_id
-                    )
-                    prefs = (
-                        db.query(UserPreference)
-                        .filter(UserPreference.user_id == user_uuid)
-                        .first()
-                    )
-                    if prefs:
-                        # Map provider to preference field
-                        key_fields = {
-                            "openrouter": "encrypted_openrouter_key",
-                            "gemini": "encrypted_gemini_key",
-                            "anthropic": "encrypted_anthropic_key",
-                            "openai": "encrypted_openai_key",
-                            "grok": "encrypted_grok_key",
-                            "mistral": "encrypted_mistral_key",
-                            "nvidia": "encrypted_nvidia_key",
-                        }
-                        field_name = key_fields.get(actual_provider)
-                        if field_name and hasattr(prefs, field_name):
-                            encrypted_key = getattr(prefs, field_name)
-                            if encrypted_key:
-                                user_key = decrypt_value(encrypted_key)
-                                if user_key:
-                                    api_key = user_key
-                                    logger.info(f"Using user-stored API key for {actual_provider} on job {job.id}")
-                except Exception:
-                    logger.warning(
-                        f"Failed to decrypt user API key for user {user_id}",
-                        exc_info=True,
-                    )
+        # Resolve the ordered candidate list (header -> user UI key -> env ->
+        # fallback providers). See app.services.ai_keys for the full policy.
+        fallback_order = (
+            get_user_fallback_order(db, user_id) if user_id else None
+        )
+        candidates = build_candidates(
+            db=db,
+            user_id=user_id,
+            provider=actual_provider,
+            model=actual_model,
+            request_api_key=api_key,
+            fallback_order=fallback_order,
+        )
 
-        # Fall back to server env
-        if not api_key:
-            from app.core.config import PROVIDER_KEY_FIELDS as setting_fields
-
-            # If provider is specified, use its specific key
-            if actual_provider in setting_fields:
-                api_key = getattr(settings, setting_fields[actual_provider], None)
-
-            # If still no key and no provider was specified, try to find ANY available key
-            if not api_key and not actual_provider:
-                for prov, field in setting_fields.items():
-                    key = getattr(settings, field, None)
-                    if key:
-                        api_key = key
-                        actual_provider = prov
-                        break
-
-        if api_key and actual_provider:
-            result = await analyze_job(
-                context, api_key, actual_provider, model=actual_model
+        if candidates:
+            logger.info(
+                "Job %s analysis trying %d candidate(s): %s",
+                job.id,
+                len(candidates),
+                ", ".join(f"{p}/{m}" for p, m, _ in candidates),
             )
+            result = await analyze_job_with_fallback(context, candidates)
         else:
             logger.info(f"No AI key configured for job {job.id}, using fallback")
             result = keyword_fallback(job.title, job.description or "")

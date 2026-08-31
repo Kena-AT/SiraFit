@@ -946,40 +946,31 @@ async def generate_tailored_resume(
         profile_data=profile_text, job_data=job_text
     )
 
-    # Determine provider and key (full 7-provider resolution, matching
-    # job_analysis.py).
-    # ponytail: duplicated provider-key map; extract to a shared helper if a
-    # 3rd caller appears.
-    setting_fields = {
-        "gemini": "GEMINI_API",
-        "openrouter": "OPENROUTER_API",
-        "anthropic": "ANTHROPIC_API",
-        "openai": "OPENAI_API",
-        "grok": "GROK_API",
-        "mistral": "MISTRAL_API",
-        "nvidia": "NVIDIA_API",
-    }
-    actual_provider = (provider or "").lower()
-    actual_model = model or ""
-    actual_key = api_key
+    # Determine provider/key candidates via the shared resolver (UI key -> env
+    # key -> fallback providers). Falls back across providers/models when one
+    # is unavailable. See app.services.ai_keys.build_candidates.
+    from app.services.ai import complete_with_fallback
+    from app.services.ai_keys import build_candidates
 
-    if not actual_key:
-        if actual_provider in setting_fields:
-            actual_key = getattr(settings, setting_fields[actual_provider], None)
-        # No provider specified → pick the first key that's set.
-        if not actual_key and not actual_provider:
-            for prov, field in setting_fields.items():
-                key = getattr(settings, field, None)
-                if key:
-                    actual_key = key
-                    actual_provider = prov
-                    break
+    actual_provider = (provider or "").lower() or None
+    actual_model = model or None
 
-    if not actual_key or not actual_provider:
+    candidates = build_candidates(
+        db=db,
+        user_id=user_id,
+        provider=actual_provider,
+        model=actual_model,
+        request_api_key=api_key,
+    )
+    if not candidates:
         raise ValueError("No AI API key configured for resume generation")
 
-    tailored = await _with_retry(
-        lambda: _generate_resume_text(prompt, actual_key, actual_provider, actual_model)
+    tailored = await complete_with_fallback(
+        prompt,
+        candidates,
+        system="You are an expert resume writer. Return only valid JSON.",
+        max_tokens=2048,
+        parse_fn=_parse_ai_response,
     )
 
     resume_data = tailored.model_dump()
