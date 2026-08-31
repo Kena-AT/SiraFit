@@ -84,8 +84,11 @@ services:
       - ./backend/.env
     environment:
       - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL}
       - SMTP_PASSWORD=${SMTP_PASSWORD}
+      # Override localhost URL from .env with the internal Docker network address
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
     depends_on:
       postgres:
         condition: service_healthy
@@ -104,7 +107,10 @@ services:
       - ./backend/.env
     environment:
       - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL}
+      # Override localhost URL from .env with the internal Docker network address
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
     depends_on:
       postgres:
         condition: service_healthy
@@ -113,7 +119,8 @@ services:
     restart: unless-stopped
     networks:
       - sirafit-network
-    command: celery -A app.worker.celery_app beat --schedule-file /tmp/celery-beat.schedule
+    # --schedule (-s) is the correct flag; --schedule-file does not exist
+    command: celery -A app.worker.celery_app beat --loglevel=info --schedule /tmp/celery-beat.schedule
 
 volumes:
   postgres_data:
