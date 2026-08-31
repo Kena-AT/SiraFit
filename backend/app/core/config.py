@@ -52,6 +52,12 @@ class Settings(BaseSettings):
     # Data encryption for user-stored API keys (fall back to SECRET_KEY if not set)
     DATA_ENCRYPTION_KEY: str | None = None
 
+    # Optional path to a user-supplied .env file holding provider API keys.
+    # When set, keys in this file OVERLAY the server .env fields (see
+    # app.services.ai_keys.get_env_provider_keys). This lets a self-hoster drop
+    # their own keys file in instead of pasting them into the Settings UI.
+    USER_KEYS_ENV_FILE: str | None = None
+
     # Provider-to-API-key mapping: maps AI provider names to their corresponding
     # settings field names. Used by job_analysis.py, resume_generation.py, and
     # cover_letter_generation.py to resolve which API key to use.
