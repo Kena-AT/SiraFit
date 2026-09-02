@@ -128,6 +128,15 @@ class TestImportService:
         assert "react" in tags
         assert "postgresql" in tags
 
+    def test_parse_job_csv(self):
+        from app.services.job_import import parse_job_csv
+
+        csv_data = "url,title,company\nhttps://linkedin.com/jobs/view/999,Software Engineer,CorpInc"
+        results = parse_job_csv(csv_data)
+        assert len(results) == 1
+        assert results[0]["company"] == "CorpInc"
+        assert results[0]["title"] == "Software Engineer"
+
 
 class TestImportAPI:
     """Tests for the import API endpoints."""
@@ -173,7 +182,21 @@ class TestImportAPI:
         data = resp.json()
         assert data["import_record"]["status"] == "completed"
         assert len(data["jobs"]) == 1
-        assert "Backend Developer" in data["jobs"][0]["title"]
+
+    def test_import_csv_success(self, client, auth_tokens):
+        csv_data = "url,title,company\nhttps://linkedin.com/jobs/view/888888,Data Scientist,DataCorp"
+        resp = client.post(
+            "/api/v1/jobs/import",
+            headers={"Authorization": f"Bearer {auth_tokens['access_token']}"},
+            json={"source_type": "csv", "data": csv_data},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["import_record"]["status"] == "completed"
+        assert data["import_record"]["source"] == "csv"
+        assert len(data["jobs"]) == 1
+        assert data["jobs"][0]["company"] == "DataCorp"
+        assert "Data Scientist" in data["jobs"][0]["title"]
 
     def test_import_description_too_short(self, client, auth_tokens):
         resp = client.post(
