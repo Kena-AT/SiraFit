@@ -36,7 +36,7 @@ os.environ.setdefault("SMTP_PORT", "587")
 os.environ.setdefault("SMTP_USER", "test@example.com")
 os.environ.setdefault("SMTP_PASSWORD", "dummy")
 os.environ.setdefault("SMTP_FROM", "noreply@sirafit.com")
-os.environ.setdefault("CORS_ORIGINS", "http://localhost:3030")
+os.environ.setdefault("CORS_ORIGINS", "http://localhost:3030,http://localhost:4444")
 os.environ.setdefault("ENVIRONMENT", "testing")
 # Use an in-memory Celery broker so enqueue helpers publish without blocking
 # and without a 20x retry backoff. Tasks are not consumed in tests (no worker),
