@@ -5,8 +5,6 @@ from sqlalchemy.exc import OperationalError, TimeoutError as SQLATimeoutError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
-from fastapi_csrf_protect import CsrfProtect
-from fastapi_csrf_protect.exceptions import CsrfProtectError
 from app.core.config import settings
 from app.api.router import api_router
 from app.core.health import router as health_router
@@ -361,18 +359,6 @@ async def lifespan(app: FastAPI):
     logger.info("app_stopped", event_type="shutdown")
 
 
-from pydantic import BaseModel
-
-class CsrfSettings(BaseModel):
-    secret_key: str = settings.SECRET_KEY
-    cookie_samesite: str = "none"
-    cookie_secure: bool = True
-
-@CsrfProtect.load_config
-def get_csrf_config():
-    return CsrfSettings()
-
-
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
@@ -429,21 +415,6 @@ app.include_router(health_router, prefix="/health", tags=["health"])
 
 # Include API routes
 app.include_router(api_router, prefix=settings.API_V1_STR, tags=["api"])
-
-
-@app.exception_handler(CsrfProtectError)
-async def csrf_protect_exception_handler(request: Request, exc: CsrfProtectError):
-    """Handle CSRF protection errors."""
-    logger.warning(
-        "csrf_protect_error",
-        path=request.url.path,
-        method=request.method,
-        error=str(exc),
-    )
-    return JSONResponse(
-        status_code=403,
-        content={"detail": "CSRF token validation failed."},
-    )
 
 
 @app.exception_handler(OperationalError)
