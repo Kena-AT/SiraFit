@@ -44,10 +44,14 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
  *
  * To keep the browser on the same origin (avoiding CORS entirely), we proxy
  * /api/* straight to the FastAPI backend from inside the h3 server.
+ * The proxy runs in all environments — in production the target should be
+ * set via the VITE_API_URL / BACKEND_URL env var.
  */
 const BACKEND_ORIGIN =
-  process.env.VITE_API_URL ?? process.env.BACKEND_URL ?? "http://localhost:8000";
-const IS_DEV = process.env.NODE_ENV !== "production";
+  process.env.VITE_API_URL ??
+  process.env.BACKEND_URL ??
+  (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_API_URL) ??
+  "http://localhost:8000";
 
 async function proxyToBackend(request: Request): Promise<Response> {
   const url = new URL(request.url);
@@ -80,9 +84,10 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const url = new URL(request.url);
 
-    // In development, proxy /api/* directly to FastAPI so requests stay
-    // same-origin from the browser's perspective — no CORS needed.
-    if (IS_DEV && url.pathname.startsWith("/api/")) {
+    // Proxy /api/* to FastAPI in all environments so browser requests stay
+    // same-origin. IS_DEV guard removed — process.env.NODE_ENV is not
+    // reliably set in the h3/Nitro SSR context under TanStack Start.
+    if (url.pathname.startsWith("/api/")) {
       return proxyToBackend(request);
     }
 
