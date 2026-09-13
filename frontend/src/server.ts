@@ -65,7 +65,7 @@ async function proxyToBackend(request: Request): Promise<Response> {
     method: request.method,
     headers: forwardHeaders,
     body: ["GET", "HEAD"].includes(request.method) ? undefined : request.body,
-    // @ts-ignore — duplex required for streaming bodies in Node 18+
+    // @ts-expect-error — duplex required for streaming bodies in Node 18+
     duplex: "half",
   });
 
@@ -73,10 +73,10 @@ async function proxyToBackend(request: Request): Promise<Response> {
     return await fetch(proxyRequest);
   } catch (e) {
     console.error(`[proxy] Failed to reach backend at ${targetUrl}:`, e);
-    return new Response(
-      JSON.stringify({ detail: "Backend unavailable" }),
-      { status: 502, headers: { "content-type": "application/json" } },
-    );
+    return new Response(JSON.stringify({ detail: "Backend unavailable" }), {
+      status: 502,
+      headers: { "content-type": "application/json" },
+    });
   }
 }
 

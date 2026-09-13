@@ -1,22 +1,23 @@
 from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
 from app.api.users import get_current_user
-from app.models.user import User
+from app.core.cache import cache_delete, cache_get, cache_set
+from app.core.database import get_db
 from app.models.analytics import AnalyticsSnapshot
-from app.services.analytics import (
-    generate_analytics_metrics,
-    create_analytics_snapshot,
-    get_latest_snapshot,
-)
+from app.models.user import User
 from app.schemas.notification import (
-    AnalyticsSnapshotResponse,
     AnalyticsSnapshotListResponse,
+    AnalyticsSnapshotResponse,
     MetricsResponse,
 )
-from app.core.cache import cache_get, cache_set, cache_delete
+from app.services.analytics import (
+    create_analytics_snapshot,
+    generate_analytics_metrics,
+    get_latest_snapshot,
+)
 
 router = APIRouter()
 

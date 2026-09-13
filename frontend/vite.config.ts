@@ -3,36 +3,28 @@
 //     componentTagger (dev-only), VITE_* env injection, @ path alias, React/TanStack dedupe,
 //     error logger plugins, and sandbox detection (port/host/strictPort).
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
-import { defineConfig } from 'vite';
-import { tanstackStart } from '@tanstack/react-start/plugin/vite';
-import viteReact from '@vitejs/plugin-react';
-import tsconfigPaths from 'vite-tsconfig-paths';
-import tailwindcss from '@tailwindcss/vite';
+import { defineConfig } from "vite";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import viteReact from "@vitejs/plugin-react";
+import tsconfigPaths from "vite-tsconfig-paths";
+import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
-  plugins: [
-    tailwindcss(),
-    tsconfigPaths(),
-    tanstackStart(),
-    viteReact(),
-  ],
-  css: {
-    postcss: false,
-  },
+  plugins: [tailwindcss(), tsconfigPaths(), tanstackStart(), viteReact()],
   server: {
     host: true,
-    port: 4444,
+    port: 5173,
     strictPort: false,
     ws: {
       // Use the native ws config instead of the deprecated hmr.* options.
     },
     proxy: {
-      '/api': {
-        target: 'http://localhost:8000',
+      "/api": {
+        target: "http://localhost:8000",
         changeOrigin: true,
         secure: false,
         ws: true,
-      }
-    }
-  }
+      },
+    },
+  },
 });

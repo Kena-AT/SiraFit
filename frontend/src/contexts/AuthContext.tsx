@@ -10,15 +10,22 @@ type User = {
   full_name: string | null;
   is_active: boolean;
   is_verified: boolean;
+  is_2fa_enabled?: boolean;
+};
+
+type LoginResult = {
+  requires_2fa?: boolean;
+  temp_token?: string;
 };
 
 type AuthContextType = {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<LoginResult>;
   logout: () => Promise<void>;
   register: (email: string, password: string, full_name?: string) => Promise<void>;
+  complete2FALogin: (tempToken: string, code: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,12 +52,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkSession();
   }, []);
 
-  const login = async (email: string, password: string) => {
-    // TODO: Add support for 2FA and CAPTCHA (tracked in SiraFit_Remediation_Plan.md backlog).
+  const login = async (email: string, password: string): Promise<LoginResult> => {
     const response = await apiFetch("/api/v1/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+
+      // Check if 2FA is required
+      if (data.requires_2fa) {
+        return { requires_2fa: true, temp_token: data.temp_token };
+      }
+
+      // Normal login — fetch user profile
+      const meResponse = await apiFetch("/api/v1/users/me");
+      if (meResponse.ok) {
+        const userData = await meResponse.json();
+        setUser(userData);
+      } else {
+        throw new Error("Failed to fetch user details after login");
+      }
+      return {};
+    } else {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || "Login failed");
+    }
+  };
+
+  const complete2FALogin = async (tempToken: string, code: string) => {
+    const response = await apiFetch("/api/v1/auth/2fa/complete-login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ temp_token: tempToken, code }),
     });
 
     if (response.ok) {
@@ -59,11 +95,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const userData = await meResponse.json();
         setUser(userData);
       } else {
-        throw new Error("Failed to fetch user details after login");
+        throw new Error("Failed to fetch user details after 2FA");
       }
     } else {
       const errorData = await response.json();
-      throw new Error(errorData.detail || "Login failed");
+      throw new Error(errorData.detail || "2FA verification failed");
     }
   };
 
@@ -100,12 +136,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     register,
+    complete2FALogin,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth() {
+export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
   if (context === undefined) {
     // Fallback safe guest state instead of throwing and crashing the render tree
@@ -113,9 +150,10 @@ export function useAuth() {
       user: null,
       isAuthenticated: false,
       isLoading: false,
-      login: async () => {},
+      login: async (): Promise<LoginResult> => ({}),
       logout: async () => {},
       register: async () => {},
+      complete2FALogin: async () => {},
     };
   }
   return context;

@@ -8,6 +8,8 @@ import { AuthShell } from "@/components/sirafit/shell";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { OAuthButtons } from "@/components/auth/OAuthButtons";
+import { TwoFactorVerify } from "@/components/auth/TwoFactorAuth";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Log in · SiraFit" }] }),
@@ -20,7 +22,8 @@ function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const [twoFactorToken, setTwoFactorToken] = useState<string | null>(null);
+  const { login, complete2FALogin } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,14 +31,46 @@ function LoginPage() {
     setIsLoading(true);
     setError("");
     try {
-      await login(email, password);
-      navigate({ to: "/dashboard" });
+      const result = await login(email, password);
+      if (result.requires_2fa && result.temp_token) {
+        setTwoFactorToken(result.temp_token);
+      } else {
+        navigate({ to: "/dashboard" });
+      }
     } catch (err: any) {
       setError(err.message || "Login failed");
     } finally {
       setIsLoading(false);
     }
   };
+
+  const handle2FASuccess = async () => {
+    navigate({ to: "/dashboard" });
+  };
+
+  // Show 2FA verification screen
+  if (twoFactorToken) {
+    return (
+      <AuthShell
+        title="Two-Factor Authentication"
+        subtitle="Enter the code from your authenticator app."
+        footer={
+          <button
+            onClick={() => setTwoFactorToken(null)}
+            className="font-medium text-foreground hover:underline"
+          >
+            Back to login
+          </button>
+        }
+      >
+        <TwoFactorVerify
+          tempToken={twoFactorToken}
+          onSuccess={handle2FASuccess}
+          onBack={() => setTwoFactorToken(null)}
+        />
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell
@@ -96,6 +131,7 @@ function LoginPage() {
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading ? "Logging in..." : "Log in"}
         </Button>
+        <OAuthButtons mode="login" disabled={isLoading} />
         <div className="text-center text-[11px] text-muted-foreground">
           Protected by device-based auth tokens.
         </div>
