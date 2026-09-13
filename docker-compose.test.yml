@@ -60,7 +60,7 @@ services:
     networks:
       - sirafit-test-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live', timeout=5)"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -107,7 +107,7 @@ services:
     restart: unless-stopped
     networks:
       - sirafit-test-network
-    command: celery -A app.worker.celery_app beat --schedule-file /tmp/celery-beat.schedule
+    command: celery -A app.worker.celery_app beat --schedule /tmp/celery-beat.schedule
 
   frontend:
     build:

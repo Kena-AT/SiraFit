@@ -61,6 +61,7 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: ./backend/coverage.xml
           flags: backend
           fail_ci_if_error: false
@@ -351,6 +352,9 @@ jobs:
   security-scan:
     name: Security — Trivy Scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     needs: [backend-docker, celery-docker, frontend-docker]
     # Images are only pushed on non-PR events, so scanning must run on push only.
     if: github.event_name == 'push'
@@ -393,7 +397,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [integration-test, security-scan]
     if: github.ref == 'refs/heads/develop'
-    environment: staging
+    environment:
+      name: staging
     steps:
       - uses: actions/checkout@v4
 
@@ -415,7 +420,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [integration-test, security-scan]
     if: github.ref == 'refs/heads/main'
-    environment: production
+    environment:
+      name: production
     steps:
       - uses: actions/checkout@v4
 
@@ -488,5 +494,5 @@ jobs:
           echo "Dependency Review: ${{ needs.dependency-review.result }}"
 
       - name: Fail if any required job failed
-        if: contains(needs.*.result, 'failure')
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
         run: exit 1
