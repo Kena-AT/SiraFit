@@ -136,7 +136,7 @@ function SettingsIndex() {
               defaultValue={`${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim()}
             />
           </div>
-           <div className="space-y-1.5">
+          <div className="space-y-1.5">
             <Label htmlFor="email">Email</Label>
             <Input id="email" name="email" defaultValue={profile.email ?? ""} disabled />
             <p className="text-xs text-muted-foreground">Email cannot be changed directly.</p>
@@ -219,9 +219,9 @@ function SettingsIndex() {
       </Panel>
       <Panel title="Devices" className="lg:col-span-2">
         <DeviceList />
-    </Panel>
-  </div>
-);
+      </Panel>
+    </div>
+  );
 }
 
 function DeviceList() {
@@ -263,7 +263,7 @@ function DeviceList() {
     );
   }
 
-   return (
+  return (
     <ul className="divide-y divide-border text-sm">
       {devices.map((device) => (
         <li key={device.id} className="flex items-center justify-between px-4 py-3">
@@ -277,7 +277,8 @@ function DeviceList() {
               )}
             </div>
             <div className="text-[11px] text-muted-foreground">
-              {device.is_active ? "Active" : "Inactive"} · Last seen {formatLastSeen(device.last_seen)}
+              {device.is_active ? "Active" : "Inactive"} · Last seen{" "}
+              {formatLastSeen(device.last_seen)}
             </div>
             {device.ip_address && (
               <div className="text-[10px] text-muted-foreground mt-0.5">{device.ip_address}</div>

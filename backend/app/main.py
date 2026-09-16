@@ -154,11 +154,28 @@ async def lifespan(app: FastAPI):
                     total_found INTEGER DEFAULT 0,
                     ok_count    INTEGER DEFAULT 0,
                     fail_count  INTEGER DEFAULT 0,
+                    errors      JSON DEFAULT '[]',
+                    partial     BOOLEAN NOT NULL DEFAULT FALSE,
+                    source_data TEXT,
                     created_at  TIMESTAMP,
                     updated_at  TIMESTAMP
                 )
             """)
             _run(conn, "CREATE INDEX IF NOT EXISTS ix_job_imports_user_id ON job_imports (user_id)")
+
+            _run(conn, """
+                CREATE TABLE IF NOT EXISTS job_import_items (
+                    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    import_id     UUID NOT NULL REFERENCES job_imports(id) ON DELETE CASCADE,
+                    job_id        UUID REFERENCES jobs(id) ON DELETE SET NULL,
+                    status        VARCHAR(20) NOT NULL,
+                    error_message TEXT,
+                    title_guess   VARCHAR(255),
+                    created_at    TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
+            _run(conn, "CREATE INDEX IF NOT EXISTS ix_job_import_items_import_id ON job_import_items (import_id)")
+            _run(conn, "CREATE INDEX IF NOT EXISTS ix_job_import_items_job_id ON job_import_items (job_id)")
 
             _run(conn, """
                 CREATE TABLE IF NOT EXISTS application_events (
@@ -281,10 +298,104 @@ async def lifespan(app: FastAPI):
                 ("ai_fallback_order",       "TEXT"),
             ])
 
+            # Sprint 1: OAuth & 2FA columns on users table
+            _heal(conn, "users", [
+                ("is_2fa_enabled",  "BOOLEAN NOT NULL DEFAULT FALSE"),
+                ("avatar_url",      "VARCHAR(500)"),
+                ("auth_provider",   "VARCHAR(20)"),
+                ("auth_provider_id","VARCHAR(255)"),
+            ])
+
+            # Sprint 1: OAuth accounts table
+            _run(conn, """
+                CREATE TABLE IF NOT EXISTS oauth_accounts (
+                    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    user_id          UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    provider         VARCHAR(20) NOT NULL,
+                    provider_user_id VARCHAR(255) NOT NULL,
+                    access_token     TEXT NOT NULL,
+                    refresh_token    TEXT,
+                    created_at       TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
+            _run(conn, "CREATE INDEX IF NOT EXISTS ix_oauth_accounts_user_id ON oauth_accounts (user_id)")
+            _run(conn, "CREATE UNIQUE INDEX IF NOT EXISTS ix_oauth_accounts_provider ON oauth_accounts (provider, provider_user_id)")
+
+            # Sprint 1: TOTP secrets table
+            _run(conn, """
+                CREATE TABLE IF NOT EXISTS totp_secrets (
+                    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    user_id          UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+                    encrypted_secret TEXT NOT NULL,
+                    created_at       TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
+
+            # Sprint 1: Recovery codes table
+            _run(conn, """
+                CREATE TABLE IF NOT EXISTS recovery_codes (
+                    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    code_hash  VARCHAR(255) NOT NULL,
+                    is_used    BOOLEAN NOT NULL DEFAULT FALSE,
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
+            _run(conn, "CREATE INDEX IF NOT EXISTS ix_recovery_codes_user_id ON recovery_codes (user_id)")
+
+            # Sprint 2: Profile versioning table
+            _run(conn, """
+                CREATE TABLE IF NOT EXISTS profile_versions (
+                    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    version    INTEGER NOT NULL,
+                    data       JSONB NOT NULL,
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
+            _run(conn, "CREATE INDEX IF NOT EXISTS ix_profile_versions_user_id ON profile_versions (user_id)")
+            _run(conn, "CREATE UNIQUE INDEX IF NOT EXISTS ix_profile_versions_user_version ON profile_versions (user_id, version)")
+
+            # Sprint 2: Skill taxonomy table
+            _run(conn, """
+                CREATE TABLE IF NOT EXISTS skill_taxonomy (
+                    id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    name     VARCHAR(100) NOT NULL UNIQUE,
+                    category VARCHAR(50) NOT NULL,
+                    aliases  JSONB DEFAULT '[]'
+                )
+            """)
+
+            # Sprint 3: Scrape history table
+            _run(conn, """
+                CREATE TABLE IF NOT EXISTS scrape_history (
+                    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    url             TEXT NOT NULL,
+                    source_platform VARCHAR(50),
+                    method_used     VARCHAR(20) NOT NULL,
+                    success         VARCHAR(10) NOT NULL DEFAULT 'true',
+                    fields_extracted INTEGER DEFAULT 0,
+                    duration_ms     INTEGER,
+                    error_message   TEXT,
+                    created_at      TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
+            _run(conn, "CREATE INDEX IF NOT EXISTS ix_scrape_history_user_id ON scrape_history (user_id)")
+            _run(conn, "CREATE INDEX IF NOT EXISTS ix_scrape_history_platform ON scrape_history (source_platform)")
+
             _heal(conn, "jobs", [
                 ("is_archived", "BOOLEAN NOT NULL DEFAULT FALSE"),
+                ("import_id", "UUID REFERENCES job_imports(id) ON DELETE SET NULL"),
             ])
             _run(conn, "CREATE INDEX IF NOT EXISTS ix_jobs_is_archived ON jobs (is_archived)")
+            _run(conn, "CREATE INDEX IF NOT EXISTS ix_jobs_import_id ON jobs (import_id)")
+
+            _heal(conn, "job_imports", [
+                ("errors", "JSON DEFAULT '[]'"),
+                ("partial", "BOOLEAN NOT NULL DEFAULT FALSE"),
+                ("source_data", "TEXT"),
+            ])
 
             _heal(conn, "job_applications", [
                 ("stage",           "INTEGER DEFAULT 0"),

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError } from "@/lib/api/client";
+import { OAuthButtons } from "@/components/auth/OAuthButtons";
 
 export const Route = createFileRoute("/register")({
   head: () => ({ meta: [{ title: "Create account · SiraFit" }] }),
@@ -45,8 +46,11 @@ function RegisterPage() {
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
       errs.email = "Invalid email format";
     if (!formData.password) errs.password = "Password is required";
-    else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/.test(formData.password))
-      errs.password = "Password must be at least 8 characters, include an uppercase letter, a lowercase letter, a number, and a special character";
+    else if (
+      !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/.test(formData.password)
+    )
+      errs.password =
+        "Password must be at least 8 characters, include an uppercase letter, a lowercase letter, a number, and a special character";
     if (formData.password !== formData.confirmPassword)
       errs.confirmPassword = "Passwords do not match";
     return errs;
@@ -160,15 +164,11 @@ function RegisterPage() {
             {!/^(?=.*[a-z]).{1,}$/.test(formData.password) && (
               <p>• At least one lowercase letter</p>
             )}
-            {!/^(?=.*\d).{1,}$/.test(formData.password) && (
-              <p>• At least one number</p>
-            )}
+            {!/^(?=.*\d).{1,}$/.test(formData.password) && <p>• At least one number</p>}
             {!/^(?=.*[!@#$%^&*(),.?":{}|<>]).{1,}$/.test(formData.password) && (
               <p>• At least one special character</p>
             )}
-            {!(formData.password.length >= 8) && (
-              <p>• At least 8 characters</p>
-            )}
+            {!(formData.password.length >= 8) && <p>• At least 8 characters</p>}
           </div>
           {errors.password && <p className="text-xs text-red-600 mt-1">{errors.password}</p>}
         </div>
@@ -202,6 +202,7 @@ function RegisterPage() {
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading ? "Creating account..." : "Create account"}
         </Button>
+        <OAuthButtons mode="register" disabled={isLoading} />
       </form>
     </AuthShell>
   );

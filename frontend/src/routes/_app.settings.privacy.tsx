@@ -1,9 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Panel } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { exportUserData, deleteAccount } from "@/lib/api/users";
+import { apiFetch } from "@/lib/api/client";
+import { TwoFactorStatus, TwoFactorSetup } from "@/components/auth/TwoFactorAuth";
+import { useState } from "react";
 
 export const Route = createFileRoute("/_app/settings/privacy")({
   head: () => ({ meta: [{ title: "Data & privacy · SiraFit" }] }),
@@ -11,6 +14,49 @@ export const Route = createFileRoute("/_app/settings/privacy")({
 });
 
 function PrivacySettings() {
+  const [show2FASetup, setShow2FASetup] = useState(false);
+
+  // Fetch 2FA status
+  const { data: twoFAStatus, refetch: refetch2FA } = useQuery({
+    queryKey: ["2fa-status"],
+    queryFn: async () => {
+      const response = await apiFetch("/api/v1/auth/2fa/status", {
+        method: "POST",
+      });
+      if (!response.ok) return { enabled: false };
+      return response.json();
+    },
+  });
+
+  const disable2FAMutation = useMutation({
+    mutationFn: async (password: string) => {
+      const response = await apiFetch("/api/v1/auth/2fa/disable", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.detail || "Failed to disable 2FA");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast.success("2FA has been disabled");
+      refetch2FA();
+    },
+    onError: (err: Error) => {
+      toast.error(err.message);
+    },
+  });
+
+  const handleDisable2FA = () => {
+    const password = window.prompt("Enter your password to disable 2FA:");
+    if (password) {
+      disable2FAMutation.mutate(password);
+    }
+  };
+
   const exportMutation = useMutation({
     mutationFn: async () => {
       const data = await exportUserData();
@@ -59,6 +105,26 @@ function PrivacySettings() {
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
+      <Panel title="Security">
+        <div className="p-4">
+          {show2FASetup ? (
+            <TwoFactorSetup
+              onComplete={() => {
+                setShow2FASetup(false);
+                refetch2FA();
+              }}
+              onCancel={() => setShow2FASetup(false)}
+            />
+          ) : (
+            <TwoFactorStatus
+              enabled={twoFAStatus?.enabled ?? false}
+              recoveryCodesRemaining={twoFAStatus?.recovery_codes_remaining}
+              onSetup={() => setShow2FASetup(true)}
+              onDisable={handleDisable2FA}
+            />
+          )}
+        </div>
+      </Panel>
       <Panel title="Export your data">
         <div className="space-y-3 p-4 text-sm">
           <p>

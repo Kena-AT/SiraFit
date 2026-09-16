@@ -25,6 +25,42 @@ REQUEST_COUNT = Counter(
 )
 IN_PROGRESS = Gauge("http_requests_in_progress", "In-flight HTTP requests.")
 
+# Scraping / import observability (Sprint 3). Labels are bounded and stable —
+# never the full URL, title, or raw exception text.
+SCRAPE_ATTEMPTS = Counter(
+    "scrape_attempts_total",
+    "Total job scrape attempts.",
+    ["platform", "method"],
+)
+SCRAPE_SUCCESS = Counter(
+    "scrape_success_total",
+    "Successful Scrapling extractions.",
+    ["platform", "method"],
+)
+SCRAPE_FAILURE = Counter(
+    "scrape_failure_total",
+    "Failed scrapes by failure code.",
+    ["platform", "failure_code"],
+)
+SCRAPE_PARTIAL = Counter(
+    "scrape_partial_total",
+    "Heuristic/partial imports (no clean scrape).",
+    ["platform"],
+)
+JOB_IMPORTS_TOTAL = Counter(
+    "job_imports_total",
+    "Total job imports.",
+    ["source_type"],
+)
+JOB_IMPORTS_DUPLICATE = Counter(
+    "job_imports_duplicate_total",
+    "Jobs identified as duplicates during import.",
+)
+JOB_IMPORTS_FAILED = Counter(
+    "job_imports_failed_total",
+    "Import pipelines that ended in failure.",
+)
+
 _SKIP_PREFIXES = ("/metrics", "/docs", "/openapi.json", "/health")
 
 

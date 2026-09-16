@@ -61,11 +61,11 @@ def test_ranked_jobs_does_not_nplusone(client, test_user, db):
         event.remove(engine, "before_cursor_execute", _count)
 
     assert resp.status_code == 200
-    # 1 query for jobs + 1 batch query for scores = 2.
-    # Allow up to 3 to account for transaction setup overhead.
+    # 1 query for jobs + scores via SQL outer join.
+    # Allow up to 3 to account for transaction setup/commit overhead.
     assert query_count["n"] <= 3, (
         f"N+1 regression: list_ranked_jobs issued {query_count['n']} queries "
-        f"for 5 jobs — expected at most 3 (1 for jobs + 1 batch score query)."
+        f"for 5 jobs — expected at most 3 (1 optimized SQL join query)."
     )
     data = resp.json()
     assert len(data["jobs"]) == 5

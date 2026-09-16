@@ -59,9 +59,7 @@ export interface ExportUserData {
 
 // --- Password ---
 
-export async function changePassword(
-  data: PasswordChangeRequest,
-): Promise<{ message: string }> {
+export async function changePassword(data: PasswordChangeRequest): Promise<{ message: string }> {
   const response = await apiFetch("/api/v1/users/me/password", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },

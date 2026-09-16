@@ -19,6 +19,10 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
+    is_2fa_enabled = Column(Boolean, default=False, nullable=False)
+    avatar_url = Column(String(500), nullable=True)
+    auth_provider = Column(String(20), nullable=True)  # google, github, linkedin
+    auth_provider_id = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
@@ -37,6 +41,9 @@ class User(Base):
         "CoverLetter", back_populates="user", cascade="all, delete-orphan"
     )
     audit_logs = relationship("AuditLog", back_populates="user")
+    oauth_accounts = relationship("OAuthAccount", back_populates="user")
+    totp_secret = relationship("TOTPSecret", back_populates="user", uselist=False)
+    recovery_codes = relationship("RecoveryCode", back_populates="user")
 
 
 class UserPreference(Base):

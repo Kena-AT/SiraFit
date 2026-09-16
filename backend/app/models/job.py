@@ -37,6 +37,12 @@ class Job(Base):
     url = Column(Text, nullable=True)
     source = Column(String(50), default="manual")  # manual, linkedin, indeed, etc.
     is_archived = Column(Boolean, default=False, nullable=False)  # soft-delete flag
+    import_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("job_imports.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )  # which import batch created this job (Sprint 3.1)
 
     created_at = Column(DateTime, default=_utcnow, index=True)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
@@ -127,6 +133,11 @@ class JobImport(Base):
     total_found = Column(Integer, default=0)
     ok_count = Column(Integer, default=0)
     fail_count = Column(Integer, default=0)
+    errors = Column(JSON, default=list, nullable=True)
+    partial = Column(Boolean, default=False, nullable=False)
+    source_data = Column(Text, nullable=True)
+    parsed_data = Column(JSON, nullable=True)
+    processed_at = Column(DateTime(timezone=True), nullable=True)
 
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
@@ -309,8 +320,34 @@ class ApplicationNote(Base):
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
-    application = relationship("JobApplication", backref="note_items")
+    application = relationship("JobApplication", backref="contact_items")
     user = relationship("User")
+
+
+class JobImportItem(Base):
+    __tablename__ = "job_import_items"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    import_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("job_imports.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    job_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("jobs.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    status = Column(String(20), nullable=False)  # imported | duplicate | failed
+    error_message = Column(Text, nullable=True)
+    title_guess = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=_utcnow)
+
+    job_import = relationship("JobImport", backref="items")
+    job = relationship("Job")
+
 
 
 class ApplicationContact(Base):

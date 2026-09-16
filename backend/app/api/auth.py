@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request, Path, Body
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 import jwt
 import uuid
@@ -125,6 +126,15 @@ def login_access_token(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Email not verified. Please check your inbox or request a new verification link.",
         )
+
+    # Check if 2FA is enabled — return temp token for 2FA verification
+    if user.is_2fa_enabled:
+        temp_token = create_access_token(user.id, token_type="2fa_temp")
+        return {
+            "requires_2fa": True,
+            "temp_token": temp_token,
+            "token_type": "2fa_temp",
+        }
 
     access_token = create_access_token(user.id)
     refresh_token_str = create_refresh_token(user.id)
@@ -532,3 +542,304 @@ def logout(
 
     _clear_auth_cookies(response)
     return {"message": "Logged out successfully"}
+
+
+# ─── OAuth Endpoints ───────────────────────────────────────────────────────────
+
+
+@router.get("/oauth/{provider}/authorize")
+def oauth_authorize(
+    provider: str = Path(..., regex="^(google|github|linkedin)$"),
+) -> Any:
+    """Initiate OAuth flow — redirect to provider authorization page."""
+    if not settings.ENABLE_OAUTH:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="OAuth login is not enabled",
+        )
+
+    from app.services.oauth import get_oauth_redirect_url, generate_oauth_state
+
+    state = generate_oauth_state()
+    redirect_url = get_oauth_redirect_url(provider, state)
+    return RedirectResponse(url=redirect_url)
+
+
+@router.post("/oauth/{provider}/callback")
+async def oauth_callback(
+    provider: str = Path(..., regex="^(google|github|linkedin)$"),
+    body: dict[str, Any] = Body(...),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Handle OAuth callback — exchange code for token and create/find user."""
+    if not settings.ENABLE_OAUTH:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="OAuth login is not enabled",
+        )
+
+    code = body.get("code")
+    state = body.get("state")
+
+    if not code:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Authorization code is required",
+        )
+
+    from app.services.oauth import (
+        exchange_code_for_token,
+        get_user_info_from_provider,
+        find_or_create_user_from_oauth,
+        validate_oauth_state,
+    )
+
+    # Validate state for CSRF protection (if provided)
+    if state and not validate_oauth_state(state):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired OAuth state",
+        )
+
+    try:
+        token_data = await exchange_code_for_token(provider, code)
+        access_token = token_data.get("access_token")
+        refresh_token = token_data.get("refresh_token")
+
+        user_info = await get_user_info_from_provider(provider, access_token)
+
+        user = find_or_create_user_from_oauth(
+            db=db,
+            provider=provider,
+            provider_user_id=user_info.provider_user_id,
+            email=user_info.email,
+            name=user_info.name,
+            avatar_url=user_info.avatar_url,
+            access_token=access_token,
+            refresh_token=refresh_token,
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"OAuth authentication failed: {str(e)}",
+        )
+
+    # Issue JWT tokens
+    jwt_access_token = create_access_token(user.id)
+    jwt_refresh_token = create_refresh_token(user.id)
+
+    # Persist refresh token
+    db_token = RefreshToken(
+        user_id=user.id,
+        token=jwt_refresh_token,
+        expires_at=datetime.now(timezone.utc)
+        + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+    )
+    db.add(db_token)
+    db.commit()
+
+    return {
+        "access_token": jwt_access_token,
+        "refresh_token": jwt_refresh_token,
+        "token_type": "bearer",
+    }
+
+
+# ─── 2FA / TOTP Endpoints ─────────────────────────────────────────────────────
+
+
+@router.post("/2fa/setup")
+def setup_2fa(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Set up TOTP 2FA for the current user.
+
+    Returns a QR code URI for scanning with authenticator apps,
+    and recovery codes for backup access.
+    """
+    if not settings.ENABLE_2FA:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="2FA is not enabled on this server",
+        )
+
+    from app.services.totp import setup_totp
+
+    result = setup_totp(db, current_user.id)
+    return {
+        "qr_uri": result.qr_uri,
+        "secret": result.secret,  # For manual entry if QR scanning fails
+        "recovery_codes": result.recovery_codes,
+    }
+
+
+@router.post("/2fa/verify")
+def verify_2fa(
+    body: dict[str, Any] = Body(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Verify a TOTP code or recovery code."""
+    if not settings.ENABLE_2FA:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="2FA is not enabled on this server",
+        )
+
+    code = body.get("code")
+    if not code:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Verification code is required",
+        )
+
+    from app.services.totp import verify_totp
+
+    result = verify_totp(db, current_user.id, code)
+
+    if not result.is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid verification code",
+        )
+
+    response = {"verified": True, "is_recovery_code": result.is_recovery_code}
+    if result.is_recovery_code:
+        response["remaining_codes"] = result.remaining_codes
+
+    return response
+
+
+@router.post("/2fa/disable")
+def disable_2fa(
+    body: dict[str, Any] = Body({}),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Disable 2FA for the current user.
+
+    Requires password confirmation for security.
+    """
+    if not settings.ENABLE_2FA:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="2FA is not enabled on this server",
+        )
+
+    password = body.get("password")
+    if not password:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Password is required to disable 2FA",
+        )
+
+    # Verify password before disabling 2FA
+    if not verify_password(password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect password",
+        )
+
+    from app.services.totp import disable_totp
+
+    disabled = disable_totp(db, current_user.id)
+    if not disabled:
+        return {"message": "2FA was not enabled"}
+
+    return {"message": "2FA disabled successfully"}
+
+
+@router.post("/2fa/status")
+def get_2fa_status(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Get the current 2FA status for the user."""
+    from app.services.totp import get_totp_status
+
+    return get_totp_status(db, current_user.id)
+
+
+@router.post("/2fa/complete-login")
+def complete_2fa_login(
+    body: dict[str, Any] = Body(...),
+    response: Response = None,
+    db: Session = Depends(get_db),
+) -> Any:
+    """Complete login after 2FA verification.
+
+    Accepts a temp token (from login with 2FA) and a TOTP code,
+    returns full access tokens if valid.
+    """
+    temp_token = body.get("temp_token")
+    code = body.get("code")
+
+    if not temp_token or not code:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="temp_token and code are required",
+        )
+
+    # Validate temp token
+    try:
+        payload = jwt.decode(
+            temp_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
+        if payload.get("type") != "2fa_temp":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid token type",
+            )
+    except jwt.PyJWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired temp token",
+        )
+
+    user_id = payload.get("sub")
+    try:
+        user_uuid = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid token subject",
+        )
+
+    user = db.query(User).filter(User.id == user_uuid).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    # Verify TOTP code
+    from app.services.totp import verify_totp
+
+    result = verify_totp(db, user.id, code)
+    if not result.is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid 2FA code",
+        )
+
+    # Issue full tokens
+    access_token = create_access_token(user.id)
+    refresh_token_str = create_refresh_token(user.id)
+
+    # Persist refresh token
+    db_token = RefreshToken(
+        user_id=user.id,
+        token=refresh_token_str,
+        expires_at=datetime.now(timezone.utc)
+        + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+    )
+    db.add(db_token)
+    db.commit()
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token_str,
+        "token_type": "bearer",
+    }

@@ -24,7 +24,11 @@ function MatchAnalysis() {
 
   // Single batched call: every job pre-joined with its stored match score,
   // replacing the old N+1 pattern (one getCachedMatchScore request per job).
-  const { data, isLoading, error: queryError } = useQuery({
+  const {
+    data,
+    isLoading,
+    error: queryError,
+  } = useQuery({
     queryKey: ["jobs-with-scores"],
     queryFn: () => getJobsWithScores({ limit: 200 }),
   });
@@ -52,7 +56,7 @@ function MatchAnalysis() {
           } catch {
             return { job, score: null };
           }
-        })
+        }),
       );
       updated.sort((a, b) => (b.score?.score ?? -1) - (a.score?.score ?? -1));
       setItems(updated);
@@ -115,7 +119,11 @@ function MatchAnalysis() {
         description="Deterministic fit between your master profile and every job in pipeline."
         actions={
           <Button onClick={handleScoreAll} disabled={scoring} variant="outline">
-            {scoring ? "Scoring…" : unscoredCount > 0 ? `Score ${unscoredCount} unscored jobs` : "Re-score all"}
+            {scoring
+              ? "Scoring…"
+              : unscoredCount > 0
+                ? `Score ${unscoredCount} unscored jobs`
+                : "Re-score all"}
           </Button>
         }
       />
@@ -183,9 +191,7 @@ function MatchAnalysis() {
                     onClick={() => setShowAll((v) => !v)}
                     className="text-xs font-medium text-muted-foreground hover:text-foreground"
                   >
-                    {showAll
-                      ? "Show less"
-                      : `Show all ${items.length} jobs`}
+                    {showAll ? "Show less" : `Show all ${items.length} jobs`}
                   </button>
                 </div>
               )}

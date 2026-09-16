@@ -6,11 +6,13 @@
 import { defineConfig } from "vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
-import tsconfigPaths from "vite-tsconfig-paths";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
-  plugins: [tailwindcss(), tsconfigPaths(), tanstackStart(), viteReact()],
+  plugins: [tailwindcss(), tanstackStart(), viteReact()],
+  resolve: {
+    tsconfigPaths: true,
+  },
   server: {
     host: true,
     port: 5173,
@@ -26,5 +28,15 @@ export default defineConfig({
         ws: true,
       },
     },
+  },
+  optimizeDeps: {
+    include: [
+      "react",
+      "react-dom",
+      "lucide-react",
+      "react-hook-form",
+      "zod",
+      "recharts",
+    ],
   },
 });

@@ -1,13 +1,13 @@
 import uuid
 import hashlib
-from typing import Any
+from typing import Any, Optional
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.responses import JSONResponse
 import jwt
-from pydantic import ValidationError
+from pydantic import ValidationError, BaseModel
 
 from app.core.database import get_db
 from app.core.config import settings
@@ -636,3 +636,44 @@ def revoke_device(
     db.commit()
 
     return {"message": "Device session revoked"}
+
+
+class AITestRequest(BaseModel):
+    provider: str
+
+
+@router.post("/me/ai-keys/test")
+def test_ai_provider_key(
+    body: AITestRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Test whether a valid API key is configured and resolvable for the given provider."""
+    from app.services.ai_keys import build_candidates
+    candidates = build_candidates(db=db, user_id=current_user.id, provider=body.provider)
+    if not candidates:
+        return {"provider": body.provider, "status": "no_key", "message": f"No API key found for {body.provider}."}
+    
+    prov, model, key = candidates[0]
+    if not key or len(key.strip()) < 5:
+        return {"provider": body.provider, "status": "invalid_key", "message": f"API key for {body.provider} appears empty or invalid."}
+
+    return {"provider": body.provider, "status": "ok", "message": f"API key successfully resolved for {body.provider}."}
+
+
+@router.get("/me/ai-models")
+def get_dynamic_ai_models(
+    provider: Optional[str] = Query(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Return available models for the specified provider (or all providers)."""
+    from app.services.ai_keys import DEFAULT_MODELS
+    if provider and provider.lower() in DEFAULT_MODELS:
+        p = provider.lower()
+        return [{"id": DEFAULT_MODELS[p], "display_name": f"{p.title()} Default ({DEFAULT_MODELS[p]})"}]
+    
+    return [
+        {"provider": p, "id": m, "display_name": f"{p.title()} — {m}"}
+        for p, m in DEFAULT_MODELS.items()
+    ]

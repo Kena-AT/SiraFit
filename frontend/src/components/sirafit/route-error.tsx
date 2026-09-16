@@ -15,8 +15,8 @@ export function RouteErrorBoundary({ error, reset }: { error: Error; reset: () =
           This section didn&apos;t load
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong while rendering this page. You can try again or head
-          back to the dashboard.
+          Something went wrong while rendering this page. You can try again or head back to the
+          dashboard.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <Button

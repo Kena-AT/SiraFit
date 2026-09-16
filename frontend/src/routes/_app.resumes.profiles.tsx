@@ -95,7 +95,8 @@ function ResumeProfilesPage() {
                       setError(e.message);
                       alert("Failed to duplicate profile");
                     }
-                  }}>
+                  }}
+                >
                   Duplicate
                 </Button>
               </div>

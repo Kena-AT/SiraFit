@@ -3,7 +3,12 @@ import { useState, useRef, useEffect, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { AgentDot } from "./bits";
 import { UserMenu } from "./user-menu";
-import { getLandingStats, getHealthStatus, LandingStatsResponse, HealthStatusResponse } from "@/lib/api/stats";
+import {
+  getLandingStats,
+  getHealthStatus,
+  LandingStatsResponse,
+  HealthStatusResponse,
+} from "@/lib/api/stats";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api/client";
 import {
@@ -126,7 +131,7 @@ export function AppShell() {
       style={{ fontFamily: "var(--font-sans)" }}
     >
       {/* Sidebar */}
-      <aside 
+      <aside
         className="sticky top-0 hidden h-screen shrink-0 flex-col border-r border-border bg-sidebar md:flex"
         style={{ width: `${sidebarWidth}px` }}
       >
@@ -193,9 +198,9 @@ export function AppShell() {
           </div>
         </div>
       </aside>
-      
+
       {/* Resizer */}
-      <div 
+      <div
         id="sidebar-resizer"
         className="w-1 cursor-col-resize hover:bg-border transition-colors hidden md:block"
       />
@@ -210,7 +215,6 @@ export function AppShell() {
     </div>
   );
 }
-
 
 function TopBar({ pathname }: { pathname: string }) {
   const segs = pathname.split("/").filter(Boolean);
@@ -265,9 +269,7 @@ function TopBar({ pathname }: { pathname: string }) {
 }
 
 const PALETTE_ITEMS: { group: string; label: string; to: string }[] = [
-  ...NAV.flatMap((g) =>
-    g.items.map((i) => ({ group: g.header, label: i.label, to: i.to })),
-  ),
+  ...NAV.flatMap((g) => g.items.map((i) => ({ group: g.header, label: i.label, to: i.to }))),
   { group: "Actions", label: "Import jobs", to: "/jobs/import" },
   { group: "Actions", label: "View import history", to: "/jobs/history" },
   { group: "Actions", label: "Edit master profile", to: "/resumes/profile-editor" },
@@ -283,7 +285,9 @@ function CommandPalette({
 }) {
   const navigate = useNavigate();
   const [jobs, setJobs] = useState<{ id: string; title: string; company: string }[]>([]);
-  const [applications, setApplications] = useState<{ id: string; status?: string; job?: { title: string; company: string } }[]>([]);
+  const [applications, setApplications] = useState<
+    { id: string; status?: string; job?: { title: string; company: string } }[]
+  >([]);
 
   useEffect(() => {
     if (!open) return;
@@ -312,7 +316,9 @@ function CommandPalette({
     })),
     ...applications.map((app) => ({
       group: "Applications",
-      label: app.job ? `${app.job.title} — ${app.job.company} (${app.status || "saved"})` : `Application ${app.id.slice(0, 8)}`,
+      label: app.job
+        ? `${app.job.title} — ${app.job.company} (${app.status || "saved"})`
+        : `Application ${app.id.slice(0, 8)}`,
       to: `/applications/${app.id}`,
     })),
   ];
@@ -477,11 +483,8 @@ export function AuthShell({
 
     const fetchStats = async () => {
       try {
-        const [statsRes, healthRes] = await Promise.all([
-          getLandingStats(),
-          getHealthStatus(),
-        ]);
-        if (! cancelled) {
+        const [statsRes, healthRes] = await Promise.all([getLandingStats(), getHealthStatus()]);
+        if (!cancelled) {
           setStats(statsRes);
           setHealth(healthRes);
         }
@@ -502,9 +505,7 @@ export function AuthShell({
     [health?.agent_api?.connected ? "99.9%" : "—", "Local agent uptime"],
     [stats?.ats_sources_polled?.toString() ?? "—", "ATS sources polled"],
     [
-      stats?.top_match_queue?.length
-        ? `${stats.top_match_queue.length} matches available`
-        : "—",
+      stats?.top_match_queue?.length ? `${stats.top_match_queue.length} matches available` : "—",
       "Active match queue",
     ],
   ];

@@ -32,9 +32,9 @@ describe("BatchCreateModal", () => {
         onClose={jest.fn()}
         onSubmit={jest.fn()}
         selectedJobs={mockJobs}
-      />
+      />,
     );
-    
+
     expect(screen.getByText("Create Batch Job")).toBeInTheDocument();
     expect(screen.getByText("Select an operation to perform on 2 job(s).")).toBeInTheDocument();
   });
@@ -46,9 +46,9 @@ describe("BatchCreateModal", () => {
         onClose={jest.fn()}
         onSubmit={jest.fn()}
         selectedJobs={mockJobs}
-      />
+      />,
     );
-    
+
     expect(screen.queryByText("Create Batch Job")).not.toBeInTheDocument();
   });
 
@@ -60,9 +60,9 @@ describe("BatchCreateModal", () => {
         onClose={onClose}
         onSubmit={jest.fn()}
         selectedJobs={mockJobs}
-      />
+      />,
     );
-    
+
     fireEvent.click(screen.getByText("Cancel"));
     expect(onClose).toHaveBeenCalled();
   });
@@ -75,13 +75,13 @@ describe("BatchCreateModal", () => {
         onClose={jest.fn()}
         onSubmit={onSubmit}
         selectedJobs={mockJobs}
-      />
+      />,
     );
-    
+
     // Select "score" operation
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "score" } });
     fireEvent.click(screen.getByText("Create Batch Job"));
-    
+
     expect(onSubmit).toHaveBeenCalledWith("score", ["1", "2"]);
   });
 });

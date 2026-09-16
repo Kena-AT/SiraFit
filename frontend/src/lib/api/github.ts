@@ -23,9 +23,7 @@ export function parseGithubUsername(input: string): string | null {
   if (!value) return null;
   // Matches the first path segment of github.com/<user>, tolerating www,
   // http(s), trailing slashes, and deeper paths like /<user>/<repo>.
-  const urlMatch = value.match(
-    /github\.com\/([A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38})/i,
-  );
+  const urlMatch = value.match(/github\.com\/([A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38})/i);
   if (urlMatch) return urlMatch[1];
   if (/^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$/.test(value)) {
     return value;
@@ -46,15 +44,11 @@ export async function fetchGithubRepos(username: string): Promise<GithubRepo[]> 
     throw new Error(`GitHub user "${username}" not found`);
   }
   if (res.status === 403 || res.status === 429) {
-    throw new Error(
-      "GitHub API rate limit reached — try again in a few minutes",
-    );
+    throw new Error("GitHub API rate limit reached — try again in a few minutes");
   }
   if (!res.ok) {
     throw new Error(`GitHub request failed (${res.status})`);
   }
   const repos: GithubRepo[] = await res.json();
-  return repos
-    .filter((r) => !r.fork)
-    .sort((a, b) => b.stargazers_count - a.stargazers_count);
+  return repos.filter((r) => !r.fork).sort((a, b) => b.stargazers_count - a.stargazers_count);
 }

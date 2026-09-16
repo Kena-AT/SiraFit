@@ -53,6 +53,9 @@ from app.core.database import Base, get_db  # noqa: E402
 import app.models.user  # noqa: E402, F401
 import app.models.job  # noqa: E402, F401
 import app.models.profile  # noqa: E402, F401
+import app.models.profile_version  # noqa: E402, F401
+import app.models.skill_taxonomy  # noqa: E402, F401
+import app.models.scrape_history  # noqa: E402, F401
 import app.models.cover_letter  # noqa: E402, F401
 import app.models.batch  # noqa: E402, F401
 import app.models.notification  # noqa: E402, F401

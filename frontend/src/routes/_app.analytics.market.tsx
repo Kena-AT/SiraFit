@@ -120,9 +120,7 @@ function MarketInsights() {
               salaryEntries.map(([company, median]) => (
                 <li key={company} className="flex items-center justify-between px-4 py-2.5">
                   <span>{company}</span>
-                  <span className="font-mono tabular-nums">
-                    ${Math.round(median / 1000)}k
-                  </span>
+                  <span className="font-mono tabular-nums">${Math.round(median / 1000)}k</span>
                 </li>
               ))
             )}

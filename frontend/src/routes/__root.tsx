@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "../contexts/AuthContext";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -126,9 +127,7 @@ function RootShell({ children }: { children: ReactNode }) {
           by browser extensions (e.g. VS Code DevTools) injecting attributes like
           class="vsc-initialized" onto <body> before React hydrates. */}
       <body suppressHydrationWarning>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <AuthProvider>{children}</AuthProvider>
         <Scripts />
       </body>
     </html>
@@ -143,6 +142,7 @@ function RootComponent() {
       <TooltipProvider>
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
+        <Toaster position="top-right" />
       </TooltipProvider>
     </QueryClientProvider>
   );

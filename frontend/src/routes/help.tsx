@@ -51,9 +51,7 @@ export const Route = createFileRoute("/help")({
           <div className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
             Documentation
           </div>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-            Help &amp; docs
-          </h1>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight">Help &amp; docs</h1>
           <div className="mt-8 grid gap-4 md:grid-cols-2">
             {articles.map((article) => (
               <Link
@@ -62,9 +60,7 @@ export const Route = createFileRoute("/help")({
                 className="group block rounded-lg bg-card p-4 ring-1 ring-border hover:shadow-md hover:ring-primary/30 transition"
               >
                 <div className="text-sm font-semibold">{article.title}</div>
-                <p className="mt-1 text-[12px] text-muted-foreground">
-                  {article.description}
-                </p>
+                <p className="mt-1 text-[12px] text-muted-foreground">{article.description}</p>
                 <div className="mt-3 inline-flex items-center text-xs font-medium text-primary">
                   Read more
                   <ChevronRight className="ml-1 h-3 w-3" />

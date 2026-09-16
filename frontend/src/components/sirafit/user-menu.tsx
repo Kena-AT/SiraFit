@@ -64,9 +64,7 @@ export function UserMenu() {
       >
         {/* Non-clickable user info header */}
         <div className="px-3 py-2.5 select-none">
-          <div className="text-sm font-medium text-foreground">
-            {user.full_name || ""}
-          </div>
+          <div className="text-sm font-medium text-foreground">{user.full_name || ""}</div>
           <div
             className="mt-0.5 max-w-[208px] truncate text-xs text-muted-foreground"
             title={user.email}

@@ -8,12 +8,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { getProfile, updateProfile, polishBullet } from "@/lib/api/profiles";
 import { parseGithubUsername, fetchGithubRepos } from "@/lib/api/github";
-import {
-  PromptDialog,
-  type PromptDialogConfig,
-} from "@/components/sirafit/prompt-dialog";
-import type { Profile, Experience, Education, Skill, Project, Certification } from "@/types/profile";
-import { Sparkles, Trash2, Plus, Check } from "lucide-react";
+import { PromptDialog, type PromptDialogConfig } from "@/components/sirafit/prompt-dialog";
+import { VersionHistory } from "@/components/sirafit/profile/VersionHistory";
+import type {
+  Profile,
+  Experience,
+  Education,
+  Skill,
+  Project,
+  Certification,
+} from "@/types/profile";
+import { Sparkles, Trash2, Plus, Check, History } from "lucide-react";
 
 export const Route = createFileRoute("/_app/resumes/profile-editor")({
   head: () => ({ meta: [{ title: "Profile editor · SiraFit" }] }),
@@ -39,6 +44,7 @@ function ProfileEditorPage() {
   const [promptDialog, setPromptDialog] = useState<
     (PromptDialogConfig & { resolve: (v: Record<string, string> | null) => void }) | null
   >(null);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
 
   // Promise-based in-app replacement for window.prompt().
   const ask = (config: PromptDialogConfig): Promise<Record<string, string> | null> =>
@@ -120,7 +126,15 @@ function ProfileEditorPage() {
     setProfile({
       ...profile,
       experiences: [
-        { title: "", company: "", location: "", start_date: "", end_date: "", is_current: false, description: "" },
+        {
+          title: "",
+          company: "",
+          location: "",
+          start_date: "",
+          end_date: "",
+          is_current: false,
+          description: "",
+        },
         ...(profile.experiences ?? []),
       ],
     });
@@ -164,7 +178,14 @@ function ProfileEditorPage() {
     setProfile({
       ...profile,
       educations: [
-        { institution: "", degree: "", field_of_study: "", start_date: "", end_date: "", description: "" },
+        {
+          institution: "",
+          degree: "",
+          field_of_study: "",
+          start_date: "",
+          end_date: "",
+          description: "",
+        },
         ...(profile.educations ?? []),
       ],
     });
@@ -297,16 +318,15 @@ function ProfileEditorPage() {
           [p.url, p.name].filter(Boolean).map((v) => v!.toLowerCase()),
         ),
       );
-      const fresh = repos.slice(0, 8)
+      const fresh = repos
+        .slice(0, 8)
         .filter(
           (r) =>
-            !existingKeys.has(r.html_url.toLowerCase()) &&
-            !existingKeys.has(r.name.toLowerCase()),
+            !existingKeys.has(r.html_url.toLowerCase()) && !existingKeys.has(r.name.toLowerCase()),
         )
         .map((r) => ({
           name: r.name,
-          description:
-            r.description || (r.language ? `${r.language} project` : "GitHub project"),
+          description: r.description || (r.language ? `${r.language} project` : "GitHub project"),
           url: r.html_url,
           start_date: r.created_at ? r.created_at.slice(0, 10) : "",
           end_date: "",
@@ -338,7 +358,15 @@ function ProfileEditorPage() {
         description="Edit your structured resume profile. All AI tailoring draws directly from these verified master entries."
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleGithubImport} disabled={importingGithub}>
+            <Button variant="outline" size="sm" onClick={() => setShowVersionHistory(true)}>
+              <History className="mr-1 h-3.5 w-3.5" /> Version History
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleGithubImport}
+              disabled={importingGithub}
+            >
               {importingGithub ? "Importing..." : "Import from GitHub"}
             </Button>
             <Button onClick={handleSave} disabled={saving}>
@@ -359,14 +387,14 @@ function ProfileEditorPage() {
                   s.id === "experience"
                     ? p.experiences?.length
                     : s.id === "education"
-                    ? p.educations?.length
-                    : s.id === "projects"
-                    ? p.projects?.length
-                    : s.id === "skills"
-                    ? p.skills?.length
-                    : s.id === "certifications"
-                    ? p.certifications?.length
-                    : null;
+                      ? p.educations?.length
+                      : s.id === "projects"
+                        ? p.projects?.length
+                        : s.id === "skills"
+                          ? p.skills?.length
+                          : s.id === "certifications"
+                            ? p.certifications?.length
+                            : null;
 
                 return (
                   <li key={s.id}>
@@ -396,55 +424,125 @@ function ProfileEditorPage() {
         {/* Main Content Panels */}
         <div className="min-w-0 space-y-6">
           {/* Header & Summary */}
-          <div ref={(el) => { sectionRefs.current["header"] = el; }} className="scroll-mt-16">
-            <Panel title="Header & Summary" description="Personal information and professional summary statement.">
+          <div
+            ref={(el) => {
+              sectionRefs.current["header"] = el;
+            }}
+            className="scroll-mt-16"
+          >
+            <Panel
+              title="Header & Summary"
+              description="Personal information and professional summary statement."
+            >
               <div className="grid gap-4 p-4 sm:grid-cols-2">
                 <div>
-                  <label className="text-[10px] font-semibold uppercase text-muted-foreground">First Name</label>
-                  <Input value={p.first_name ?? ""} onChange={(e) => updateField("first_name", e.target.value)} />
+                  <label className="text-[10px] font-semibold uppercase text-muted-foreground">
+                    First Name
+                  </label>
+                  <Input
+                    value={p.first_name ?? ""}
+                    onChange={(e) => updateField("first_name", e.target.value)}
+                  />
                 </div>
                 <div>
-                  <label className="text-[10px] font-semibold uppercase text-muted-foreground">Last Name</label>
-                  <Input value={p.last_name ?? ""} onChange={(e) => updateField("last_name", e.target.value)} />
+                  <label className="text-[10px] font-semibold uppercase text-muted-foreground">
+                    Last Name
+                  </label>
+                  <Input
+                    value={p.last_name ?? ""}
+                    onChange={(e) => updateField("last_name", e.target.value)}
+                  />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="text-[10px] font-semibold uppercase text-muted-foreground">Professional Headline</label>
-                  <Input value={p.headline ?? ""} onChange={(e) => updateField("headline", e.target.value)} placeholder="e.g. Senior Full Stack Engineer · Distributed Systems" />
+                  <label className="text-[10px] font-semibold uppercase text-muted-foreground">
+                    Professional Headline
+                  </label>
+                  <Input
+                    value={p.headline ?? ""}
+                    onChange={(e) => updateField("headline", e.target.value)}
+                    placeholder="e.g. Senior Full Stack Engineer · Distributed Systems"
+                  />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="text-[10px] font-semibold uppercase text-muted-foreground">Professional Summary</label>
-                  <Textarea value={p.summary ?? ""} onChange={(e) => updateField("summary", e.target.value)} rows={4} placeholder="High-level career overview, core engineering strengths, and scale achieved..." />
+                  <label className="text-[10px] font-semibold uppercase text-muted-foreground">
+                    Professional Summary
+                  </label>
+                  <Textarea
+                    value={p.summary ?? ""}
+                    onChange={(e) => updateField("summary", e.target.value)}
+                    rows={4}
+                    placeholder="High-level career overview, core engineering strengths, and scale achieved..."
+                  />
                 </div>
                 <div>
-                  <label className="text-[10px] font-semibold uppercase text-muted-foreground">Email</label>
-                  <Input value={p.email ?? ""} onChange={(e) => updateField("email", e.target.value)} />
+                  <label className="text-[10px] font-semibold uppercase text-muted-foreground">
+                    Email
+                  </label>
+                  <Input
+                    value={p.email ?? ""}
+                    onChange={(e) => updateField("email", e.target.value)}
+                  />
                 </div>
                 <div>
-                  <label className="text-[10px] font-semibold uppercase text-muted-foreground">Phone</label>
-                  <Input value={p.phone ?? ""} onChange={(e) => updateField("phone", e.target.value)} />
+                  <label className="text-[10px] font-semibold uppercase text-muted-foreground">
+                    Phone
+                  </label>
+                  <Input
+                    value={p.phone ?? ""}
+                    onChange={(e) => updateField("phone", e.target.value)}
+                  />
                 </div>
                 <div>
-                  <label className="text-[10px] font-semibold uppercase text-muted-foreground">Location</label>
-                  <Input value={p.location ?? ""} onChange={(e) => updateField("location", e.target.value)} placeholder="San Francisco, CA" />
+                  <label className="text-[10px] font-semibold uppercase text-muted-foreground">
+                    Location
+                  </label>
+                  <Input
+                    value={p.location ?? ""}
+                    onChange={(e) => updateField("location", e.target.value)}
+                    placeholder="San Francisco, CA"
+                  />
                 </div>
                 <div>
-                  <label className="text-[10px] font-semibold uppercase text-muted-foreground">GitHub URL</label>
-                  <Input value={p.github ?? ""} onChange={(e) => updateField("github", e.target.value)} placeholder="https://github.com/username" />
+                  <label className="text-[10px] font-semibold uppercase text-muted-foreground">
+                    GitHub URL
+                  </label>
+                  <Input
+                    value={p.github ?? ""}
+                    onChange={(e) => updateField("github", e.target.value)}
+                    placeholder="https://github.com/username"
+                  />
                 </div>
                 <div>
-                  <label className="text-[10px] font-semibold uppercase text-muted-foreground">LinkedIn URL</label>
-                  <Input value={p.linkedin ?? ""} onChange={(e) => updateField("linkedin", e.target.value)} placeholder="https://linkedin.com/in/username" />
+                  <label className="text-[10px] font-semibold uppercase text-muted-foreground">
+                    LinkedIn URL
+                  </label>
+                  <Input
+                    value={p.linkedin ?? ""}
+                    onChange={(e) => updateField("linkedin", e.target.value)}
+                    placeholder="https://linkedin.com/in/username"
+                  />
                 </div>
                 <div>
-                  <label className="text-[10px] font-semibold uppercase text-muted-foreground">Portfolio / Website</label>
-                  <Input value={p.website ?? ""} onChange={(e) => updateField("website", e.target.value)} placeholder="https://yourportfolio.dev" />
+                  <label className="text-[10px] font-semibold uppercase text-muted-foreground">
+                    Portfolio / Website
+                  </label>
+                  <Input
+                    value={p.website ?? ""}
+                    onChange={(e) => updateField("website", e.target.value)}
+                    placeholder="https://yourportfolio.dev"
+                  />
                 </div>
               </div>
             </Panel>
           </div>
 
           {/* Experience */}
-          <div ref={(el) => { sectionRefs.current["experience"] = el; }} className="scroll-mt-16">
+          <div
+            ref={(el) => {
+              sectionRefs.current["experience"] = el;
+            }}
+            className="scroll-mt-16"
+          >
             <Panel
               title="Experience"
               description="Work history, internships, and research roles."
@@ -456,32 +554,59 @@ function ProfileEditorPage() {
             >
               <div className="divide-y divide-border">
                 {(p.experiences ?? []).length === 0 ? (
-                  <div className="p-6 text-center text-sm text-muted-foreground">No experience entries added yet. Click "+ Add role" to begin.</div>
+                  <div className="p-6 text-center text-sm text-muted-foreground">
+                    No experience entries added yet. Click "+ Add role" to begin.
+                  </div>
                 ) : (
                   p.experiences!.map((e, i) => (
                     <div key={e.id ?? i} className="space-y-4 p-4 relative group">
                       <div className="absolute right-4 top-4">
-                        <Button variant="ghost" size="sm" onClick={() => removeExperience(i)} className="text-muted-foreground hover:text-destructive">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeExperience(i)}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                       <div className="grid gap-3 sm:grid-cols-3 pr-10">
                         <div>
-                          <label className="text-[10px] font-semibold uppercase text-muted-foreground">Company</label>
-                          <Input value={e.company ?? ""} onChange={(ev) => updateExperience(i, "company", ev.target.value)} placeholder="Acme Corp" />
+                          <label className="text-[10px] font-semibold uppercase text-muted-foreground">
+                            Company
+                          </label>
+                          <Input
+                            value={e.company ?? ""}
+                            onChange={(ev) => updateExperience(i, "company", ev.target.value)}
+                            placeholder="Acme Corp"
+                          />
                         </div>
                         <div>
-                          <label className="text-[10px] font-semibold uppercase text-muted-foreground">Role Title</label>
-                          <Input value={e.title ?? ""} onChange={(ev) => updateExperience(i, "title", ev.target.value)} placeholder="Senior Software Engineer" />
+                          <label className="text-[10px] font-semibold uppercase text-muted-foreground">
+                            Role Title
+                          </label>
+                          <Input
+                            value={e.title ?? ""}
+                            onChange={(ev) => updateExperience(i, "title", ev.target.value)}
+                            placeholder="Senior Software Engineer"
+                          />
                         </div>
                         <div>
-                          <label className="text-[10px] font-semibold uppercase text-muted-foreground">Period</label>
-                          <Input value={e.start_date ?? ""} onChange={(ev) => updateExperience(i, "start_date", ev.target.value)} placeholder="2021 – Present" />
+                          <label className="text-[10px] font-semibold uppercase text-muted-foreground">
+                            Period
+                          </label>
+                          <Input
+                            value={e.start_date ?? ""}
+                            onChange={(ev) => updateExperience(i, "start_date", ev.target.value)}
+                            placeholder="2021 – Present"
+                          />
                         </div>
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="text-[10px] font-semibold uppercase text-muted-foreground">Achievements & Impact</label>
+                          <label className="text-[10px] font-semibold uppercase text-muted-foreground">
+                            Achievements & Impact
+                          </label>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -508,7 +633,12 @@ function ProfileEditorPage() {
           </div>
 
           {/* Education */}
-          <div ref={(el) => { sectionRefs.current["education"] = el; }} className="scroll-mt-16">
+          <div
+            ref={(el) => {
+              sectionRefs.current["education"] = el;
+            }}
+            className="scroll-mt-16"
+          >
             <Panel
               title="Education"
               description="Degrees, universities, and academic credentials."
@@ -520,27 +650,52 @@ function ProfileEditorPage() {
             >
               <div className="divide-y divide-border">
                 {(p.educations ?? []).length === 0 ? (
-                  <div className="p-6 text-center text-sm text-muted-foreground">No education entries added yet.</div>
+                  <div className="p-6 text-center text-sm text-muted-foreground">
+                    No education entries added yet.
+                  </div>
                 ) : (
                   p.educations!.map((ed, i) => (
                     <div key={ed.id ?? i} className="space-y-3 p-4 relative group">
                       <div className="absolute right-4 top-4">
-                        <Button variant="ghost" size="sm" onClick={() => removeEducation(i)} className="text-muted-foreground hover:text-destructive">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeEducation(i)}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                       <div className="grid gap-3 sm:grid-cols-3 pr-10">
                         <div>
-                          <label className="text-[10px] font-semibold uppercase text-muted-foreground">Institution</label>
-                          <Input value={ed.institution ?? ""} onChange={(ev) => updateEducation(i, "institution", ev.target.value)} placeholder="Stanford University" />
+                          <label className="text-[10px] font-semibold uppercase text-muted-foreground">
+                            Institution
+                          </label>
+                          <Input
+                            value={ed.institution ?? ""}
+                            onChange={(ev) => updateEducation(i, "institution", ev.target.value)}
+                            placeholder="Stanford University"
+                          />
                         </div>
                         <div>
-                          <label className="text-[10px] font-semibold uppercase text-muted-foreground">Degree / Major</label>
-                          <Input value={ed.degree ?? ""} onChange={(ev) => updateEducation(i, "degree", ev.target.value)} placeholder="B.S. Computer Science" />
+                          <label className="text-[10px] font-semibold uppercase text-muted-foreground">
+                            Degree / Major
+                          </label>
+                          <Input
+                            value={ed.degree ?? ""}
+                            onChange={(ev) => updateEducation(i, "degree", ev.target.value)}
+                            placeholder="B.S. Computer Science"
+                          />
                         </div>
                         <div>
-                          <label className="text-[10px] font-semibold uppercase text-muted-foreground">Graduation Period</label>
-                          <Input value={ed.end_date ?? ""} onChange={(ev) => updateEducation(i, "end_date", ev.target.value)} placeholder="2017 – 2021" />
+                          <label className="text-[10px] font-semibold uppercase text-muted-foreground">
+                            Graduation Period
+                          </label>
+                          <Input
+                            value={ed.end_date ?? ""}
+                            onChange={(ev) => updateEducation(i, "end_date", ev.target.value)}
+                            placeholder="2017 – 2021"
+                          />
                         </div>
                       </div>
                     </div>
@@ -551,7 +706,12 @@ function ProfileEditorPage() {
           </div>
 
           {/* Projects */}
-          <div ref={(el) => { sectionRefs.current["projects"] = el; }} className="scroll-mt-16">
+          <div
+            ref={(el) => {
+              sectionRefs.current["projects"] = el;
+            }}
+            className="scroll-mt-16"
+          >
             <Panel
               title="Projects"
               description="Notable open-source contributions, side projects, and systems built."
@@ -563,28 +723,54 @@ function ProfileEditorPage() {
             >
               <div className="divide-y divide-border">
                 {(p.projects ?? []).length === 0 ? (
-                  <div className="p-6 text-center text-sm text-muted-foreground">No projects added yet.</div>
+                  <div className="p-6 text-center text-sm text-muted-foreground">
+                    No projects added yet.
+                  </div>
                 ) : (
                   p.projects!.map((pr, i) => (
                     <div key={pr.id ?? i} className="space-y-3 p-4 relative group">
                       <div className="absolute right-4 top-4">
-                        <Button variant="ghost" size="sm" onClick={() => removeProject(i)} className="text-muted-foreground hover:text-destructive">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeProject(i)}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                       <div className="grid gap-3 sm:grid-cols-2 pr-10">
                         <div>
-                          <label className="text-[10px] font-semibold uppercase text-muted-foreground">Project Name</label>
-                          <Input value={pr.name ?? ""} onChange={(ev) => updateProject(i, "name", ev.target.value)} placeholder="Distributed Task Queue" />
+                          <label className="text-[10px] font-semibold uppercase text-muted-foreground">
+                            Project Name
+                          </label>
+                          <Input
+                            value={pr.name ?? ""}
+                            onChange={(ev) => updateProject(i, "name", ev.target.value)}
+                            placeholder="Distributed Task Queue"
+                          />
                         </div>
                         <div>
-                          <label className="text-[10px] font-semibold uppercase text-muted-foreground">URL / Repo</label>
-                          <Input value={pr.url ?? ""} onChange={(ev) => updateProject(i, "url", ev.target.value)} placeholder="https://github.com/user/repo" />
+                          <label className="text-[10px] font-semibold uppercase text-muted-foreground">
+                            URL / Repo
+                          </label>
+                          <Input
+                            value={pr.url ?? ""}
+                            onChange={(ev) => updateProject(i, "url", ev.target.value)}
+                            placeholder="https://github.com/user/repo"
+                          />
                         </div>
                       </div>
                       <div>
-                        <label className="text-[10px] font-semibold uppercase text-muted-foreground">Description & Tech Stack</label>
-                        <Textarea value={pr.description ?? ""} onChange={(ev) => updateProject(i, "description", ev.target.value)} rows={2} placeholder="Built with Python, Redis, and WebSockets. Handles 10k jobs/sec." />
+                        <label className="text-[10px] font-semibold uppercase text-muted-foreground">
+                          Description & Tech Stack
+                        </label>
+                        <Textarea
+                          value={pr.description ?? ""}
+                          onChange={(ev) => updateProject(i, "description", ev.target.value)}
+                          rows={2}
+                          placeholder="Built with Python, Redis, and WebSockets. Handles 10k jobs/sec."
+                        />
                       </div>
                     </div>
                   ))
@@ -594,7 +780,12 @@ function ProfileEditorPage() {
           </div>
 
           {/* Skills */}
-          <div ref={(el) => { sectionRefs.current["skills"] = el; }} className="scroll-mt-16">
+          <div
+            ref={(el) => {
+              sectionRefs.current["skills"] = el;
+            }}
+            className="scroll-mt-16"
+          >
             <Panel
               title="Skills"
               description="Technical proficiencies, frameworks, and tools."
@@ -609,10 +800,19 @@ function ProfileEditorPage() {
                   <span className="text-sm text-muted-foreground">No skills added yet.</span>
                 ) : (
                   p.skills!.map((s, i) => (
-                    <div key={s.id ?? s.name} className="inline-flex items-center gap-1 rounded bg-muted px-2 py-1 font-mono text-xs text-foreground">
+                    <div
+                      key={s.id ?? s.name}
+                      className="inline-flex items-center gap-1 rounded bg-muted px-2 py-1 font-mono text-xs text-foreground"
+                    >
                       <span>{s.name}</span>
-                      {s.category && <span className="text-[10px] text-muted-foreground">({s.category})</span>}
-                      <button type="button" onClick={() => removeSkill(i)} className="ml-1 text-muted-foreground hover:text-destructive font-bold">
+                      {s.category && (
+                        <span className="text-[10px] text-muted-foreground">({s.category})</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeSkill(i)}
+                        className="ml-1 text-muted-foreground hover:text-destructive font-bold"
+                      >
                         ×
                       </button>
                     </div>
@@ -623,7 +823,12 @@ function ProfileEditorPage() {
           </div>
 
           {/* Certifications */}
-          <div ref={(el) => { sectionRefs.current["certifications"] = el; }} className="scroll-mt-16">
+          <div
+            ref={(el) => {
+              sectionRefs.current["certifications"] = el;
+            }}
+            className="scroll-mt-16"
+          >
             <Panel
               title="Certifications"
               description="Industry certifications and credentials."
@@ -635,23 +840,42 @@ function ProfileEditorPage() {
             >
               <div className="divide-y divide-border">
                 {(p.certifications ?? []).length === 0 ? (
-                  <div className="p-6 text-center text-sm text-muted-foreground">No certifications added yet.</div>
+                  <div className="p-6 text-center text-sm text-muted-foreground">
+                    No certifications added yet.
+                  </div>
                 ) : (
                   p.certifications!.map((c, i) => (
                     <div key={c.id ?? i} className="space-y-3 p-4 relative group">
                       <div className="absolute right-4 top-4">
-                        <Button variant="ghost" size="sm" onClick={() => removeCert(i)} className="text-muted-foreground hover:text-destructive">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeCert(i)}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                       <div className="grid gap-3 sm:grid-cols-2 pr-10">
                         <div>
-                          <label className="text-[10px] font-semibold uppercase text-muted-foreground">Certification Name</label>
-                          <Input value={c.name ?? ""} onChange={(ev) => updateCert(i, "name", ev.target.value)} placeholder="AWS Certified Solutions Architect" />
+                          <label className="text-[10px] font-semibold uppercase text-muted-foreground">
+                            Certification Name
+                          </label>
+                          <Input
+                            value={c.name ?? ""}
+                            onChange={(ev) => updateCert(i, "name", ev.target.value)}
+                            placeholder="AWS Certified Solutions Architect"
+                          />
                         </div>
                         <div>
-                          <label className="text-[10px] font-semibold uppercase text-muted-foreground">Issuer</label>
-                          <Input value={c.issuer ?? ""} onChange={(ev) => updateCert(i, "issuer", ev.target.value)} placeholder="Amazon Web Services" />
+                          <label className="text-[10px] font-semibold uppercase text-muted-foreground">
+                            Issuer
+                          </label>
+                          <Input
+                            value={c.issuer ?? ""}
+                            onChange={(ev) => updateCert(i, "issuer", ev.target.value)}
+                            placeholder="Amazon Web Services"
+                          />
                         </div>
                       </div>
                     </div>
@@ -671,6 +895,16 @@ function ProfileEditorPage() {
           }}
         />
       )}
+      <VersionHistory
+        open={showVersionHistory}
+        onClose={() => setShowVersionHistory(false)}
+        onReverted={() => {
+          // Refresh profile after revert
+          getProfile()
+            .then((data) => setProfile(data))
+            .catch(() => {});
+        }}
+      />
     </PageBody>
   );
 }

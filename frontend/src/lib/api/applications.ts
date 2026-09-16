@@ -203,9 +203,13 @@ export const getApplicationEvents = async (applicationId: string): Promise<Appli
 };
 
 // Follow-up Center API
-export const getFollowUps = async (includePast = false, skip = 0, limit = 50): Promise<FollowUpItem[]> => {
+export const getFollowUps = async (
+  includePast = false,
+  skip = 0,
+  limit = 50,
+): Promise<FollowUpItem[]> => {
   const response = await apiFetch(
-    `/api/v1/applications/followups?include_past=${includePast}&skip=${skip}&limit=${limit}`
+    `/api/v1/applications/followups?include_past=${includePast}&skip=${skip}&limit=${limit}`,
   );
   if (!response.ok) throw new Error("Failed to fetch follow-ups");
   return response.json();

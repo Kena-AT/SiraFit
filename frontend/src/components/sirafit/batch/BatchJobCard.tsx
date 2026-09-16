@@ -1,6 +1,13 @@
 "use client";
 
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -65,7 +72,17 @@ export function BatchJobCard({ job, onRetry, onCancel, onViewDetails }: BatchJob
             {job.operation_type} Batch Job
           </CardTitle>
         </div>
-        <Badge variant={job.status === "completed" ? "success" : job.status === "failed" ? "destructive" : job.status === "partial" ? "warning" : "secondary"}>
+        <Badge
+          variant={
+            job.status === "completed"
+              ? "success"
+              : job.status === "failed"
+                ? "destructive"
+                : job.status === "partial"
+                  ? "warning"
+                  : "secondary"
+          }
+        >
           {getStatusLabel()}
         </Badge>
       </CardHeader>
@@ -81,24 +98,18 @@ export function BatchJobCard({ job, onRetry, onCancel, onViewDetails }: BatchJob
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Created</span>
-          <span>
-            {formatDistanceToNow(new Date(job.created_at), { addSuffix: true })}
-          </span>
+          <span>{formatDistanceToNow(new Date(job.created_at), { addSuffix: true })}</span>
         </div>
         {job.started_at && (
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Started</span>
-            <span>
-              {formatDistanceToNow(new Date(job.started_at), { addSuffix: true })}
-            </span>
+            <span>{formatDistanceToNow(new Date(job.started_at), { addSuffix: true })}</span>
           </div>
         )}
         {job.completed_at && (
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Completed</span>
-            <span>
-              {formatDistanceToNow(new Date(job.completed_at), { addSuffix: true })}
-            </span>
+            <span>{formatDistanceToNow(new Date(job.completed_at), { addSuffix: true })}</span>
           </div>
         )}
       </CardContent>

@@ -2,251 +2,84 @@ import re
 import uuid
 import csv
 import io
+import time
+import logging
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
-import json
-
 from sqlalchemy.orm import Session
 
-from app.models.job import Job, JobImport
+from app.core.database import SessionLocal
 
-# ─── Scrapling (optional scraping engine) ───────────────────────────────────
-# Scrapling provides stealthy + adaptive web fetching/parsing. It is an OPTIONAL
-# dependency: if it isn't installed, the importer falls back to the heuristic URL
-# parser below (title/company guessed from the URL, no page fetch).
-try:
-    from scrapling import Fetcher, Selector
-
-    _SCRAPLING_AVAILABLE = True
-except Exception:  # pragma: no cover - optional dependency
-    _SCRAPLING_AVAILABLE = False
-
-
-# ─── URL Platform Detection ───────────────────────────────────────────────
-
-
-def detect_platform(url: str) -> Optional[str]:
-    domain = urlparse(url).netloc.lower()
-    if "linkedin" in domain:
-        return "linkedin"
-    if "indeed" in domain:
-        return "indeed"
-    if "glassdoor" in domain:
-        return "glassdoor"
-    if "ziprecruiter" in domain:
-        return "ziprecruiter"
-    if "simplyhired" in domain:
-        return "simplyhired"
-    if "lever.co" in domain:
-        return "lever"
-    if "greenhouse" in domain:
-        return "greenhouse"
-    if "ashbyhq" in domain or "ashby" in domain:
-        return "ashby"
-    if "workday" in domain:
-        return "workday"
-    return None
-
-
-def extract_job_id_from_url(url: str) -> Optional[str]:
-    patterns = [
-        r"linkedin\.com/jobs/view/(\d+)",
-        r"indeed\.com/viewjob\?jk=([a-zA-Z0-9]+)",
-        r"glassdoor\.com/job/listing/[^/]+-([a-zA-Z0-9]+)",
-        r"ziprecruiter\.com/jobs/([^/]+)",
-        r"simplyhired\.com/job/([^/]+)",
-        r"lever\.co/[^/]+/([^/]+)",
-        r"greenhouse\.io/[^/]+/jobs/(\d+)",
-        r"ashbyhq\.com/[^/]+/jobs/(\d+)",
-        r"workday\.com/[^/]+/job/(\d+)",
-    ]
-    for pat in patterns:
-        m = re.search(pat, url)
-        if m:
-            return m.group(1)
-    return None
+logger = logging.getLogger(__name__)
+from app.core import metrics
+from app.models.job import Job, JobImport, JobImportItem
+from app.models.scrape_history import ScrapeHistory
+from app.services.scraping.extraction import (
+    _clean_html_to_text,
+    detect_platform,
+    extract_job_id_from_url,
+    extract_tags_from_text,
+    normalize_url,
+    parse_salary_from_text,
+)
+from app.services.scraping.scrapling_fetcher import fetch_job_html, parse_job_html
 
 
 # ─── URL Parsing ──────────────────────────────────────────────────────────
 
 
 def parse_job_from_url(url: str) -> Dict[str, Any]:
-    platform = detect_platform(url)
-    job_id = extract_job_id_from_url(url)
+    """Heuristic parser: derive limited fields from the URL alone.
 
-    company_hints = {
-        "linkedin": "LinkedIn",
-        "indeed": "Indeed",
-        "glassdoor": "Glassdoor",
-        "ziprecruiter": "ZipRecruiter",
-        "simplyhired": "SimplyHired",
-        "lever": "Unknown Company (Lever)",
-        "greenhouse": "Unknown Company (Greenhouse)",
-        "ashby": "Unknown Company (Ashby)",
-        "workday": "Unknown Company (Workday)",
-    }
+    Used when Scrapling is unavailable or fetching fails. Never fabricates
+    fields that were not actually found.
+    """
+    clean_url = normalize_url(url)
+    platform = detect_platform(clean_url)
+    job_id = extract_job_id_from_url(clean_url)
+
+    company = "Unknown Source"
+    parsed_url = urlparse(url)
+    path_segments = [s for s in parsed_url.path.strip("/").split("/") if s]
+
+    if platform in ("lever", "greenhouse", "ashby") and len(path_segments) > 0:
+        company = path_segments[0].replace("-", " ").title()
+    elif platform:
+        company_hints = {
+            "linkedin": "LinkedIn",
+            "indeed": "Indeed",
+            "glassdoor": "Glassdoor",
+            "ziprecruiter": "ZipRecruiter",
+            "simplyhired": "SimplyHired",
+            "workday": "Workday",
+        }
+        company = company_hints.get(platform, platform.title())
+    else:
+        hostname = parsed_url.hostname or ""
+        parts = [p for p in hostname.split(".") if p not in ("www", "com", "io", "co", "org", "net", "gov", "edu")]
+        if parts:
+            company = parts[0].title()
 
     title = "Unknown Position"
-    company = company_hints.get(platform, "Unknown Source")
-
-    path_segments = urlparse(url).path.strip("/").split("/")
     for seg in reversed(path_segments):
-        seg = seg.replace("-", " ").replace("_", " ").title()
-        if seg and seg not in ("Jobs", "Job", "View"):
-            title = seg
+        seg_clean = seg.replace("-", " ").replace("_", " ").title()
+        if seg_clean and seg_clean.lower() not in ("jobs", "job", "view", "listing", "apply"):
+            title = seg_clean
             break
+
+    description = f"Job listing for {title} at {company}. Imported from URL: {url}"
 
     return {
         "title": title,
         "company": company,
         "location": None,
-        "description": None,
+        "description": description,
         "salary_min": None,
         "salary_max": None,
-        "currency": None,
+        "currency": "USD",
         "tags": [platform] if platform else [],
-        "url": url,
-        "source": platform or "url",
-        "external_id": str(job_id or uuid.uuid4()),
-    }
-
-
-# ─── Scrapling fetch + parse ────────────────────────────────────────────────
-
-
-def _clean_html_to_text(html_fragment: str) -> str:
-    """Strip HTML tags and collapse whitespace into plain text."""
-    text = re.sub(r"<[^>]+>", " ", html_fragment or "")
-    return re.sub(r"\s+", " ", text).strip()
-
-
-def fetch_job_html(url: str, timeout: int = 15) -> Optional[str]:
-    """Fetch a job page with Scrapling; return raw HTML or None on any failure.
-
-    Uses the stealthy (curl_cffi) engine — no browser binaries required. To also
-    use the adaptive browser fallback for JS-heavy boards, run ``scrapling install``
-    and configure ``Fetcher.configure(adaptive=True, stealthy=True)`` instead.
-    """
-    if not _SCRAPLING_AVAILABLE:
-        return None
-    try:
-        Fetcher.configure(stealthy=True)
-        response = Fetcher.get(
-            url, timeout=timeout, follow_redirects=True, retries=2
-        )
-        if response is None:
-            return None
-        body = getattr(response, "body", None)
-        if not body:
-            return None
-        return body if isinstance(body, str) else body.decode("utf-8", "replace")
-    except Exception:
-        return None
-
-
-def parse_job_html(html: str, url: str) -> Dict[str, Any]:
-    """Extract structured job fields from fetched HTML using Scrapling.
-
-    Strategy: JSON-LD JobPosting → meta/Open-Graph tags → DOM heuristics.
-    Returns the same dict shape as ``parse_job_from_url`` so the two merge cleanly.
-    """
-    platform = detect_platform(url)
-    job_id = extract_job_id_from_url(url)
-    sel = Selector(html, adaptive=True, url=url)
-
-    title = company = location = description = None
-    salary_min = salary_max = None
-    currency = "USD"
-
-    # 1) JSON-LD JobPosting (many boards embed this structured data)
-    try:
-        for block in sel.css('script[type="application/ld+json"]::text').getall():
-            try:
-                data = json.loads(block)
-            except Exception:
-                continue
-            items = data if isinstance(data, list) else [data]
-            for item in items:
-                if not isinstance(item, dict):
-                    continue
-                if item.get("@type") not in ("JobPosting", ["JobPosting"]):
-                    continue
-                jp = item
-                title = title or jp.get("title")
-                org = jp.get("hiringOrganization")
-                if isinstance(org, dict):
-                    company = company or org.get("name")
-                loc = jp.get("jobLocation")
-                if isinstance(loc, dict):
-                    addr = loc.get("address")
-                    if isinstance(addr, dict):
-                        location = location or (
-                            addr.get("addressLocality") or addr.get("addressRegion")
-                        )
-                desc = jp.get("description")
-                if desc and not description:
-                    description = _clean_html_to_text(desc) if "<" in desc else desc
-                bs = jp.get("baseSalary")
-                if isinstance(bs, dict):
-                    val = bs.get("value")
-                    if isinstance(val, dict):
-                        salary_min = salary_min or val.get("minValue")
-                        salary_max = salary_max or val.get("maxValue")
-                        currency = val.get("currency", currency)
-                break
-    except Exception:
-        pass
-
-    # 2) Meta / Open-Graph fallbacks
-    if not title:
-        title = (
-            sel.css('meta[property="og:title"]::attr(content)').get()
-            or sel.css("h1 ::text").get()
-        )
-    if not company:
-        company = sel.css('meta[property="og:site_name"]::attr(content)').get()
-    if not location:
-        location = sel.css('meta[property="og:locale"]::attr(content)').get()
-
-    # 3) Description: explicit job-description container, else body text
-    if not description:
-        parts = sel.css(
-            "#job-description ::text, "
-            "[class*='job-description'] ::text, "
-            "[class*='description'] ::text"
-        ).getall()
-        if parts:
-            description = " ".join(p.strip() for p in parts if p.strip())
-    if not description:
-        description = " ".join(sel.css("body ::text").getall())
-    if description:
-        description = _clean_html_to_text(description)
-
-    # 4) Salary from free text when still missing
-    if description and salary_min is None:
-        salary_text = extract_field_from_text(
-            description, "salary", ["salary", "compensation", "pay", "range"]
-        )
-        if salary_text:
-            nums = re.findall(r"\d[\d,]*", salary_text.replace(",", ""))
-            if len(nums) >= 2:
-                salary_min = int(nums[0])
-                salary_max = int(nums[1])
-            elif len(nums) == 1:
-                salary_max = int(nums[0])
-
-    tags = extract_tags_from_text(description or "")
-
-    return {
-        "title": title or "Unknown Position",
-        "company": company or "Unknown Company",
-        "location": location,
-        "description": description,
-        "salary_min": salary_min,
-        "salary_max": salary_max,
-        "currency": currency,
-        "tags": tags,
         "url": url,
         "source": platform or "url",
         "external_id": str(job_id or uuid.uuid4()),
@@ -268,58 +101,6 @@ SENIORITY_KEYWORDS = [
     "entry",
     "experienced",
 ]
-
-SKILL_KEYWORDS = [
-    "python",
-    "javascript",
-    "typescript",
-    "go",
-    "rust",
-    "java",
-    "c++",
-    "c#",
-    "react",
-    "angular",
-    "vue",
-    "node",
-    "nodejs",
-    "django",
-    "flask",
-    "fastapi",
-    "sql",
-    "postgresql",
-    "mysql",
-    "mongodb",
-    "redis",
-    "aws",
-    "gcp",
-    "azure",
-    "docker",
-    "kubernetes",
-    "terraform",
-    "ci/cd",
-    "git",
-    "linux",
-    "machine learning",
-    "ai",
-    "data science",
-    "nlp",
-    "computer vision",
-    "rest api",
-    "graphql",
-    "grpc",
-    "microservices",
-    "distributed systems",
-]
-
-
-def extract_tags_from_text(text: str) -> List[str]:
-    text_lower = text.lower()
-    found = []
-    for skill in SKILL_KEYWORDS:
-        if skill in text_lower:
-            found.append(skill)
-    return found
 
 
 def extract_field_from_text(
@@ -542,35 +323,39 @@ def normalize_for_dedup(text: str) -> str:
     return re.sub(r"[^a-z0-9]", "", text.lower().strip())
 
 
-def check_duplicate(db: Session, job_data: Dict[str, Any]) -> bool:
-    """Check if a job already exists using indexed lookups instead of full table scan.
+def check_duplicate(db: Session, job_data: Dict[str, Any]) -> Optional[Job]:
+    """Check if a job already exists.
 
-    Instead of loading ALL jobs (O(n)), use targeted queries by title+company.
-    This is O(1) with proper database indexes.
+    Returns the matched :class:`Job` instance (or ``None``), so callers can
+    link the import item to the pre-existing job.
+
+    Identity resolution order:
+      1. Exact ``external_id`` match (stable URL-derived identity).
+      2. Fuzzy title + company + location match (fallback for parity with
+         legacy imports and heuristic-only data).
     """
+    external_id = job_data.get("external_id")
+    if external_id:
+        existing = db.query(Job).filter(Job.external_id == external_id).first()
+        if existing:
+            return existing
+
     title = job_data.get("title", "")
     company = job_data.get("company", "")
     location = job_data.get("location", "") or ""
 
-    # Build filtered query — only check title and company, location is soft
     query = db.query(Job)
 
     if title:
-        # Case-insensitive partial match on title
         query = query.filter(Job.title.ilike(f"%{title}%"))
 
     if company:
-        # Case-insensitive partial match on company
         query = query.filter(Job.company.ilike(f"%{company}%"))
 
-    # Location is optional — if provided, add filter; if not, skip (doesn't block match)
     if location:
         query = query.filter(Job.location.ilike(f"%{location}%"))
 
-    # Check if any matching job exists
-    exists = query.limit(1).first() is not None
-
-    return exists
+    return query.limit(1).first()
 
 
 # ─── Main Import Pipeline ─────────────────────────────────────────────────
@@ -581,30 +366,54 @@ def process_import(
     user_id: uuid.UUID,
     source_type: str,
     data: str,
-) -> Tuple[JobImport, List[Dict[str, Any]]]:
-    job_import = JobImport(
-        user_id=user_id,
-        source=source_type,
-        status="processing",
-    )
-    db.add(job_import)
+    existing_job_import: Optional[JobImport] = None,
+) -> Tuple[JobImport, List[Dict[str, Any]], List[str], Dict[str, Any]]:
+    """Run the import pipeline for a single job source.
+
+    If ``existing_job_import`` is supplied, the pipeline runs against that
+    already-persisted record (the async/worker path) instead of creating a new
+    one — this keeps a single authoritative import pipeline.
+
+    Returns:
+        (job_import, jobs_data, errors, scrape_meta) where scrape_meta contains
+        method_used, duration_ms, fields_extracted, and source_platform for URL
+        imports (empty dict for description/csv sources).
+    """
+    if existing_job_import is not None:
+        job_import = existing_job_import
+        job_import.status = "processing"
+    else:
+        job_import = JobImport(
+            user_id=user_id,
+            source=source_type,
+            status="processing",
+            source_data=data[:2000],
+        )
+        db.add(job_import)
     db.commit()
     db.refresh(job_import)
 
     errors = []
     jobs_data = []
+    scrape_meta: Dict[str, Any] = {}
+
+    metrics.JOB_IMPORTS_TOTAL.labels(source_type).inc()
 
     try:
         parsed_list = []
         if source_type == "url":
             parsed = parse_job_from_url(data)
-            # ── Enrichment-first: try scrapping, fall back to heuristic ──────
-            # We always attempt a real-page fetch when Scrapling is available.
-            # On success, enriched fields (title, company, description, salary,
-            # tags) override the heuristic parser values.  On any failure
-            # (no network, parse error, resistant board) the heuristic data
-            # is kept intact — the import never breaks because scrapping failed.
-            html = fetch_job_html(data)
+            # ── Enrichment-first: try scraping, fall back to heuristic ──────
+            start = time.monotonic()
+            method = "heuristic"
+            platform = detect_platform(data)
+            try:
+                html = fetch_job_html(data)
+            except Exception:
+                html = None
+
+            metrics.SCRAPE_ATTEMPTS.labels(platform or "unknown", "url").inc()
+
             if html:
                 try:
                     enriched = parse_job_html(html, data)
@@ -627,9 +436,39 @@ def process_import(
                         # result (which may be None or a valid non-zero value).
                         if enriched.get(key) is not None:
                             parsed[key] = enriched[key]
-                # if enriched is None: keep heuristic data as-is
-            # if html is None (scrapling unavailable / network error):
-            #   — keep the heuristic parse from parse_job_from_url as-is
+                    method = "scrapling"
+
+            if method == "scrapling":
+                metrics.SCRAPE_SUCCESS.labels(platform or "unknown", "scrapling").inc()
+            else:
+                metrics.SCRAPE_PARTIAL.labels(platform or "unknown").inc()
+
+            duration_ms = int((time.monotonic() - start) * 1000)
+            fields_count = len([v for v in parsed.values() if v])
+
+            scrape_meta = {
+                "method_used": method,
+                "duration_ms": duration_ms,
+                "fields_extracted": fields_count,
+                "source_platform": platform,
+            }
+
+            # ── Log to ScrapeHistory ─────────────────────────────────────────
+            try:
+                db.add(ScrapeHistory(
+                    user_id=user_id,
+                    url=data,
+                    source_platform=platform,
+                    method_used=method,
+                    success="true" if method == "scrapling" else "partial",
+                    fields_extracted=fields_count,
+                    duration_ms=duration_ms,
+                ))
+                db.commit()
+            except Exception:
+                # Never let logging failure break the import
+                db.rollback()
+
             parsed_list.append(parsed)
         elif source_type == "description":
             if len(data.strip()) < 100:
@@ -647,13 +486,20 @@ def process_import(
         for parsed in parsed_list:
             normalized = normalize_job(parsed)
 
-            is_dup = check_duplicate(db, normalized)
+            existing_job = check_duplicate(db, normalized)
 
-            if is_dup:
+            if existing_job:
                 job_import.fail_count += 1
+                metrics.JOB_IMPORTS_DUPLICATE.inc()
                 errors.append(
                     f"Duplicate job: {normalized['title']} at {normalized['company']}"
                 )
+                db.add(JobImportItem(
+                    import_id=job_import.id,
+                    job_id=existing_job.id,
+                    status="duplicate",
+                    title_guess=normalized["title"],
+                ))
             else:
                 job = Job(
                     external_id=normalized["external_id"],
@@ -667,22 +513,125 @@ def process_import(
                     tags=normalized.get("tags", []),
                     url=normalized.get("url"),
                     source=normalized.get("source", source_type),
+                    import_id=job_import.id,
                 )
                 db.add(job)
                 db.commit()
                 db.refresh(job)
                 job_import.ok_count += 1
+                normalized["id"] = str(job.id)
+                normalized["import_status"] = "imported"
                 jobs_data.append(normalized)
+                db.add(JobImportItem(
+                    import_id=job_import.id,
+                    job_id=job.id,
+                    status="imported",
+                    title_guess=normalized["title"],
+                ))
 
         job_import.total_found = job_import.ok_count + job_import.fail_count
         job_import.status = "completed"
+        job_import.errors = errors
+
+        # Mark partial if heuristic-only URL imports had no real description
+        if source_type == "url" and scrape_meta.get("method_used") == "heuristic":
+            has_real_desc = any(
+                j.get("description") and "Imported from URL:" not in j.get("description") for j in jobs_data
+            )
+            if not has_real_desc:
+                job_import.partial = True
 
     except Exception as e:
         job_import.status = "failed"
         job_import.fail_count += 1
+        metrics.JOB_IMPORTS_FAILED.inc()
         errors.append(str(e))
+        job_import.errors = errors
+        title_guess = None
+        if parsed_list and isinstance(parsed_list[0], dict):
+            title_guess = parsed_list[0].get("title")
+        db.add(JobImportItem(
+            import_id=job_import.id,
+            job_id=None,
+            status="failed",
+            error_message=str(e),
+            title_guess=title_guess,
+        ))
 
     db.commit()
     db.refresh(job_import)
 
-    return job_import, jobs_data, errors
+    return job_import, jobs_data, errors, scrape_meta
+
+
+def enqueue_job_import(import_id: str, url: str, source: str, user_id: str) -> Dict[str, Any]:
+    """Dispatch a job import to the Celery scraping queue.
+
+    Returns ``{"queued": True}`` on successful dispatch. If the broker is
+    unreachable, runs the import synchronously inline and returns
+    ``{"queued": False, "status": ...}`` — the documented synchronous fallback
+    (broker failure makes the request block and completes inline).
+    """
+    try:
+        from app.worker.tasks.scraping import scrape_and_import_job
+
+        scrape_and_import_job.delay(
+            import_id=str(import_id),
+            url=url,
+            source=source,
+            user_id=str(user_id),
+        )
+        return {"queued": True}
+    except Exception as exc:
+        logger.warning(
+            "celery_broker_unavailable_fallback_to_sync", extra={"error": str(exc)}
+        )
+        result = _scrape_and_import_job_sync(str(import_id), url, source, str(user_id))
+        return {"queued": False, "status": result.get("status", "failed")}
+
+
+def _scrape_and_import_job_sync(import_id: str, url: str, source: str, user_id: str) -> Dict[str, Any]:
+    """Run the import pipeline synchronously for a pre-created ``JobImport``.
+
+    Delegates to the single authoritative pipeline (``process_import``) rather
+    than re-fetching/parsing, then stamps ``processed_at`` on the terminal state.
+    """
+    db = SessionLocal()
+    try:
+        job_import = db.query(JobImport).filter(JobImport.id == uuid.UUID(import_id)).first()
+        if not job_import:
+            return {"status": "failed", "error": "JobImport not found"}
+
+        job_import, jobs_data, errors, _ = process_import(
+            db, uuid.UUID(user_id), source, url, existing_job_import=job_import
+        )
+
+        if not jobs_data:
+            job_import.status = "failed"
+            job_import.error = f"No jobs imported. Details: {errors}"
+        elif errors:
+            logger.warning(
+                "partial_import_success", extra={"errors": errors, "import_id": import_id}
+            )
+
+        job_import.processed_at = datetime.now(timezone.utc)
+        db.commit()
+
+        return {"status": job_import.status}
+    except Exception as exc:
+        db.rollback()
+        db2 = SessionLocal()
+        try:
+            ji = db2.query(JobImport).filter(JobImport.id == uuid.UUID(import_id)).first()
+            if ji:
+                ji.status = "failed"
+                ji.error = str(exc)[:500]
+                ji.processed_at = datetime.now(timezone.utc)
+                db2.commit()
+        except Exception:
+            db2.rollback()
+        finally:
+            db2.close()
+        return {"status": "failed", "error": str(exc)[:500]}
+    finally:
+        db.close()

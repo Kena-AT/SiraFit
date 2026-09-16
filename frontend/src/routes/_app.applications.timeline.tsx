@@ -88,9 +88,7 @@ function TimelinePage() {
   }
 
   // Sort groups newest-first
-  const groups = Array.from(groupMap.values()).sort(
-    (a, b) => b.date.getTime() - a.date.getTime(),
-  );
+  const groups = Array.from(groupMap.values()).sort((a, b) => b.date.getTime() - a.date.getTime());
 
   return (
     <PageBody>

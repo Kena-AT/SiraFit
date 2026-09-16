@@ -52,6 +52,23 @@ class Settings(BaseSettings):
     # Data encryption for user-stored API keys (fall back to SECRET_KEY if not set)
     DATA_ENCRYPTION_KEY: str | None = None
 
+    # OAuth / Social Login
+    ENABLE_OAUTH: bool = False
+    GOOGLE_CLIENT_ID: str | None = None
+    GOOGLE_CLIENT_SECRET: str | None = None
+    GOOGLE_REDIRECT_URI: str | None = None
+    GITHUB_CLIENT_ID: str | None = None
+    GITHUB_CLIENT_SECRET: str | None = None
+    GITHUB_REDIRECT_URI: str | None = None
+    LINKEDIN_CLIENT_ID: str | None = None
+    LINKEDIN_CLIENT_SECRET: str | None = None
+    LINKEDIN_REDIRECT_URI: str | None = None
+
+    # 2FA / TOTP
+    ENABLE_2FA: bool = False
+    TOTP_ISSUER_NAME: str = "SiraFit"
+    RECOVERY_CODE_COUNT: int = 8
+
     # Optional path to a user-supplied .env file holding provider API keys.
     # When set, keys in this file OVERLAY the server .env fields (see
     # app.services.ai_keys.get_env_provider_keys). This lets a self-hoster drop

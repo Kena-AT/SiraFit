@@ -40,10 +40,7 @@ const PROVIDERS = [
 ];
 const DEFAULT_FALLBACK = PROVIDERS.map((p) => p.id);
 
-function statusFor(
-  keyStatus: any,
-  provider: string,
-): { text: string; tone: "success" | "muted" } {
+function statusFor(keyStatus: any, provider: string): { text: string; tone: "success" | "muted" } {
   const ui = keyStatus?.[`${provider}_configured`];
   const env = keyStatus?.[`${provider}_env`];
   if (ui) return { text: "(set)", tone: "success" };
@@ -99,9 +96,7 @@ function AISettings() {
         );
         const missing = PROVIDERS.map((p) => p.id).filter((p) => !order.includes(p));
         setFallbackOrder([...order, ...missing]);
-        setFallbackEnabled(
-          Object.fromEntries(PROVIDERS.map((p) => [p.id, order.includes(p.id)])),
-        );
+        setFallbackEnabled(Object.fromEntries(PROVIDERS.map((p) => [p.id, order.includes(p.id)])));
       }
     }
   }, [config]);
@@ -245,8 +240,7 @@ function AISettings() {
                   onChange={(e) => {
                     setProvider(e.target.value);
                     setActiveModel(
-                      MODELS.find((m) => m.provider === e.target.value)?.id ||
-                        MODELS[0].id,
+                      MODELS.find((m) => m.provider === e.target.value)?.id || MODELS[0].id,
                     );
                   }}
                   className="border rounded px-3 py-2 text-sm"
@@ -274,13 +268,10 @@ function AISettings() {
           </div>
 
           <div className="rounded-md border border-border p-3 text-sm">
-            <div className="mb-2 font-medium">
-              Automatic fallback when a model is unavailable
-            </div>
+            <div className="mb-2 font-medium">Automatic fallback when a model is unavailable</div>
             <p className="mb-3 text-xs text-muted-foreground">
-              If your selected model errors or is rate-limited, SiraFit tries the
-              next provider below that has a key. Reorder with the arrows;
-              uncheck to exclude.
+              If your selected model errors or is rate-limited, SiraFit tries the next provider
+              below that has a key. Reorder with the arrows; uncheck to exclude.
             </p>
             <ul className="space-y-1">
               {fallbackOrder.map((p, i) => {
@@ -337,20 +328,13 @@ function AISettings() {
               })}
             </ul>
             <p className="mt-3 text-xs text-muted-foreground">
-              Effective order:
-              {" "}
-              {effectiveChain
-                .map((p) => PROVIDERS.find((x) => x.id === p)?.label)
-                .join(" → ")}
+              Effective order:{" "}
+              {effectiveChain.map((p) => PROVIDERS.find((x) => x.id === p)?.label).join(" → ")}
             </p>
           </div>
 
           <div className="flex items-center gap-4">
-            <Button
-              onClick={handleSaveProvider}
-              disabled={savePending}
-              className="flex-1 md:auto"
-            >
+            <Button onClick={handleSaveProvider} disabled={savePending} className="flex-1 md:auto">
               {savePending ? "Saving..." : "Save Provider & Model"}
             </Button>
           </div>
@@ -384,9 +368,7 @@ function AISettings() {
                   <Input
                     type="password"
                     value={value}
-                    onChange={(e) =>
-                      setApiKeys((prev) => ({ ...prev, [p.id]: e.target.value }))
-                    }
+                    onChange={(e) => setApiKeys((prev) => ({ ...prev, [p.id]: e.target.value }))}
                     placeholder={
                       st.text === "(set)"
                         ? "Enter new key to replace existing one"
@@ -397,9 +379,7 @@ function AISettings() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() =>
-                        handleClearKey(p.id as keyof typeof apiKeys)
-                      }
+                      onClick={() => handleClearKey(p.id as keyof typeof apiKeys)}
                     >
                       Clear
                     </Button>
@@ -410,18 +390,10 @@ function AISettings() {
           })}
 
           <div className="flex items-center gap-4 pt-4">
-            <Button
-              onClick={handleSaveKeys}
-              disabled={keySavePending}
-              className="flex-1 md:auto"
-            >
+            <Button onClick={handleSaveKeys} disabled={keySavePending} className="flex-1 md:auto">
               {keySavePending ? "Saving..." : "Save All API Keys"}
             </Button>
-            <Button
-              onClick={handleClearAll}
-              variant="outline"
-              className="flex-1 md:auto"
-            >
+            <Button onClick={handleClearAll} variant="outline" className="flex-1 md:auto">
               Clear All Keys
             </Button>
           </div>

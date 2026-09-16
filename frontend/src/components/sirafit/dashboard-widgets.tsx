@@ -22,7 +22,11 @@ export function WidgetSkeleton({ rows = 3 }: { rows?: number }) {
   return (
     <div className="space-y-2 p-4">
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="h-4 w-full animate-pulse rounded bg-muted" style={{ width: `${100 - i * 12}%` }} />
+        <div
+          key={i}
+          className="h-4 w-full animate-pulse rounded bg-muted"
+          style={{ width: `${100 - i * 12}%` }}
+        />
       ))}
     </div>
   );
@@ -104,13 +108,17 @@ export function MomentumScore({ score, delta }: { score: number; delta: number }
           <div className="absolute inset-0 grid place-items-center">
             <div className="text-center">
               <div className="text-2xl font-bold tabular-nums">{score}</div>
-              <div className="text-[9px] uppercase tracking-widest text-muted-foreground">/ 100</div>
+              <div className="text-[9px] uppercase tracking-widest text-muted-foreground">
+                / 100
+              </div>
             </div>
           </div>
         </div>
         <div className="min-w-0 space-y-1.5">
           {delta > 2 ? (
-            <div className="text-sm font-medium text-[color:var(--success)]">▲ Trending up vs last week</div>
+            <div className="text-sm font-medium text-[color:var(--success)]">
+              ▲ Trending up vs last week
+            </div>
           ) : delta < -2 ? (
             <div className="text-sm font-medium text-destructive">▼ Slowing vs last week</div>
           ) : (
@@ -178,13 +186,7 @@ export function FunnelChart({ stages }: { stages: FunnelStage[] }) {
 /* Response-rate sparkline (#6)                                         */
 /* ------------------------------------------------------------------ */
 
-export function ResponseSparkline({
-  sent,
-  responded,
-}: {
-  sent: number[];
-  responded: number[];
-}) {
+export function ResponseSparkline({ sent, responded }: { sent: number[]; responded: number[] }) {
   const weeks = sent.length;
   const maxVal = Math.max(...sent, ...responded, 1);
   const W = 260;
@@ -195,10 +197,19 @@ export function ResponseSparkline({
     arr.map((v, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
 
   return (
-    <Panel title="Response rate" description="Applications sent vs. responses received — trailing 8 weeks.">
+    <Panel
+      title="Response rate"
+      description="Applications sent vs. responses received — trailing 8 weeks."
+    >
       <div className="p-4">
         <svg viewBox={`0 0 ${W} ${H}`} className="h-14 w-full" preserveAspectRatio="none">
-          <path d={path(sent)} fill="none" stroke="var(--muted-foreground)" strokeWidth="1.5" opacity="0.55" />
+          <path
+            d={path(sent)}
+            fill="none"
+            stroke="var(--muted-foreground)"
+            strokeWidth="1.5"
+            opacity="0.55"
+          />
           <path d={path(responded)} fill="none" stroke="var(--success)" strokeWidth="2" />
         </svg>
         <div className="mt-2 flex items-center gap-4 text-[11px] text-muted-foreground">
@@ -228,7 +239,8 @@ export interface NextAction {
 }
 
 const KIND_STYLES: Record<NextAction["kind"], string> = {
-  followup: "bg-[color:var(--warning)]/10 text-[color:var(--warning)] ring-[color:var(--warning)]/20",
+  followup:
+    "bg-[color:var(--warning)]/10 text-[color:var(--warning)] ring-[color:var(--warning)]/20",
   review: "bg-[color:var(--brand)]/10 text-[color:var(--brand)] ring-[color:var(--brand)]/20",
   skill: "bg-[color:var(--info)]/10 text-[color:var(--info)] ring-[color:var(--info)]/20",
   cadence: "bg-muted text-muted-foreground ring-border",
@@ -300,7 +312,10 @@ export function MarketPulseWidget({
             return (
               <div key={tag} className="flex items-center gap-3 text-sm">
                 <div className="h-1.5 w-24 shrink-0 overflow-hidden rounded-full bg-muted">
-                  <div className="h-full rounded bg-[color:var(--brand)]" style={{ width: `${Math.min(pct, 100)}%` }} />
+                  <div
+                    className="h-full rounded bg-[color:var(--brand)]"
+                    style={{ width: `${Math.min(pct, 100)}%` }}
+                  />
                 </div>
                 <span className="font-mono text-[11px] tabular-nums text-muted-foreground w-10">
                   {pct}%

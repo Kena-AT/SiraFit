@@ -24,7 +24,7 @@ const mockJob: BatchJob = {
 describe("BatchJobCard", () => {
   it("renders a completed batch job correctly", () => {
     render(<BatchJobCard job={mockJob} />);
-    
+
     expect(screen.getByText("Analyze Batch Job")).toBeInTheDocument();
     expect(screen.getByText("Completed")).toBeInTheDocument();
     expect(screen.getByText("5 / 5 (100%)")).toBeInTheDocument();
@@ -33,7 +33,7 @@ describe("BatchJobCard", () => {
   it("renders a failed batch job correctly", () => {
     const failedJob = { ...mockJob, status: "failed", failed_items: 5 };
     render(<BatchJobCard job={failedJob} />);
-    
+
     expect(screen.getByText("Failed")).toBeInTheDocument();
     expect(screen.getByText("Retry")).toBeInTheDocument();
   });
@@ -41,7 +41,7 @@ describe("BatchJobCard", () => {
   it("renders a running batch job correctly", () => {
     const runningJob = { ...mockJob, status: "running", processed_items: 2 };
     render(<BatchJobCard job={runningJob} />);
-    
+
     expect(screen.getByText("Running")).toBeInTheDocument();
     expect(screen.getByText("2 / 5 (40%)")).toBeInTheDocument();
     expect(screen.getByText("Cancel")).toBeInTheDocument();
@@ -51,7 +51,7 @@ describe("BatchJobCard", () => {
     const failedJob = { ...mockJob, status: "failed" };
     const onRetry = jest.fn();
     render(<BatchJobCard job={failedJob} onRetry={onRetry} />);
-    
+
     fireEvent.click(screen.getByText("Retry"));
     expect(onRetry).toHaveBeenCalledWith("1");
   });
@@ -60,7 +60,7 @@ describe("BatchJobCard", () => {
     const runningJob = { ...mockJob, status: "running" };
     const onCancel = jest.fn();
     render(<BatchJobCard job={runningJob} onCancel={onCancel} />);
-    
+
     fireEvent.click(screen.getByText("Cancel"));
     expect(onCancel).toHaveBeenCalledWith("1");
   });
@@ -68,7 +68,7 @@ describe("BatchJobCard", () => {
   it("calls onViewDetails when the view details button is clicked", () => {
     const onViewDetails = jest.fn();
     render(<BatchJobCard job={mockJob} onViewDetails={onViewDetails} />);
-    
+
     fireEvent.click(screen.getByText("View Details"));
     expect(onViewDetails).toHaveBeenCalledWith("1");
   });

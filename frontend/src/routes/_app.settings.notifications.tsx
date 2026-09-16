@@ -18,12 +18,42 @@ interface PrefRow {
 }
 
 const rows: PrefRow[] = [
-  { id: "resume_gen", label: "Resume generation complete", emailKey: "email_new_opportunities", inAppEnabled: true },
-  { id: "high_match", label: "High-match job ingested (>85%)", emailKey: "email_job_matches", inAppEnabled: false },
-  { id: "interview", label: "Interview scheduled / updated", emailKey: "email_new_opportunities", inAppEnabled: true },
-  { id: "followup", label: "Recruiter follow-up reminders", emailKey: "email_new_opportunities", inAppEnabled: true },
-  { id: "scraper_warn", label: "Scraper rate-limit warnings", emailKey: "email_new_opportunities", inAppEnabled: false },
-  { id: "sync_fail", label: "Sync failure (degraded mode)", emailKey: "email_new_opportunities", inAppEnabled: true },
+  {
+    id: "resume_gen",
+    label: "Resume generation complete",
+    emailKey: "email_new_opportunities",
+    inAppEnabled: true,
+  },
+  {
+    id: "high_match",
+    label: "High-match job ingested (>85%)",
+    emailKey: "email_job_matches",
+    inAppEnabled: false,
+  },
+  {
+    id: "interview",
+    label: "Interview scheduled / updated",
+    emailKey: "email_new_opportunities",
+    inAppEnabled: true,
+  },
+  {
+    id: "followup",
+    label: "Recruiter follow-up reminders",
+    emailKey: "email_new_opportunities",
+    inAppEnabled: true,
+  },
+  {
+    id: "scraper_warn",
+    label: "Scraper rate-limit warnings",
+    emailKey: "email_new_opportunities",
+    inAppEnabled: false,
+  },
+  {
+    id: "sync_fail",
+    label: "Sync failure (degraded mode)",
+    emailKey: "email_new_opportunities",
+    inAppEnabled: true,
+  },
 ];
 
 export const Route = createFileRoute("/_app/settings/notifications")({
@@ -67,9 +97,7 @@ function NotificationsSettings() {
 
   if (isLoading || !localPrefs) {
     return (
-      <div className="p-4 text-sm text-muted-foreground">
-        Loading notification preferences...
-      </div>
+      <div className="p-4 text-sm text-muted-foreground">Loading notification preferences...</div>
     );
   }
 

@@ -4,11 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, EmptyState, ScorePill } from "@/components/sirafit/bits";
-import {
-  getDashboardStats,
-  getMarketPulse,
-  getBriefing,
-} from "@/lib/api/dashboard";
+import { getDashboardStats, getMarketPulse, getBriefing } from "@/lib/api/dashboard";
 import { getRankedJobs, getJobs, getImportHistory } from "@/lib/api/jobs";
 import { getFollowUps, getApplications, createApplication } from "@/lib/api/applications";
 import { getProfile } from "@/lib/api/profiles";
@@ -25,10 +21,7 @@ import {
   MarketPulseWidget,
   type NextAction,
 } from "@/components/sirafit/dashboard-widgets";
-import {
-  PromptDialog,
-  type PromptDialogConfig,
-} from "@/components/sirafit/prompt-dialog";
+import { PromptDialog, type PromptDialogConfig } from "@/components/sirafit/prompt-dialog";
 import type { JobApplication } from "@/types/job";
 
 export const Route = createFileRoute("/_app/dashboard")({
@@ -52,7 +45,10 @@ const ENTITY_ROUTES: Record<string, string> = {
 };
 
 function humanizeAction(action: string): string {
-  const words = (action || "").replace(/[_\-.]+/g, " ").trim().split(/\s+/);
+  const words = (action || "")
+    .replace(/[_\-.]+/g, " ")
+    .trim()
+    .split(/\s+/);
   return words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 
@@ -121,9 +117,7 @@ function Dashboard() {
     staleTime: 300_000,
     retry: false,
   });
-  const hasAiKey =
-    aiKeysQ.data &&
-    Object.values(aiKeysQ.data).some((v) => v === true);
+  const hasAiKey = aiKeysQ.data && Object.values(aiKeysQ.data).some((v) => v === true);
 
   const briefingQ = useQuery({
     queryKey: ["ai-briefing"],
@@ -159,21 +153,18 @@ function Dashboard() {
   );
   const upcomingFollowups = allFollowups
     .filter((f) => f.follow_up_at && new Date(f.follow_up_at).getTime() >= now)
-    .sort(
-      (a, b) =>
-        new Date(a.follow_up_at).getTime() - new Date(b.follow_up_at).getTime(),
-    )
+    .sort((a, b) => new Date(a.follow_up_at).getTime() - new Date(b.follow_up_at).getTime())
     .slice(0, 5);
   const punctuality =
-    allFollowups.length === 0
-      ? 1
-      : 1 - overdueFollowups.length / allFollowups.length;
+    allFollowups.length === 0 ? 1 : 1 - overdueFollowups.length / allFollowups.length;
 
   const p = profileQ.data;
   const completeness = (() => {
     if (!p) return 0;
     let score = 0;
-    const headerFilled = [p.first_name, p.last_name, p.headline, p.email, p.location].filter(Boolean).length;
+    const headerFilled = [p.first_name, p.last_name, p.headline, p.email, p.location].filter(
+      Boolean,
+    ).length;
     score += (headerFilled / 5) * 0.3;
     if ((p.experiences?.length ?? 0) > 0) score += 0.2;
     if ((p.educations?.length ?? 0) > 0) score += 0.1;
@@ -293,13 +284,26 @@ function Dashboard() {
   const doneCount = [profileReady, jobsImported, resumeGenerated].filter(Boolean).length;
   const allDone = doneCount === 3;
   const checklistHidden =
-    typeof window !== "undefined" &&
-    localStorage.getItem(CHECKLIST_KEY) === "1" &&
-    allDone;
+    typeof window !== "undefined" && localStorage.getItem(CHECKLIST_KEY) === "1" && allDone;
   const steps = [
-    { done: profileReady, label: "Create your master profile", body: "Build your comprehensive resume profile", to: "/resumes/profiles" },
-    { done: jobsImported, label: "Import jobs", body: "Import jobs from URLs or paste descriptions", to: "/jobs/import" },
-    { done: resumeGenerated, label: "Generate your first tailored resume", body: "Tailor a resume against one of your matched jobs", to: "/resumes/builder" },
+    {
+      done: profileReady,
+      label: "Create your master profile",
+      body: "Build your comprehensive resume profile",
+      to: "/resumes/profiles",
+    },
+    {
+      done: jobsImported,
+      label: "Import jobs",
+      body: "Import jobs from URLs or paste descriptions",
+      to: "/jobs/import",
+    },
+    {
+      done: resumeGenerated,
+      label: "Generate your first tailored resume",
+      body: "Tailor a resume against one of your matched jobs",
+      to: "/resumes/builder",
+    },
   ];
 
   // Quick-log application ---------------------------------------------------
@@ -407,9 +411,17 @@ function Dashboard() {
           ))
         ) : (
           <>
-            <StatCard label="Active applications" value={statsQ.data?.active_applications ?? 0} to="/applications" />
+            <StatCard
+              label="Active applications"
+              value={statsQ.data?.active_applications ?? 0}
+              to="/applications"
+            />
             <StatCard label="Jobs imported" value={statsQ.data?.total_jobs ?? 0} to="/jobs" />
-            <StatCard label="Resumes generated" value={statsQ.data?.resumes_generated ?? 0} to="/resumes" />
+            <StatCard
+              label="Resumes generated"
+              value={statsQ.data?.resumes_generated ?? 0}
+              to="/resumes"
+            />
             <StatCard
               label="Follow-ups · next 7d"
               value={statsQ.data?.upcoming_followups_count ?? 0}
@@ -435,7 +447,10 @@ function Dashboard() {
           ) : rankedQ.error ? (
             <WidgetError message="Failed to load ranked jobs" onRetry={() => rankedQ.refetch()} />
           ) : (rankedQ.data?.jobs ?? []).length === 0 ? (
-            <EmptyState title="No matches yet" body="Import jobs and run analysis to see rankings." />
+            <EmptyState
+              title="No matches yet"
+              body="Import jobs and run analysis to see rankings."
+            />
           ) : (
             <ul className="divide-y divide-border">
               {((rankedQ.data.jobs ?? []) as any[]).slice(0, 5).map((r) => (
@@ -447,9 +462,13 @@ function Dashboard() {
                   >
                     <span className="min-w-0">
                       <span className="block truncate font-medium">{r.job.title}</span>
-                      <span className="block truncate text-xs text-muted-foreground">{r.job.company}</span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {r.job.company}
+                      </span>
                     </span>
-                    {r.match_score ? <ScorePill value={r.match_score.score} /> : (
+                    {r.match_score ? (
+                      <ScorePill value={r.match_score.score} />
+                    ) : (
                       <span className="text-[11px] text-muted-foreground">unscored</span>
                     )}
                   </Link>
@@ -464,11 +483,17 @@ function Dashboard() {
           </div>
         </Panel>
 
-        <Panel title="Upcoming follow-ups" description="Reminders due soon — overdue ones are flagged.">
+        <Panel
+          title="Upcoming follow-ups"
+          description="Reminders due soon — overdue ones are flagged."
+        >
           {followupsQ.isLoading ? (
             <WidgetSkeleton rows={4} />
           ) : upcomingFollowups.length === 0 ? (
-            <EmptyState title="Nothing scheduled" body="Set follow-up reminders from any application." />
+            <EmptyState
+              title="Nothing scheduled"
+              body="Set follow-up reminders from any application."
+            />
           ) : (
             <ul className="divide-y divide-border">
               {upcomingFollowups.map((f) => (
@@ -480,10 +505,15 @@ function Dashboard() {
                   >
                     <span className="min-w-0">
                       <span className="block truncate font-medium">{f.job_title}</span>
-                      <span className="block truncate text-xs text-muted-foreground">{f.company}</span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {f.company}
+                      </span>
                     </span>
                     <span className="shrink-0 text-xs text-muted-foreground">
-                      {new Date(f.follow_up_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                      {new Date(f.follow_up_at).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                      })}
                     </span>
                   </Link>
                 </li>
@@ -491,7 +521,10 @@ function Dashboard() {
             </ul>
           )}
           <div className="border-t border-border px-4 py-2 text-right">
-            <Link to="/applications/followups" className="text-xs text-[color:var(--brand)] hover:underline">
+            <Link
+              to="/applications/followups"
+              className="text-xs text-[color:var(--brand)] hover:underline"
+            >
               Follow-up center →
             </Link>
           </div>

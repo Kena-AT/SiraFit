@@ -1,4 +1,5 @@
 export interface JobData {
+  id?: string;
   external_id: string;
   title: string;
   company: string;
@@ -11,6 +12,7 @@ export interface JobData {
   url?: string;
   source: string;
   is_duplicate: boolean;
+  import_status?: "imported" | "duplicate" | "failed";
 }
 
 export interface Job {
@@ -44,6 +46,10 @@ export interface JobImportRecord {
   total_found: number;
   ok_count: number;
   fail_count: number;
+  errors?: string[];
+  error?: string | null;
+  partial?: boolean;
+  processed_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -52,6 +58,10 @@ export interface ImportResult {
   import_record: JobImportRecord;
   jobs: JobData[];
   errors: string[];
+  scrape_method?: "scrapling" | "heuristic";
+  scrape_duration_ms?: number;
+  fields_extracted?: number;
+  source_platform?: string;
 }
 
 export interface JobImportData {

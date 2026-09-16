@@ -29,9 +29,8 @@ function CoverLettersPage() {
     if (!confirm("Delete this cover letter?")) return;
     try {
       await deleteCoverLetter(id);
-      queryClient.setQueryData(
-        ["cover-letters"],
-        (prev: CoverLetter[] = []) => prev.filter((l) => l.id !== id),
+      queryClient.setQueryData(["cover-letters"], (prev: CoverLetter[] = []) =>
+        prev.filter((l) => l.id !== id),
       );
       setActionError(null);
     } catch (e: any) {

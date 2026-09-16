@@ -175,11 +175,7 @@ function Notifications() {
         </ul>
         {notifications.length < total && (
           <div className="p-4 border-t border-border text-center">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setLimit((prev) => prev + 50)}
-            >
+            <Button variant="outline" size="sm" onClick={() => setLimit((prev) => prev + 50)}>
               Load more ({total - notifications.length} remaining)
             </Button>
           </div>

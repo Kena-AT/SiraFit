@@ -97,7 +97,12 @@ export function StatusPill({ status, className }: { status: string; className?: 
 
 export function Tag({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <span className={cn("inline-flex items-center rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground", className)}>
+    <span
+      className={cn(
+        "inline-flex items-center rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground",
+        className,
+      )}
+    >
       {children}
     </span>
   );
@@ -124,7 +129,7 @@ export function PageHeader({
         ) : null}
         <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
         {description ? (
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{description}</p>
+          <div className="mt-1 max-w-2xl text-sm text-muted-foreground">{description}</div>
         ) : null}
       </div>
       {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
@@ -209,9 +214,7 @@ export function Stat({
 }
 
 export function AgentDot({ label }: { label?: string }) {
-  return (
-    <HealthStatusDot showLabel={true} className="text-muted-foreground" />
-  );
+  return <HealthStatusDot showLabel={true} className="text-muted-foreground" />;
 }
 
 export function Crumbs({ items }: { items: { label: string; to?: string }[] }) {

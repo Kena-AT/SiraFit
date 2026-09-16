@@ -27,9 +27,7 @@ function VerifyEmailPage() {
   const navigate = useNavigate();
 
   // ── Token flow: user clicked the link from email ─────────────────────────
-  const [verifyState, setVerifyState] = useState<VerifyState>(
-    search.token ? "loading" : "idle",
-  );
+  const [verifyState, setVerifyState] = useState<VerifyState>(search.token ? "loading" : "idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -79,16 +77,13 @@ function VerifyEmailPage() {
 
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">
-              Your email address has been verified successfully. Your account is
-              now fully active and ready to use.
+              Your email address has been verified successfully. Your account is now fully active
+              and ready to use.
             </p>
           </div>
 
           <div className="flex w-full flex-col gap-3">
-            <Button
-              className="w-full"
-              onClick={() => navigate({ to: "/login" })}
-            >
+            <Button className="w-full" onClick={() => navigate({ to: "/login" })}>
               Continue to login
             </Button>
             <Button variant="outline" className="w-full" asChild>
@@ -103,10 +98,7 @@ function VerifyEmailPage() {
   // ── Error screen ──────────────────────────────────────────────────────────
   if (verifyState === "error") {
     return (
-      <AuthShell
-        title="Verification failed"
-        subtitle={errorMessage ?? "Something went wrong."}
-      >
+      <AuthShell title="Verification failed" subtitle={errorMessage ?? "Something went wrong."}>
         <div className="flex flex-col items-center gap-6 text-center">
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-50 ring-8 ring-red-50 dark:bg-red-950/30 dark:ring-red-950/30">
             <svg
@@ -126,9 +118,7 @@ function VerifyEmailPage() {
           <div className="flex w-full flex-col gap-3">
             <Button
               className="w-full"
-              onClick={() =>
-                navigate({ to: "/verify-email", search: { email: "" } })
-              }
+              onClick={() => navigate({ to: "/verify-email", search: { email: "" } })}
             >
               Request a new link
             </Button>
@@ -264,9 +254,7 @@ function WaitingForVerification({ email }: { email?: string }) {
         )}
 
         {status && (
-          <p
-            className={`text-sm ${status.type === "error" ? "text-red-500" : "text-emerald-600"}`}
-          >
+          <p className={`text-sm ${status.type === "error" ? "text-red-500" : "text-emerald-600"}`}>
             {status.text}
           </p>
         )}

@@ -1,10 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import { BatchOperationType } from "@/lib/api/batch";
 import { Job } from "@/types/job";
 
@@ -15,11 +28,19 @@ interface BatchCreateModalProps {
   selectedJobs: Job[];
 }
 
-export function BatchCreateModal({ isOpen, onClose, onSubmit, selectedJobs }: BatchCreateModalProps) {
+export function BatchCreateModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  selectedJobs,
+}: BatchCreateModalProps) {
   const [operationType, setOperationType] = useState<BatchOperationType>("analyze");
 
   const handleSubmit = () => {
-    onSubmit(operationType, selectedJobs.map(job => job.id));
+    onSubmit(
+      operationType,
+      selectedJobs.map((job) => job.id),
+    );
     onClose();
   };
 
@@ -35,7 +56,10 @@ export function BatchCreateModal({ isOpen, onClose, onSubmit, selectedJobs }: Ba
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="operation-type">Operation Type</Label>
-            <Select value={operationType} onValueChange={(value) => setOperationType(value as BatchOperationType)}>
+            <Select
+              value={operationType}
+              onValueChange={(value) => setOperationType(value as BatchOperationType)}
+            >
               <SelectTrigger id="operation-type">
                 <SelectValue placeholder="Select operation type" />
               </SelectTrigger>
@@ -49,7 +73,9 @@ export function BatchCreateModal({ isOpen, onClose, onSubmit, selectedJobs }: Ba
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
           <Button onClick={handleSubmit}>Create Batch Job</Button>
         </DialogFooter>
       </DialogContent>

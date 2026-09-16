@@ -254,32 +254,31 @@ function FollowUps() {
               />
             </Panel>
           )}
-           {/* When showPast is true, also show a Past panel before Upcoming */}
-           {showPast && past.length > 0 && (
-             <Panel title={`Past (${past.length})`}>
-               <FollowUpList
-                 items={past}
-                 editingId={editingId}
-                 setEditingId={setEditingId}
-                 onClear={(id) => clearMutation.mutate(id)}
-               />
-             </Panel>
-           )}
-           <Panel title={`Upcoming (${upcoming.length})`}>
-{upcoming.length === 0 ? (
-  <div className="px-4 py-6 text-sm text-muted-foreground">No upcoming follow-ups.</div>
-) : (
-  <FollowUpList
-    items={upcoming}
-    editingId={editingId}
-    setEditingId={setEditingId}
-    onClear={(id) => clearMutation.mutate(id)}
-  />
-)}
+          {/* When showPast is true, also show a Past panel before Upcoming */}
+          {showPast && past.length > 0 && (
+            <Panel title={`Past (${past.length})`}>
+              <FollowUpList
+                items={past}
+                editingId={editingId}
+                setEditingId={setEditingId}
+                onClear={(id) => clearMutation.mutate(id)}
+              />
+            </Panel>
+          )}
+          <Panel title={`Upcoming (${upcoming.length})`}>
+            {upcoming.length === 0 ? (
+              <div className="px-4 py-6 text-sm text-muted-foreground">No upcoming follow-ups.</div>
+            ) : (
+              <FollowUpList
+                items={upcoming}
+                editingId={editingId}
+                setEditingId={setEditingId}
+                onClear={(id) => clearMutation.mutate(id)}
+              />
+            )}
           </Panel>
         </div>
       )}
-
     </PageBody>
   );
 }
@@ -328,7 +327,8 @@ function FollowUpList({
               <div className="flex items-center gap-3 shrink-0">
                 <span
                   className={`font-mono text-[11px] tabular-nums ${
-                    isOverdue ? "font-semibold text-destructive" : "text-muted-foreground"}
+                    isOverdue ? "font-semibold text-destructive" : "text-muted-foreground"
+                  }
                   }`}
                 >
                   {due.label}

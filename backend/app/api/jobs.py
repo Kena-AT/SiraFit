@@ -1,8 +1,9 @@
 from typing import List, Any, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Header
 from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, cast, String, func
+from sqlalchemy import or_, and_, cast, String, func
 import uuid
 import json
 import hashlib
@@ -18,7 +19,7 @@ from app.core.cache import (
 from app.api.users import get_current_user
 from app.api.dependencies import get_user_profile
 from app.models.user import User
-from app.models.job import Job, JobApplication, JobImport, JobAnalysis
+from app.models.job import Job, JobApplication, JobImport, JobImportItem, JobAnalysis
 from app.models.score import JobMatchScore
 from app.models.profile import Profile
 from app.schemas.job import (
@@ -35,6 +36,7 @@ from app.schemas.job import (
     RankedJobListResponse,
     TopMatchItem,
     TopMatchListResponse,
+    JobArchiveRequest,
 )
 from app.services.job_import import process_import
 from app.services.job_analysis import run_job_analysis
@@ -53,33 +55,33 @@ def list_ranked_jobs(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     skip: int = Query(0, ge=0),
-    limit: int = Query(min(100, 500), ge=1, le=500),
+    limit: int = Query(100, ge=1, le=100),
 ) -> Any:
-    """List all jobs with their match scores, ranked by score descending.
-
-    Fetches jobs and their per-user match scores in two bounded queries
-    (one for the jobs, one IN()-lookup for the scores) to avoid the N+1
-    pattern where each score was previously fetched individually.
-    """
-    jobs = db.query(Job).order_by(Job.created_at.desc()).offset(skip).limit(limit).all()
-    job_ids = [j.id for j in jobs]
-    scores = (
-        db.query(JobMatchScore)
-        .filter(JobMatchScore.user_id == current_user.id, JobMatchScore.job_id.in_(job_ids))
-        .all()
+    """List all jobs with their match scores, ranked by score descending using a SQL join."""
+    total = db.query(func.count(Job.id)).scalar() or 0
+    query = (
+        db.query(Job, JobMatchScore)
+        .outerjoin(
+            JobMatchScore,
+            and_(
+                JobMatchScore.job_id == Job.id,
+                JobMatchScore.user_id == current_user.id
+            )
+        )
+        .order_by(JobMatchScore.score.desc().nullslast(), Job.created_at.desc())
+        .offset(skip)
+        .limit(limit)
     )
-    score_map = {s.job_id: s for s in scores}
+    results = query.all()
+    
     items = [
         RankedJobResponse(
-            job=job,
-            match_score=JobMatchScoreResponse.model_validate(score_map[job.id])
-            if job.id in score_map
-            else None,
+            job=JobResponse.model_validate(job),
+            match_score=JobMatchScoreResponse.model_validate(score) if score else None,
         )
-        for job in jobs
+        for job, score in results
     ]
-    items.sort(key=lambda r: r.match_score.score if r.match_score else 0, reverse=True)
-    return RankedJobListResponse(jobs=items, total=len(items))
+    return RankedJobListResponse(jobs=items, total=total)
 
 
 @router.get("/search", response_model=JobListResponse)
@@ -400,6 +402,52 @@ def get_job(
     return job
 
 
+@router.delete("/{job_id}", status_code=204)
+def delete_job(
+    job_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Delete a job."""
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.import_id:
+        import_record = db.query(JobImport).filter(JobImport.id == job.import_id).first()
+        if import_record and import_record.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+
+    # Clean up related records explicitly to prevent FK constraint errors
+    db.query(JobAnalysis).filter(JobAnalysis.job_id == job_id).delete()
+    db.query(JobMatchScore).filter(JobMatchScore.job_id == job_id).delete()
+    db.query(JobImportItem).filter(JobImportItem.job_id == job_id).update({JobImportItem.job_id: None})
+
+    db.delete(job)
+    db.commit()
+    return None
+
+
+@router.post("/{job_id}/archive")
+def archive_job(
+    job_id: uuid.UUID,
+    body: JobArchiveRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """Archive or unarchive a job."""
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.import_id:
+        import_record = db.query(JobImport).filter(JobImport.id == job.import_id).first()
+        if import_record and import_record.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+    job.is_archived = body.archived
+    db.commit()
+    db.refresh(job)
+    return {"message": "Job archived" if body.archived else "Job unarchived"}
+
+
 def _match_score_cache_key(user_id: str, job_id: str) -> str:
     return f"match_score:{user_id}:{job_id}"
 
@@ -409,18 +457,30 @@ def get_match_score(
     job_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    profile: Profile = Depends(get_user_profile),
 ) -> Any:
     """Calculate and get match score for a job."""
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
     # Ponytail: 5min cache for match scores.
     cache_key = _match_score_cache_key(str(current_user.id), str(job_id))
     cached = cache_get(cache_key)
     if cached:
+        if "status" not in cached:
+            cached["status"] = "done"
         return JobMatchScoreResponse.model_validate(cached)
 
-    job = db.query(Job).filter(Job.id == job_id).first()
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+    profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
+    if not profile:
+        return {
+            "job_id": job_id,
+            "user_id": current_user.id,
+            "score": 0,
+            "breakdown": {},
+            "explanation": "Profile not created yet.",
+            "status": "not_started",
+        }
 
     # Calculate score
     score_data = calculate_match_score(profile, job)
@@ -440,7 +500,9 @@ def get_match_score(
         existing_score.explanation = score_data["explanation"]
         db.commit()
         db.refresh(existing_score)
-        cache_set(cache_key, JobMatchScoreResponse.model_validate(existing_score).model_dump(mode="json"), ttl=300)
+        resp_data = JobMatchScoreResponse.model_validate(existing_score).model_dump(mode="json")
+        resp_data["status"] = "done"
+        cache_set(cache_key, resp_data, ttl=300)
         return existing_score
     else:
         new_score = JobMatchScore(
@@ -453,7 +515,9 @@ def get_match_score(
         db.add(new_score)
         db.commit()
         db.refresh(new_score)
-        cache_set(cache_key, JobMatchScoreResponse.model_validate(new_score).model_dump(mode="json"), ttl=300)
+        resp_data = JobMatchScoreResponse.model_validate(new_score).model_dump(mode="json")
+        resp_data["status"] = "done"
+        cache_set(cache_key, resp_data, ttl=300)
         return new_score
 
 
@@ -465,13 +529,19 @@ def get_cached_match_score(
 ) -> Any:
     """Return the stored match score for a job without recalculating.
 
-    Returns 404 if no score has been calculated yet. Use GET /{job_id}/match-score
+    Returns status="not_started" if no score has been calculated yet. Use GET /{job_id}/match-score
     to calculate and store a score on demand.
     """
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
     # Check cache first
     cache_key = _match_score_cache_key(str(current_user.id), str(job_id))
     cached = cache_get(cache_key)
     if cached:
+        if "status" not in cached:
+            cached["status"] = "done"
         return JobMatchScoreResponse.model_validate(cached)
 
     score = (
@@ -483,12 +553,18 @@ def get_cached_match_score(
         .first()
     )
     if not score:
-        raise HTTPException(
-            status_code=404,
-            detail="No match score found for this job. Trigger one via GET /{job_id}/match-score.",
-        )
+        return {
+            "job_id": job_id,
+            "user_id": current_user.id,
+            "score": 0,
+            "breakdown": {},
+            "explanation": "No match score found for this job. Trigger one via GET /{job_id}/match-score.",
+            "status": "not_started",
+        }
     # Populate cache for next time
-    cache_set(cache_key, JobMatchScoreResponse.model_validate(score).model_dump(mode="json"), ttl=300)
+    resp_data = JobMatchScoreResponse.model_validate(score).model_dump(mode="json")
+    resp_data["status"] = "done"
+    cache_set(cache_key, resp_data, ttl=300)
     return score
 
 
@@ -566,11 +642,21 @@ def get_job_analysis(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """Get the stored AI analysis for a job (poll this after triggering)."""
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
     analysis = db.query(JobAnalysis).filter(JobAnalysis.job_id == job_id).first()
     if not analysis:
-        raise HTTPException(
-            status_code=404, detail="No analysis found for this job. Trigger one first."
-        )
+        return {
+            "job_id": job_id,
+            "score": 0,
+            "summary": "No analysis found for this job. Trigger one first.",
+            "pros": [],
+            "cons": [],
+            "skills_gap": [],
+            "status": "not_started",
+        }
     return analysis
 
 
@@ -586,20 +672,61 @@ def import_jobs(
     current_user: User = Depends(get_current_user),
     import_in: JobImportCreate,
 ) -> Any:
-    """Import jobs from a URL or pasted description."""
-    import_record, jobs_data, errors = process_import(
-        db,
-        current_user.id,
-        import_in.source_type,
-        import_in.data,
+    """Import jobs from a URL (async via Celery) or pasted description/CSV (sync)."""
+    # Description / CSV imports are fast and stay synchronous on the request path.
+    if import_in.source_type != "url":
+        import_record, jobs_data, errors, scrape_meta = process_import(
+            db,
+            current_user.id,
+            import_in.source_type,
+            import_in.data,
+        )
+        invalidate_job_related(str(current_user.id))
+        return ImportResultResponse(
+            import_record=JobImportResponse.model_validate(import_record),
+            jobs=[JobData(**job, is_duplicate=False) for job in jobs_data],
+            errors=errors,
+            scrape_method=scrape_meta.get("method_used"),
+            scrape_duration_ms=scrape_meta.get("duration_ms"),
+            fields_extracted=scrape_meta.get("fields_extracted"),
+            source_platform=scrape_meta.get("source_platform"),
+        )
+
+    # URL import: create a tracking record, then offload to the scraping queue.
+    from app.services.job_import import enqueue_job_import
+
+    job_import = JobImport(
+        user_id=current_user.id,
+        source="url",
+        status="processing",
+        source_data=import_in.data[:2000],
     )
-    # Invalidate job + dashboard caches since new jobs were added
+    db.add(job_import)
+    db.commit()
+    db.refresh(job_import)
+
+    outcome = enqueue_job_import(
+        str(job_import.id), import_in.data, "url", str(current_user.id)
+    )
+
+    if outcome.get("queued"):
+        # Accepted for async processing; the worker will update status.
+        return JSONResponse(
+            status_code=202,
+            content=ImportResultResponse(
+                import_record=JobImportResponse.model_validate(job_import),
+                jobs=[],
+                errors=[],
+                scrape_method="async",
+            ).model_dump(mode="json"),
+        )
+
+    # Broker unavailable → sync fallback already completed the import inline.
+    # Re-read the record so the response reflects the terminal status set by
+    # the worker's session.
+    db.refresh(job_import)
     invalidate_job_related(str(current_user.id))
-    return ImportResultResponse(
-        import_record=JobImportResponse.model_validate(import_record),
-        jobs=[JobData(**job, is_duplicate=False) for job in jobs_data],
-        errors=errors,
-    )
+    return _import_detail_response(db, import_record=job_import)
 
 
 @router.get("/import/history", response_model=List[JobImportResponse])
@@ -620,52 +747,140 @@ def get_import_history(
     )
 
 
-@router.get("/import/{import_id}", response_model=ImportResultResponse)
-def get_import_detail(
+@router.delete("/import/{import_id}", status_code=204)
+def delete_import(
     import_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Any:
-    """Get details of a specific import."""
+) -> None:
+    """Delete an import record."""
     import_record = db.query(JobImport).filter(JobImport.id == import_id).first()
     if not import_record:
         raise HTTPException(status_code=404, detail="Import not found")
     if import_record.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized")
+    db.delete(import_record)
+    db.commit()
 
-    # Query jobs associated with this import batch
-    from app.models.job import JobApplication
-    applied_jobs = (
-        db.query(JobApplication)
-        .filter(
-            JobApplication.user_id == current_user.id,
-            JobApplication.created_at >= import_record.created_at,
-        )
-        .join(Job)
+
+def _import_detail_response(db: Session, import_record: JobImport) -> ImportResultResponse:
+    """Build an ``ImportResultResponse`` from a ``JobImport`` (items joined with jobs).
+
+    Queries ``JobImportItem LEFT JOIN Job`` as the authoritative source of truth.
+    Falls back to ``Job.import_id`` / 5-minute time window only for legacy imports
+    that have zero ``JobImportItem`` records.
+    """
+    import_id = import_record.id
+
+    # Primary path: query JobImportItem joined with Job
+    items_with_jobs = (
+        db.query(JobImportItem, Job)
+        .outerjoin(Job, JobImportItem.job_id == Job.id)
+        .filter(JobImportItem.import_id == import_id)
+        .order_by(JobImportItem.created_at)
         .all()
     )
 
     jobs_data = []
-    for app in applied_jobs:
-        job = app.job
-        if job:
-            jobs_data.append({
+
+    if items_with_jobs:
+        for item, job in items_with_jobs:
+            if job:
+                jobs_data.append({
+                    "id": str(job.id),
+                    "external_id": job.external_id,
+                    "title": job.title,
+                    "company": job.company,
+                    "location": job.location,
+                    "salary_min": job.salary_min,
+                    "salary_max": job.salary_max,
+                    "currency": job.currency,
+                    "tags": job.tags or [],
+                    "url": job.url,
+                    "source": job.source,
+                    "is_duplicate": item.status == "duplicate",
+                    "import_status": item.status,
+                })
+            else:
+                jobs_data.append({
+                    "id": None,
+                    "external_id": item.title_guess or "unknown",
+                    "title": item.title_guess or "Unknown",
+                    "company": "Unknown",
+                    "location": None,
+                    "salary_min": None,
+                    "salary_max": None,
+                    "currency": None,
+                    "tags": [],
+                    "url": None,
+                    "source": import_record.source,
+                    "is_duplicate": item.status == "duplicate",
+                    "import_status": item.status,
+                })
+    else:
+        # Legacy fallback for historical imports created before JobImportItem existed
+        jobs = (
+            db.query(Job)
+            .filter(Job.import_id == import_id)
+            .order_by(Job.created_at)
+            .all()
+        )
+        if not jobs:
+            from datetime import timedelta
+            window_start = import_record.created_at - timedelta(minutes=5)
+            window_end = import_record.created_at + timedelta(minutes=5)
+            jobs = (
+                db.query(Job)
+                .filter(
+                    Job.created_at >= window_start,
+                    Job.created_at <= window_end,
+                )
+                .order_by(Job.created_at)
+                .all()
+            )
+
+        jobs_data = [
+            {
                 "id": str(job.id),
+                "external_id": job.external_id,
                 "title": job.title,
                 "company": job.company,
                 "location": job.location,
                 "salary_min": job.salary_min,
                 "salary_max": job.salary_max,
                 "currency": job.currency,
-                "tags": job.tags,
+                "tags": job.tags or [],
                 "url": job.url,
                 "source": job.source,
-                "created_at": job.created_at.isoformat() if job.created_at else None,
                 "is_duplicate": False,
-            })
+                "import_status": "imported",
+            }
+            for job in jobs
+        ]
+
+    errors = import_record.errors or []
 
     return ImportResultResponse(
         import_record=JobImportResponse.model_validate(import_record),
         jobs=[JobData(**job) for job in jobs_data],
-        errors=[],
+        errors=errors,
+        scrape_method=None,
+        scrape_duration_ms=None,
+        fields_extracted=None,
+        source_platform=None,
     )
+
+
+@router.get("/import/{import_id}", response_model=ImportResultResponse)
+def get_import_detail(
+    import_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """Get details of a specific import (used for polling the async import status)."""
+    import_record = db.query(JobImport).filter(JobImport.id == import_id).first()
+    if not import_record:
+        raise HTTPException(status_code=404, detail="Import not found")
+    if import_record.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    return _import_detail_response(db, import_record)

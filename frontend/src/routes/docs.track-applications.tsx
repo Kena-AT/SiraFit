@@ -7,7 +7,9 @@ export const Route = createFileRoute("/docs/track-applications")({
   component: () => (
     <article className="mx-auto max-w-3xl px-6 py-16">
       <nav className="mb-6 flex items-center gap-1 text-xs text-muted-foreground">
-        <Link to="/help" className="hover:text-foreground">Documentation</Link>
+        <Link to="/help" className="hover:text-foreground">
+          Documentation
+        </Link>
         <ChevronRight className="h-3 w-3" />
         <span>Track applications</span>
       </nav>
@@ -27,7 +29,9 @@ export const Route = createFileRoute("/docs/track-applications")({
         <tbody className="divide-y divide-border">
           <tr>
             <td className="py-2 font-medium">Saved</td>
-            <td>Auto-applied when you click <strong>Save</strong> on a job card.</td>
+            <td>
+              Auto-applied when you click <strong>Save</strong> on a job card.
+            </td>
           </tr>
           <tr>
             <td className="py-2 font-medium">Applied</td>
@@ -45,8 +49,8 @@ export const Route = createFileRoute("/docs/track-applications")({
       </table>
       <h2 className="mt-8 text-lg font-semibold">Follow-ups</h2>
       <p className="mt-2 text-sm text-muted-foreground">
-        Missed a stage update? The agent can auto-schedule follow-up reminders on
-        your timeline so nothing falls through the cracks.
+        Missed a stage update? The agent can auto-schedule follow-up reminders on your timeline so
+        nothing falls through the cracks.
       </p>
     </article>
   ),

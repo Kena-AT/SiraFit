@@ -53,14 +53,14 @@ describe("BatchJobList", () => {
   it("shows a loading state initially", () => {
     mockGetBatchJobs.mockImplementation(() => new Promise(() => {}));
     render(<BatchJobList onViewDetails={jest.fn()} />);
-    
+
     expect(screen.getAllByRole("progressbar")).toHaveLength(3);
   });
 
   it("shows an error message when fetching jobs fails", async () => {
     mockGetBatchJobs.mockRejectedValue(new Error("Failed to fetch"));
     render(<BatchJobList onViewDetails={jest.fn()} />);
-    
+
     expect(await screen.findByText("Error")).toBeInTheDocument();
     expect(screen.getByText("Failed to fetch batch jobs.")).toBeInTheDocument();
   });
@@ -68,7 +68,7 @@ describe("BatchJobList", () => {
   it("shows a message when there are no jobs", async () => {
     mockGetBatchJobs.mockResolvedValue({ jobs: [], total: 0, skip: 0, limit: 50 });
     render(<BatchJobList onViewDetails={jest.fn()} />);
-    
+
     expect(await screen.findByText("No Batch Jobs")).toBeInTheDocument();
     expect(screen.getByText("You haven't created any batch jobs yet.")).toBeInTheDocument();
   });
@@ -76,7 +76,7 @@ describe("BatchJobList", () => {
   it("renders a list of batch jobs", async () => {
     mockGetBatchJobs.mockResolvedValue({ jobs: mockJobs, total: 2, skip: 0, limit: 50 });
     render(<BatchJobList onViewDetails={jest.fn()} />);
-    
+
     expect(await screen.findByText("Analyze Batch Job")).toBeInTheDocument();
     expect(screen.getByText("Score Batch Job")).toBeInTheDocument();
   });
@@ -85,7 +85,7 @@ describe("BatchJobList", () => {
     mockGetBatchJobs.mockResolvedValue({ jobs: mockJobs, total: 2, skip: 0, limit: 50 });
     const onViewDetails = jest.fn();
     render(<BatchJobList onViewDetails={onViewDetails} />);
-    
+
     fireEvent.click(await screen.findByText("View Details"));
     expect(onViewDetails).toHaveBeenCalledWith("1");
   });
@@ -94,7 +94,7 @@ describe("BatchJobList", () => {
     mockGetBatchJobs.mockResolvedValue({ jobs: mockJobs, total: 2, skip: 0, limit: 50 });
     mockRetryBatchJob.mockResolvedValue(mockJobs[1]);
     render(<BatchJobList onViewDetails={jest.fn()} />);
-    
+
     fireEvent.click(await screen.findByText("Retry"));
     expect(mockRetryBatchJob).toHaveBeenCalledWith("2");
   });
@@ -104,7 +104,7 @@ describe("BatchJobList", () => {
     mockGetBatchJobs.mockResolvedValue({ jobs: [runningJob], total: 1, skip: 0, limit: 50 });
     mockCancelBatchJob.mockResolvedValue({ ...runningJob, cancel_requested: true });
     render(<BatchJobList onViewDetails={jest.fn()} />);
-    
+
     fireEvent.click(await screen.findByText("Cancel"));
     expect(mockCancelBatchJob).toHaveBeenCalledWith("1");
   });
@@ -112,16 +112,14 @@ describe("BatchJobList", () => {
   it("refreshes the list when the refresh button is clicked", async () => {
     mockGetBatchJobs.mockResolvedValue({ jobs: mockJobs, total: 2, skip: 0, limit: 50 });
     render(<BatchJobList onViewDetails={jest.fn()} />);
-    
+
     // Wait for initial render
     await screen.findByText("Analyze Batch Job");
-    
+
     // Change the mock to return different data
-    const newJobs = [
-      { ...mockJobs[0], status: "running" },
-    ];
+    const newJobs = [{ ...mockJobs[0], status: "running" }];
     mockGetBatchJobs.mockResolvedValue({ jobs: newJobs, total: 1, skip: 0, limit: 50 });
-    
+
     fireEvent.click(screen.getByText("Refresh"));
     expect(await screen.findByText("Running")).toBeInTheDocument();
   });

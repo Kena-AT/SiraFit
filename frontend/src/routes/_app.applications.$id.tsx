@@ -200,7 +200,10 @@ function AppDetails() {
           <Panel title="Notes">
             <div className="space-y-3 p-5">
               {notes.map((note: any) => (
-                <div key={note.id} className="rounded bg-muted/40 p-3 text-sm ring-1 ring-transparent">
+                <div
+                  key={note.id}
+                  className="rounded bg-muted/40 p-3 text-sm ring-1 ring-transparent"
+                >
                   <div className="flex items-start justify-between gap-2">
                     <div className="font-mono text-[10px] text-muted-foreground">
                       {note.author || "Me"} · {new Date(note.created_at).toLocaleDateString()}
@@ -370,11 +373,16 @@ function AppDetails() {
               <div className="px-4 py-3 text-sm text-muted-foreground">No contacts yet.</div>
             ) : (
               contacts.map((contact: any) => (
-                <div key={contact.id} className="space-y-1 p-4 text-sm border-b border-border last:border-0">
+                <div
+                  key={contact.id}
+                  className="space-y-1 p-4 text-sm border-b border-border last:border-0"
+                >
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="font-semibold">{contact.name}</div>
-                      <div className="text-muted-foreground capitalize">{contact.role.replace(/_/g, " ")}</div>
+                      <div className="text-muted-foreground capitalize">
+                        {contact.role.replace(/_/g, " ")}
+                      </div>
                     </div>
                     {contact.is_primary && (
                       <span className="rounded bg-[color:var(--brand)]/10 px-1.5 py-0.5 text-[10px] font-medium text-[color:var(--brand)]">
@@ -383,10 +391,14 @@ function AppDetails() {
                     )}
                   </div>
                   {contact.email && (
-                    <div className="font-mono text-[11px] text-muted-foreground">{contact.email}</div>
+                    <div className="font-mono text-[11px] text-muted-foreground">
+                      {contact.email}
+                    </div>
                   )}
                   {contact.phone && (
-                    <div className="font-mono text-[11px] text-muted-foreground">{contact.phone}</div>
+                    <div className="font-mono text-[11px] text-muted-foreground">
+                      {contact.phone}
+                    </div>
                   )}
                   {contact.linkedin && (
                     <a

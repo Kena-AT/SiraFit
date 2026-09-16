@@ -72,7 +72,7 @@ function Board() {
       await queryClient.cancelQueries({ queryKey: ["applications"] });
       const previous = queryClient.getQueryData<typeof applications>(["applications"]);
       queryClient.setQueryData<typeof applications>(["applications"], (old = []) =>
-        old.map((app: any) => (app.id === id ? { ...app, status: toStatus } : app))
+        old.map((app: any) => (app.id === id ? { ...app, status: toStatus } : app)),
       );
       return { previous };
     },

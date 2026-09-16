@@ -4,11 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
-import {
-  getResumeDefaults,
-  updateResumeDefaults,
-  type ResumeDefaults,
-} from "@/lib/api/users";
+import { getResumeDefaults, updateResumeDefaults, type ResumeDefaults } from "@/lib/api/users";
 
 export const Route = createFileRoute("/_app/settings/resume")({
   head: () => ({ meta: [{ title: "Resume settings · SiraFit" }] }),
@@ -71,11 +67,7 @@ function ResumeSettings() {
   };
 
   if (isLoading) {
-    return (
-      <div className="p-4 text-sm text-muted-foreground">
-        Loading resume settings...
-      </div>
-    );
+    return <div className="p-4 text-sm text-muted-foreground">Loading resume settings...</div>;
   }
 
   return (
@@ -87,9 +79,7 @@ function ResumeSettings() {
               <button key={t} onClick={() => setSelectedTemplate(t)} type="button">
                 <Tag
                   className={
-                    selectedTemplate === t
-                      ? "bg-primary text-primary-foreground"
-                      : "hover:bg-muted"
+                    selectedTemplate === t ? "bg-primary text-primary-foreground" : "hover:bg-muted"
                   }
                 >
                   {t}

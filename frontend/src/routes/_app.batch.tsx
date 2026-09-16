@@ -21,10 +21,12 @@ function BatchJobsPage() {
           </Link>
         }
       />
-      <BatchJobList onViewDetails={(jobId) => {
-        // Navigate to batch job details page (to be implemented)
-        console.log("View details for batch job:", jobId);
-      }} />
+      <BatchJobList
+        onViewDetails={(jobId) => {
+          // Navigate to batch job details page (to be implemented)
+          console.log("View details for batch job:", jobId);
+        }}
+      />
     </PageBody>
   );
 }

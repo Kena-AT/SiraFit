@@ -85,18 +85,18 @@ function SkillsInsights() {
       </Panel>
       <Panel title="Suggested learning targets">
         <ul className="divide-y divide-border text-sm">
-           {metrics?.skill_gaps?.map((s: SkillGapItem) => (
-             <li key={s.skill} className="flex items-center justify-between px-4 py-3">
-               <span className="font-semibold">{s.skill}</span>
-               <span className="text-[11px] text-muted-foreground">
-                 Improves match on {s.demand_frequency} jobs
-               </span>
-             </li>
-           )) || (
-             <li className="px-4 py-3 text-sm text-muted-foreground">
-               No skill gaps detected. Add more skills to your profile to see insights.
-             </li>
-           )}
+          {metrics?.skill_gaps?.map((s: SkillGapItem) => (
+            <li key={s.skill} className="flex items-center justify-between px-4 py-3">
+              <span className="font-semibold">{s.skill}</span>
+              <span className="text-[11px] text-muted-foreground">
+                Improves match on {s.demand_frequency} jobs
+              </span>
+            </li>
+          )) || (
+            <li className="px-4 py-3 text-sm text-muted-foreground">
+              No skill gaps detected. Add more skills to your profile to see insights.
+            </li>
+          )}
         </ul>
       </Panel>
     </PageBody>

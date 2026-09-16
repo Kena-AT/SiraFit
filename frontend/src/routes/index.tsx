@@ -37,8 +37,10 @@ function VersionTag() {
 
   return (
     <div className="inline-flex items-center gap-2 rounded-full bg-card px-3 py-1 text-[11px] font-medium text-muted-foreground ring-1 ring-border">
-      <HealthStatusDot showLabel={false} />
-      v{version} · {data?.agent_api?.connected ? `${data?.agent_api?.provider || "Agent"} active` : "No agent configured"}
+      <HealthStatusDot showLabel={false} />v{version} ·{" "}
+      {data?.agent_api?.connected
+        ? `${data?.agent_api?.provider || "Agent"} active`
+        : "No agent configured"}
     </div>
   );
 }
@@ -58,9 +60,7 @@ function StatsGrid() {
           <div key={i} className="rounded-md bg-card p-4 ring-1 ring-border">
             <Skeleton className="h-7 w-16 animate-pulse" />
             <Skeleton className="mt-2 h-3 w-24 animate-pulse" />
-            <div className="mt-2 text-[10px] text-muted-foreground">
-              Loading...
-            </div>
+            <div className="mt-2 text-[10px] text-muted-foreground">Loading...</div>
           </div>
         ))}
       </div>
@@ -92,12 +92,11 @@ function StatsGrid() {
   }
 
   // Check if all values are zero/empty (new deployment case)
-  const isEmpty = (
+  const isEmpty =
     data?.jobs_ingested_per_day === 0 &&
     data?.ats_sources_polled === 0 &&
     data?.sector_interview_rate === 0 &&
-    data?.top_match_queue?.length === 0
-  );
+    data?.top_match_queue?.length === 0;
 
   if (isEmpty) {
     return (
@@ -140,7 +139,9 @@ function StatsGrid() {
       </div>
       <div className="rounded-md bg-card p-4 ring-1 ring-border">
         <div className="font-mono text-xl font-semibold tabular-nums">
-          {data?.sector_interview_rate ? `${(data.sector_interview_rate * 100 * 2.33).toFixed(1)}%` : "0%"}
+          {data?.sector_interview_rate
+            ? `${(data.sector_interview_rate * 100 * 2.33).toFixed(1)}%`
+            : "0%"}
         </div>
         <div className="text-[11px] text-muted-foreground">SiraFit user median</div>
       </div>
@@ -185,7 +186,10 @@ function TopMatchQueue() {
           Top match queue
         </div>
         <div className="p-4 text-center text-sm text-muted-foreground">
-          Failed to load matches. <button onClick={() => refetch()} className="text-blue-500 hover:underline">Retry</button>
+          Failed to load matches.{" "}
+          <button onClick={() => refetch()} className="text-blue-500 hover:underline">
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -361,15 +365,15 @@ function Landing() {
               No more guessing whether to apply. Deterministic match scores cite which skills
               overlapped and which gaps cost you points. Your call - better informed.
             </p>
-           <div className="mt-6 flex flex-wrap gap-2">
-             {["Greenhouse", "Lever", "Ashby", "Workday", "Gemini", "Local-first"].map((t) => (
-               <Tag key={t}>{t}</Tag>
-             ))}
-           </div>
-         </div>
-         <TopMatchQueue />
-       </div>
-  </section>
+            <div className="mt-6 flex flex-wrap gap-2">
+              {["Greenhouse", "Lever", "Ashby", "Workday", "Gemini", "Local-first"].map((t) => (
+                <Tag key={t}>{t}</Tag>
+              ))}
+            </div>
+          </div>
+          <TopMatchQueue />
+        </div>
+      </section>
 
       <section className="border-b border-border bg-muted/20">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-6 py-12">

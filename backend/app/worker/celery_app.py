@@ -60,8 +60,16 @@ celery_app.conf.update(
         "app.worker.tasks.process_batch_job": {"queue": "batch_processing"},
         "app.worker.tasks.send_notification_task": {"queue": "notifications"},
         "app.worker.tasks.check_reminders_task": {"queue": "notifications"},
+        "app.worker.tasks.scrape_and_import_job": {"queue": "scraping"},
     },
 )
+
+celery_app.conf.beat_schedule = {
+    "detect-stuck-imports": {
+        "task": "app.worker.tasks.detect_stuck_imports",
+        "schedule": 120.0,
+    },
+}
 
 # Dead-letter queue: tasks that exhaust their configured retries are routed
 # here by the BaseRetryTask.on_failure hook for later inspection/replay.

@@ -6,10 +6,12 @@ import { PageHeader, Panel, Tag, EmptyState } from "@/components/sirafit/bits";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { getJobs, type JobSearchParams } from "@/lib/api/jobs";
+import { getJobs, deleteJob, archiveJob, type JobSearchParams } from "@/lib/api/jobs";
 import { JobNavTabs } from "@/components/sirafit/job-nav-tabs";
 import { createBatchJob, type BatchOperationType } from "@/lib/api/batch";
 import { BatchCreateModal } from "@/components/sirafit/batch/BatchCreateModal";
+import { ConfirmDialog } from "@/components/sirafit/confirm-dialog";
+import { toast } from "sonner";
 import type { JobListResponse, Job } from "@/types/job";
 
 export const Route = createFileRoute("/_app/jobs/")({
@@ -18,9 +20,13 @@ export const Route = createFileRoute("/_app/jobs/")({
 });
 
 function JobsExplorer() {
+  const navigate = Route.useNavigate();
   const queryClient = useQueryClient();
   const [selectedJobs, setSelectedJobs] = useState<Job[]>([]);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [pendingArchiveId, setPendingArchiveId] = useState<string | null>(null);
 
   // Search and filter state
   const [searchTerm, setSearchTerm] = useState("");
@@ -69,9 +75,7 @@ function JobsExplorer() {
   });
 
   const handleSelectJob = (job: Job, checked: boolean) => {
-    setSelectedJobs(prev =>
-      checked ? [...prev, job] : prev.filter(j => j.id !== job.id)
-    );
+    setSelectedJobs((prev) => (checked ? [...prev, job] : prev.filter((j) => j.id !== job.id)));
   };
 
   const handleSelectAll = (checked: boolean) => {
@@ -81,8 +85,13 @@ function JobsExplorer() {
 
   // Ponytail: useMutation with onMutate for optimistic updates + cache invalidation
   const batchMutation = useMutation({
-    mutationFn: ({ operationType, jobIds }: { operationType: BatchOperationType; jobIds: string[] }) =>
-      createBatchJob({ operation_type: operationType, job_ids: jobIds }),
+    mutationFn: ({
+      operationType,
+      jobIds,
+    }: {
+      operationType: BatchOperationType;
+      jobIds: string[];
+    }) => createBatchJob({ operation_type: operationType, job_ids: jobIds }),
     onMutate: async () => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ["jobs"] });
@@ -99,6 +108,58 @@ function JobsExplorer() {
       setSelectedJobs([]); // Clear selection after batch op
     } catch (err: any) {
       console.error("Error creating batch job:", err);
+    }
+  };
+
+  const deleteMutation = useMutation({
+    mutationFn: (jobId: string) => deleteJob(jobId),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["jobs"] });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["jobs"] });
+    },
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: ({ jobId, archived }: { jobId: string; archived: boolean }) =>
+      archiveJob(jobId, archived),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["jobs"] });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["jobs"] });
+    },
+  });
+
+  const handleDelete = (jobId: string) => {
+    setPendingDeleteId(jobId);
+    setConfirmDialogOpen(true);
+  };
+
+  const handleArchive = (jobId: string) => {
+    setPendingArchiveId(jobId);
+    setConfirmDialogOpen(true);
+  };
+
+  const confirmAction = async () => {
+    const id = pendingDeleteId || pendingArchiveId;
+    const isDelete = pendingDeleteId !== null;
+    setConfirmDialogOpen(false);
+    setPendingDeleteId(null);
+    setPendingArchiveId(null);
+    if (!id) return;
+    try {
+      if (isDelete) {
+        await deleteMutation.mutateAsync(id);
+        toast.success("Job deleted");
+      } else {
+        await archiveMutation.mutateAsync({ jobId: id, archived: true });
+        toast.success("Job archived");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Operation failed");
+      console.error("Error:", err);
     }
   };
 
@@ -194,8 +255,8 @@ function JobsExplorer() {
               placeholder="Search role, company, description…"
               className="h-9 bg-card"
               value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleSearch()}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             />
             <Button size="sm" onClick={handleSearch} disabled={isLoading}>
               Search
@@ -217,18 +278,18 @@ function JobsExplorer() {
             placeholder="Company"
             className="h-8 w-40 bg-card text-xs"
             value={companyInput}
-            onChange={e => setCompanyInput(e.target.value)}
+            onChange={(e) => setCompanyInput(e.target.value)}
           />
           <Input
             placeholder="Location"
             className="h-8 w-40 bg-card text-xs"
             value={locationInput}
-            onChange={e => setLocationInput(e.target.value)}
+            onChange={(e) => setLocationInput(e.target.value)}
           />
           <select
             className="h-8 rounded-md border border-border bg-card px-2 text-xs"
             value={sourceFilter}
-            onChange={e => {
+            onChange={(e) => {
               setSourceFilter(e.target.value);
               setPage(0);
             }}
@@ -245,7 +306,7 @@ function JobsExplorer() {
           <select
             className="h-8 rounded-md border border-border bg-card px-2 text-xs"
             value={`${sortBy}-${sortOrder}`}
-            onChange={e => {
+            onChange={(e) => {
               const [field, order] = e.target.value.split("-");
               setSortBy(field);
               setSortOrder(order as "asc" | "desc");
@@ -261,15 +322,15 @@ function JobsExplorer() {
         </div>
       </div>
 
-       <BatchCreateModal
-         isOpen={isBatchModalOpen}
-         onClose={() => setIsBatchModalOpen(false)}
-         onSubmit={handleBatchOperation}
-         selectedJobs={selectedJobs}
-       />
+      <BatchCreateModal
+        isOpen={isBatchModalOpen}
+        onClose={() => setIsBatchModalOpen(false)}
+        onSubmit={handleBatchOperation}
+        selectedJobs={selectedJobs}
+      />
 
-       <Panel>
-         {isLoading ? (
+      <Panel>
+        {isLoading ? (
           <div className="flex items-center justify-center px-4 py-12 text-sm text-muted-foreground">
             <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-border border-t-foreground" />
             Loading jobs...
@@ -298,66 +359,93 @@ function JobsExplorer() {
           <>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-               <thead className="border-b border-border bg-muted/40 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                 <tr>
-                   <th className="px-4 py-2.5 font-semibold">
-                     <Checkbox
-                       checked={selectedJobs.length > 0 && selectedJobs.length === jobResponse.jobs.length}
-                       onCheckedChange={handleSelectAll}
-                       disabled={jobResponse.jobs.length === 0}
-                     />
-                   </th>
-                   <th className="px-4 py-2.5 font-semibold">Company</th>
-                   <th className="px-4 py-2.5 font-semibold">Role</th>
-                   <th className="px-4 py-2.5 font-semibold">Location</th>
-                   <th className="px-4 py-2.5 font-semibold">Salary</th>
-                   <th className="px-4 py-2.5 font-semibold">Source</th>
-                   <th className="px-4 py-2.5 font-semibold">Tags</th>
-                   <th className="px-4 py-2.5 font-semibold">Imported</th>
-                 </tr>
-               </thead>
-                 <tbody className="divide-y divide-border">
-                    {jobResponse.jobs.map((j: Job, i: number) => {
-                     const isSelected = selectedJobs.some(job => job.id === j.id);
-                     return (
-                       <tr key={j.id} className="group hover:bg-muted/30">
-                         <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground tabular-nums">
-                           <Checkbox
-                             checked={isSelected}
-                             onCheckedChange={checked => handleSelectJob(j, checked as boolean)}
-                           />
-                         </td>
-                         <td className="px-4 py-3 font-medium">{j.company}</td>
-                         <td className="px-4 py-3">
-                           <Link
-                             to="/jobs/$jobId"
-                             params={{ jobId: j.id }}
-                             className="text-muted-foreground hover:text-foreground hover:underline"
-                           >
-                             {j.title}
-                           </Link>
-                         </td>
-                         <td className="px-4 py-3 text-xs text-muted-foreground">
-                           {j.location || "-"}
-                         </td>
-                         <td className="px-4 py-3 text-xs text-muted-foreground tabular-nums">
-                           {formatSalary(j)}
-                         </td>
-                         <td className="px-4 py-3">
-                           <Tag>{j.source}</Tag>
-                         </td>
-                         <td className="px-4 py-3">
-                           <div className="flex flex-wrap gap-1">
-                             {j.tags.slice(0, 3).map(t => <Tag key={t}>{t}</Tag>)}
-                             {j.tags.length > 3 && <Tag>+{j.tags.length - 3}</Tag>}
-                           </div>
-                         </td>
-                         <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground tabular-nums">
-                           {formatDate(j.created_at)}
-                         </td>
-                       </tr>
-                     );
-                   })}
+                <thead className="border-b border-border bg-muted/40 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                  <tr>
+                    <th className="px-4 py-2.5 font-semibold">
+                      <Checkbox
+                        checked={
+                          selectedJobs.length > 0 && selectedJobs.length === jobResponse.jobs.length
+                        }
+                        onCheckedChange={handleSelectAll}
+                        disabled={jobResponse.jobs.length === 0}
+                      />
+                    </th>
+                    <th className="px-4 py-2.5 font-semibold">Company</th>
+                    <th className="px-4 py-2.5 font-semibold">Role</th>
+                    <th className="px-4 py-2.5 font-semibold">Location</th>
+                    <th className="px-4 py-2.5 font-semibold">Salary</th>
+                    <th className="px-4 py-2.5 font-semibold">Source</th>
+                    <th className="px-4 py-2.5 font-semibold">Tags</th>
+                    <th className="px-4 py-2.5 font-semibold">Imported</th>
+                    <th className="px-4 py-2.5 text-right font-semibold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {jobResponse.jobs.map((j: Job, i: number) => {
+                    const isSelected = selectedJobs.some((job) => job.id === j.id);
+                    return (
+                      <tr
+                        key={j.id}
+                        className="group hover:bg-muted/30 cursor-pointer"
+                        onClick={() => navigate({ to: "/jobs/$jobId", params: { jobId: j.id } })}
+                      >
+                        <td
+                          className="px-4 py-3 font-mono text-[11px] text-muted-foreground tabular-nums"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={(checked) => handleSelectJob(j, checked as boolean)}
+                          />
+                        </td>
+                        <td className="px-4 py-3 font-medium">{j.company}</td>
+                        <td className="px-4 py-3">
+                          <Link
+                            to="/jobs/$jobId"
+                            params={{ jobId: j.id }}
+                            className="text-muted-foreground hover:text-foreground hover:underline"
+                          >
+                            {j.title}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground">
+                          {j.location || "-"}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground tabular-nums">
+                          {formatSalary(j)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Tag>{j.source}</Tag>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1">
+                            {j.tags.slice(0, 3).map((t) => (
+                              <Tag key={t}>{t}</Tag>
+                            ))}
+                            {j.tags.length > 3 && <Tag>+{j.tags.length - 3}</Tag>}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground tabular-nums">
+                          {formatDate(j.created_at)}
+                        </td>
+                        <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive/70 hover:text-destructive"
+                              onClick={() => handleDelete(j.id)}
+                            >
+                              Delete
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleArchive(j.id)}>
+                              Archive
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -369,7 +457,7 @@ function JobsExplorer() {
               <div className="flex gap-1.5">
                 <button
                   className="rounded border border-border bg-card px-2 py-0.5 hover:bg-muted disabled:opacity-50"
-                  onClick={() => setPage(p => Math.max(0, p - 1))}
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
                   disabled={page === 0}
                 >
                   ←
@@ -379,7 +467,7 @@ function JobsExplorer() {
                 </span>
                 <button
                   className="rounded border border-border bg-card px-2 py-0.5 hover:bg-muted disabled:opacity-50"
-                  onClick={() => setPage(p => p + 1)}
+                  onClick={() => setPage((p) => p + 1)}
                   disabled={(page + 1) * limit >= jobResponse.total}
                 >
                   →
@@ -389,6 +477,17 @@ function JobsExplorer() {
           </>
         )}
       </Panel>
+
+      {/* Delete/Archive Confirmation */}
+      <ConfirmDialog
+        open={confirmDialogOpen}
+        title={pendingDeleteId ? "Delete job?" : "Archive job?"}
+        description={
+          pendingDeleteId ? "This will permanently delete this job." : "This will archive the job."
+        }
+        onConfirm={confirmAction}
+        onCancel={() => setConfirmDialogOpen(false)}
+      />
     </PageBody>
   );
 }

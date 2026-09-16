@@ -6,8 +6,7 @@
 // Set VITE_API_URL to an absolute URL only for explicit cross-origin dev
 // without the proxy.
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL ??
-  (import.meta.env.SSR ? "http://localhost:8000" : "");
+  import.meta.env.VITE_API_URL ?? (import.meta.env.SSR ? "http://localhost:8000" : "");
 
 let isRefreshing = false;
 let refreshPromise: Promise<boolean> | null = null;
@@ -78,11 +77,14 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   const url = path.startsWith("http") ? path : `${API_BASE_URL}${path}`;
 
   // Determine if caller already provided a Content-Type header (case-insensitive)
-  const hasContentType = init.headers && (
-    (init.headers instanceof Headers && (init.headers.has("Content-Type") || init.headers.has("content-type"))) ||
-    (Array.isArray(init.headers) && init.headers.some(([k]) => k.toLowerCase() === "content-type")) ||
-    (typeof init.headers === "object" && Object.keys(init.headers).some(k => k.toLowerCase() === "content-type"))
-  );
+  const hasContentType =
+    init.headers &&
+    ((init.headers instanceof Headers &&
+      (init.headers.has("Content-Type") || init.headers.has("content-type"))) ||
+      (Array.isArray(init.headers) &&
+        init.headers.some(([k]) => k.toLowerCase() === "content-type")) ||
+      (typeof init.headers === "object" &&
+        Object.keys(init.headers).some((k) => k.toLowerCase() === "content-type")));
 
   const mergedInit: RequestInit = {
     ...init,

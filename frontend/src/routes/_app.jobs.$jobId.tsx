@@ -4,10 +4,19 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, Tag, EmptyState, StatusPill } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
-import { getJob, triggerAnalysis, getJobAnalysis, getCachedMatchScore } from "@/lib/api/jobs";
+import {
+  getJob,
+  deleteJob,
+  archiveJob,
+  triggerAnalysis,
+  getJobAnalysis,
+  getCachedMatchScore,
+} from "@/lib/api/jobs";
 import { getApplications, createApplication } from "@/lib/api/applications";
 import { AnalysisInsights, AnalysisSkeleton } from "@/components/sirafit/analysis-insights";
 import { MatchScoreCard } from "@/components/sirafit/match-score-card";
+import { ConfirmDialog } from "@/components/sirafit/confirm-dialog";
+import { toast } from "sonner";
 import type { Job, JobAnalysis, JobMatchScore } from "@/types/job";
 
 export const Route = createFileRoute("/_app/jobs/$jobId")({
@@ -17,10 +26,13 @@ export const Route = createFileRoute("/_app/jobs/$jobId")({
 
 function JobDetails() {
   const { jobId } = Route.useParams();
+  const navigate = Route.useNavigate();
   const queryClient = useQueryClient();
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
   // Analysis: loaded via React Query and polled only while processing.
   // refetchInterval returns a number (ms) while status === "processing" and
@@ -33,8 +45,7 @@ function JobDetails() {
   } = useQuery({
     queryKey: ["job-analysis", jobId],
     queryFn: () => getJobAnalysis(jobId),
-    refetchInterval: (query) =>
-      query.state.data?.status === "processing" ? 2500 : false,
+    refetchInterval: (query) => (query.state.data?.status === "processing" ? 2500 : false),
     refetchIntervalInBackground: false,
     retry: 2,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
@@ -100,6 +111,13 @@ function JobDetails() {
     fetchData();
   }, [jobId]);
 
+  // Auto-trigger analysis if status is not_started
+  useEffect(() => {
+    if (analysis?.status === "not_started") {
+      handleRunAnalysis();
+    }
+  }, [analysis?.status, jobId]);
+
   const handleRunAnalysis = async (forceRefresh = false) => {
     try {
       const stub = await triggerAnalysis(jobId, forceRefresh);
@@ -127,6 +145,36 @@ function JobDetails() {
     } finally {
       setSavingPipeline(false);
       setTimeout(() => setPipelineMsg(null), 3000);
+    }
+  };
+
+  const handleArchiveToggle = async () => {
+    if (!job) return;
+    const nextArchived = !(job as any).is_archived;
+    setActionLoading(true);
+    try {
+      await archiveJob(job.id, nextArchived);
+      setJob({ ...job, is_archived: nextArchived } as any);
+      queryClient.invalidateQueries({ queryKey: ["jobs"] });
+      toast.success(nextArchived ? "Job archived" : "Job unarchived");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to update archive status");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteJob = async () => {
+    if (!job) return;
+    setActionLoading(true);
+    try {
+      await deleteJob(job.id);
+      queryClient.invalidateQueries({ queryKey: ["jobs"] });
+      toast.success("Job deleted");
+      navigate({ to: "/jobs" });
+    } catch (e: any) {
+      toast.error(e.message || "Failed to delete job");
+      setActionLoading(false);
     }
   };
 
@@ -367,7 +415,7 @@ function JobDetails() {
             }
           >
             {/* No analysis yet */}
-            {!analysis && !isProcessing && (
+            {(!analysis || analysis?.status === "not_started") && !isProcessing && (
               <div className="flex flex-col items-center gap-3 p-5 text-center">
                 <div className="text-3xl">🔍</div>
                 <p className="text-xs text-muted-foreground">
@@ -460,11 +508,27 @@ function JobDetails() {
                 {savingPipeline
                   ? "Saving…"
                   : existingApplication
-                  ? "In pipeline ✓"
-                  : "Save to pipeline"}
+                    ? "In pipeline ✓"
+                    : "Save to pipeline"}
               </Button>
               <Button className="w-full" variant="outline" onClick={handleExportDetails}>
                 Export details
+              </Button>
+              <Button
+                className="w-full"
+                variant="outline"
+                onClick={handleArchiveToggle}
+                disabled={actionLoading}
+              >
+                {(job as any).is_archived ? "Unarchive job" : "Archive job"}
+              </Button>
+              <Button
+                className="w-full text-destructive hover:bg-destructive/10"
+                variant="outline"
+                onClick={() => setDeleteConfirmOpen(true)}
+                disabled={actionLoading}
+              >
+                Delete job
               </Button>
             </div>
           </Panel>
@@ -496,6 +560,15 @@ function JobDetails() {
           </Panel>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        title="Delete job?"
+        description="This will permanently delete this job and any associated analysis. This action cannot be undone."
+        confirmLabel="Delete job"
+        onConfirm={handleDeleteJob}
+        onCancel={() => setDeleteConfirmOpen(false)}
+      />
     </PageBody>
   );
 }

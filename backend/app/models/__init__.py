@@ -1,8 +1,11 @@
 from app.models.user import User, UserPreference, RefreshToken, DeviceSession
+from app.models.oauth import OAuthAccount
+from app.models.totp import TOTPSecret, RecoveryCode
 from app.models.job import (
     Job,
     JobApplication,
     JobImport,
+    JobImportItem,
     JobAnalysis,
     Resume,
     AuditLog,
@@ -20,6 +23,9 @@ from app.models.profile import (
     Project,
     Certification,
 )
+from app.models.profile_version import ProfileVersion
+from app.models.skill_taxonomy import SkillTaxonomy
+from app.models.scrape_history import ScrapeHistory
 from app.models.score import JobMatchScore
 from app.models.batch import BatchJob
 from app.models.notification import Notification
@@ -31,10 +37,15 @@ __all__ = [
     "UserPreference",
     "RefreshToken",
     "DeviceSession",
+    # auth
+    "OAuthAccount",
+    "TOTPSecret",
+    "RecoveryCode",
     # jobs
     "Job",
     "JobApplication",
     "JobImport",
+    "JobImportItem",
     "JobAnalysis",
     "Resume",
     "AuditLog",
@@ -51,6 +62,9 @@ __all__ = [
     "Skill",
     "Project",
     "Certification",
+    "ProfileVersion",
+    "SkillTaxonomy",
+    "ScrapeHistory",
     # intelligence
     "JobMatchScore",
     # operations

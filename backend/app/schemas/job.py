@@ -42,6 +42,7 @@ class JobListResponse(BaseModel):
 
 # --- Job Data (extracted/normalized, not yet saved) ---
 class JobData(BaseModel):
+    id: Optional[str] = None
     external_id: str
     title: str
     company: str
@@ -54,12 +55,17 @@ class JobData(BaseModel):
     url: Optional[str] = None
     source: str = "manual"
     is_duplicate: bool = False
+    import_status: Optional[str] = None  # imported | duplicate | failed
 
 
 # --- Job Import ---
 class JobImportCreate(BaseModel):
     source_type: str  # "url", "description", "csv"
     data: str = Field(..., max_length=100000)  # The URL or the full description text
+
+
+class JobArchiveRequest(BaseModel):
+    archived: bool
 
 
 class JobImportResponse(BaseModel):
@@ -69,6 +75,11 @@ class JobImportResponse(BaseModel):
     total_found: int
     ok_count: int
     fail_count: int
+    errors: List[str] = []
+    error: Optional[str] = None
+    parsed_data: Optional[Dict[str, Any]] = None
+    processed_at: Optional[datetime] = None
+    partial: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -79,6 +90,10 @@ class ImportResultResponse(BaseModel):
     import_record: JobImportResponse
     jobs: List[JobData] = []
     errors: List[str] = []
+    scrape_method: Optional[str] = None  # "scrapling" | "heuristic"
+    scrape_duration_ms: Optional[int] = None
+    fields_extracted: Optional[int] = None
+    source_platform: Optional[str] = None  # linkedin, greenhouse, lever, etc.
 
 
 # --- Job Application ---
@@ -141,31 +156,32 @@ class FollowUpItem(BaseModel):
 
 
 class JobAnalysisResponse(BaseModel):
-    id: uuid.UUID
+    id: Optional[uuid.UUID] = None
     job_id: uuid.UUID
-    score: int
-    summary: str
-    pros: List[str]
-    cons: List[str]
-    skills_gap: List[str]
+    score: int = 0
+    summary: str = ""
+    pros: List[str] = []
+    cons: List[str] = []
+    skills_gap: List[str] = []
     key_requirements: Optional[List[str]] = None
     seniority: Optional[str] = None
     analysis_version: Optional[str] = None
     status: str = "done"
-    created_at: datetime
+    created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class JobMatchScoreResponse(BaseModel):
-    id: uuid.UUID
+    id: Optional[uuid.UUID] = None
     job_id: uuid.UUID
-    user_id: uuid.UUID
-    score: int
-    breakdown: Dict[str, Any]
+    user_id: Optional[uuid.UUID] = None
+    score: int = 0
+    breakdown: Dict[str, Any] = {}
     explanation: Optional[str] = None
-    created_at: datetime
+    status: str = "done"
+    created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)

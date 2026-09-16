@@ -441,6 +441,86 @@ class TestAnalysisAPI:
         # 404 for job not found or analysis not found
         assert response.status_code in (404,)
 
+    def test_get_analysis_200_not_started_when_analysis_missing(self, client, auth_headers, db):
+        """GET /jobs/{id}/analysis should return 200 with status=not_started when job exists but analysis is missing."""
+        job = Job(
+            external_id=f"test-{uuid.uuid4().hex[:8]}",
+            title="Frontend Engineer",
+            company="WebCo",
+            description="React and TypeScript.",
+        )
+        db.add(job)
+        db.commit()
+        db.refresh(job)
+
+        response = client.get(
+            f"/api/v1/jobs/{job.id}/analysis",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "not_started"
+        assert data["job_id"] == str(job.id)
+
+    def test_get_match_score_200_not_started_when_missing(self, client, auth_headers, db):
+        """GET /jobs/{id}/match-score should return 200 with status=not_started or done when job exists."""
+        job = Job(
+            external_id=f"test-{uuid.uuid4().hex[:8]}",
+            title="Backend Engineer",
+            company="APIco",
+            description="Python and FastAPI.",
+        )
+        db.add(job)
+        db.commit()
+        db.refresh(job)
+
+        response = client.get(
+            f"/api/v1/jobs/{job.id}/match-score",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] in ("not_started", "done")
+
+    def test_get_cached_match_score_200_not_started_when_missing(self, client, auth_headers, db):
+        """GET /jobs/{id}/match-score/cached should return 200 with status=not_started when missing."""
+        job = Job(
+            external_id=f"test-{uuid.uuid4().hex[:8]}",
+            title="Fullstack Engineer",
+            company="FullCo",
+            description="Node and React.",
+        )
+        db.add(job)
+        db.commit()
+        db.refresh(job)
+
+        response = client.get(
+            f"/api/v1/jobs/{job.id}/match-score/cached",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "not_started"
+        assert data["job_id"] == str(job.id)
+
+    def test_get_match_score_404_when_job_missing(self, client, auth_headers, db):
+        """GET /jobs/{id}/match-score should 404 when job does not exist."""
+        fake_id = uuid.uuid4()
+        response = client.get(
+            f"/api/v1/jobs/{fake_id}/match-score",
+            headers=auth_headers,
+        )
+        assert response.status_code == 404
+
+    def test_get_cached_match_score_404_when_job_missing(self, client, auth_headers, db):
+        """GET /jobs/{id}/match-score/cached should 404 when job does not exist."""
+        fake_id = uuid.uuid4()
+        response = client.get(
+            f"/api/v1/jobs/{fake_id}/match-score/cached",
+            headers=auth_headers,
+        )
+        assert response.status_code == 404
+
     def test_get_analysis_returns_stored_data(self, client, auth_headers, db):
         """GET /jobs/{id}/analysis should return stored analysis."""
         from app.models.job import Job, JobAnalysis

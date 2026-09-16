@@ -5,12 +5,7 @@ import { apiFetch } from "./client";
  * Date fields the backend types as Optional[date]; Pydantic rejects "" and
  * free-text like "2021 – Present", so empty values must be sent as null.
  */
-const DATE_FIELDS = [
-  "start_date",
-  "end_date",
-  "issue_date",
-  "expiration_date",
-] as const;
+const DATE_FIELDS = ["start_date", "end_date", "issue_date", "expiration_date"] as const;
 
 // Server-generated fields that ProfileUpdate does not accept.
 const STRIP_KEYS = ["id", "user_id", "created_at", "updated_at"];
@@ -82,10 +77,36 @@ export async function polishBullet(text: string): Promise<string> {
   });
   if (!response.ok) {
     const err = await response.json().catch(() => null);
-    throw new Error(
-      extractErrorDetail(err, "AI polish is unavailable right now"),
-    );
+    throw new Error(extractErrorDetail(err, "AI polish is unavailable right now"));
   }
   const data = await response.json();
   return data.polished as string;
+}
+
+// --- Sprint 2: Version History ---
+
+export interface ProfileVersionSummary {
+  id: string;
+  version: number;
+  created_at: string | null;
+  summary: string;
+}
+
+export async function getProfileHistory(): Promise<ProfileVersionSummary[]> {
+  const response = await apiFetch("/api/v1/profiles/me/history");
+  if (!response.ok) {
+    throw new Error("Failed to fetch profile history");
+  }
+  return response.json();
+}
+
+export async function revertProfileToVersion(versionId: string): Promise<Profile> {
+  const response = await apiFetch(`/api/v1/profiles/me/revert/${versionId}`, {
+    method: "PUT",
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new Error(extractErrorDetail(err, "Failed to revert profile"));
+  }
+  return response.json();
 }

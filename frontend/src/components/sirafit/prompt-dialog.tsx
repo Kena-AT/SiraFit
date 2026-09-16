@@ -72,13 +72,16 @@ export function PromptDialog({
   };
 
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) resolve(null); }}>
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) resolve(null);
+      }}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{config.title}</DialogTitle>
-          {config.description ? (
-            <DialogDescription>{config.description}</DialogDescription>
-          ) : null}
+          {config.description ? <DialogDescription>{config.description}</DialogDescription> : null}
         </DialogHeader>
         <div className="space-y-3 py-2">
           {config.fields.map((f, i) => (
@@ -91,9 +94,7 @@ export function PromptDialog({
                 <select
                   ref={i === 0 ? (firstInputRef as any) : undefined}
                   value={values[f.key] ?? ""}
-                  onChange={(e) =>
-                    setValues((prev) => ({ ...prev, [f.key]: e.target.value }))
-                  }
+                  onChange={(e) => setValues((prev) => ({ ...prev, [f.key]: e.target.value }))}
                   className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                 >
                   {(f.options ?? []).map((opt) => {
@@ -110,9 +111,7 @@ export function PromptDialog({
                 <Input
                   ref={i === 0 ? firstInputRef : undefined}
                   value={values[f.key] ?? ""}
-                  onChange={(e) =>
-                    setValues((prev) => ({ ...prev, [f.key]: e.target.value }))
-                  }
+                  onChange={(e) => setValues((prev) => ({ ...prev, [f.key]: e.target.value }))}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();

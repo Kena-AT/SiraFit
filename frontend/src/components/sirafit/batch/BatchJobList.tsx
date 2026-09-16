@@ -92,7 +92,7 @@ export function BatchJobList({ onViewDetails }: BatchJobListProps) {
         </Button>
       </div>
       <div className="space-y-4">
-        {jobs.map(job => (
+        {jobs.map((job) => (
           <BatchJobCard
             key={job.id}
             job={job}

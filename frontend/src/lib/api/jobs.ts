@@ -1,4 +1,9 @@
-import type { JobImportData, ImportResult, JobImportRecord, RankedJobListResponse } from "@/types/job";
+import type {
+  JobImportData,
+  ImportResult,
+  JobImportRecord,
+  RankedJobListResponse,
+} from "@/types/job";
 import { apiFetch } from "./client";
 
 export const importJobs = async (data: JobImportData): Promise<ImportResult> => {
@@ -28,6 +33,15 @@ export const getImportDetail = async (importId: string): Promise<ImportResult> =
     throw new Error("Failed to fetch import details");
   }
   return response.json();
+};
+
+export const deleteImport = async (importId: string): Promise<void> => {
+  const response = await apiFetch(`/api/v1/jobs/import/${importId}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    throw new Error("Failed to delete import");
+  }
 };
 
 export interface JobSearchParams {
@@ -107,14 +121,16 @@ export const getCachedMatchScore = async (jobId: string) => {
   return response.json();
 };
 
-export const getRankedJobs = async (params: {
-  skip?: number;
-  limit?: number;
-} = {}): Promise<any> => {
+export const getRankedJobs = async (
+  params: {
+    skip?: number;
+    limit?: number;
+  } = {},
+): Promise<any> => {
   const queryParams = new URLSearchParams();
   if (params.skip) queryParams.append("skip", params.skip.toString());
   if (params.limit) queryParams.append("limit", params.limit.toString());
-  
+
   const response = await apiFetch(`/api/v1/jobs/ranked?${queryParams.toString()}`);
   if (!response.ok) {
     throw new Error("Failed to fetch ranked jobs");
@@ -122,15 +138,37 @@ export const getRankedJobs = async (params: {
   return response.json();
 };
 
+export const deleteJob = async (jobId: string): Promise<void> => {
+  const response = await apiFetch(`/api/v1/jobs/${jobId}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    throw new Error("Failed to delete job");
+  }
+};
+
+export const archiveJob = async (jobId: string, archived: boolean): Promise<void> => {
+  const response = await apiFetch(`/api/v1/jobs/${jobId}/archive`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ archived }),
+  });
+  if (!response.ok) {
+    throw new Error("Failed to archive job");
+  }
+};
+
 /**
  * Single batched call returning every job pre-joined with its stored match
  * score (or null). Replaces the previous N+1 pattern where the Match page
  * fired one getCachedMatchScore request per job.
  */
-export const getJobsWithScores = async (params: {
-  skip?: number;
-  limit?: number;
-} = {}): Promise<RankedJobListResponse> => {
+export const getJobsWithScores = async (
+  params: {
+    skip?: number;
+    limit?: number;
+  } = {},
+): Promise<RankedJobListResponse> => {
   const queryParams = new URLSearchParams();
   if (params.skip !== undefined) queryParams.append("skip", params.skip.toString());
   if (params.limit !== undefined) queryParams.append("limit", params.limit.toString());
