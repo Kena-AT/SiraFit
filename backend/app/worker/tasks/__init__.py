@@ -536,11 +536,14 @@ try:
     from app.worker.tasks.scraping import scrape_and_import_job
     from app.worker.tasks.monitoring import detect_stuck_imports
     from app.worker.tasks.session_import import import_saved_jobs_task, import_single_saved_job
+    from app.worker.tasks.embeddings import generate_job_embedding_task, enqueue_job_embedding
 except Exception:
     scrape_and_import_job = None
     detect_stuck_imports = None
     import_saved_jobs_task = None
     import_single_saved_job = None
+    generate_job_embedding_task = None
+    enqueue_job_embedding = None
 
 __all__ = [
     "enqueue_resume_generation",
@@ -556,4 +559,6 @@ __all__ = [
     "detect_stuck_imports",
     "import_saved_jobs_task",
     "import_single_saved_job",
+    "generate_job_embedding_task",
+    "enqueue_job_embedding",
 ]

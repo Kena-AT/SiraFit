@@ -85,6 +85,30 @@ AI_VALIDATION_RETRIES_TOTAL = Counter(
     ["operation", "provider"],
 )
 
+# Semantic Search & Embeddings Observability (Sprint 8)
+EMBEDDING_GENERATION_TOTAL = Counter(
+    "embedding_generation_total",
+    "Total job embedding generation operations.",
+    ["operation", "status", "model"],
+)
+EMBEDDING_GENERATION_DURATION_SECONDS = Histogram(
+    "embedding_generation_duration_seconds",
+    "Duration of job embedding generation in seconds.",
+    ["model"],
+    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0),
+)
+SEMANTIC_SEARCH_TOTAL = Counter(
+    "semantic_search_total",
+    "Total job searches executed by search mode.",
+    ["mode", "status"],
+)
+SEMANTIC_SEARCH_DURATION_SECONDS = Histogram(
+    "semantic_search_duration_seconds",
+    "Latency of job searches in seconds.",
+    ["mode"],
+    buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0),
+)
+
 _SKIP_PREFIXES = ("/metrics", "/docs", "/openapi.json", "/health")
 
 

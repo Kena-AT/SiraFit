@@ -8,7 +8,7 @@ from app.core.database import get_db
 from app.core.cache import invalidate_job_related, invalidate_match_score
 from app.api.users import get_current_user
 from app.models.user import User
-from app.models.job import JobApplication, Job, AuditLog
+from app.models.job import JobApplication, Job, AuditLog, Resume, ResumeVersion
 from app.models.profile import Profile
 from app.schemas.job import (
     JobApplicationCreate,
@@ -90,6 +90,23 @@ async def create_application(
             status_code=400, detail="Application already exists for this job"
         )
 
+    # Validate resume_version_id if provided
+    if app_in.resume_version_id:
+        v_check = (
+            db.query(ResumeVersion)
+            .join(Resume, ResumeVersion.resume_id == Resume.id)
+            .filter(
+                ResumeVersion.id == app_in.resume_version_id,
+                Resume.user_id == current_user.id,
+            )
+            .first()
+        )
+        if not v_check:
+            raise HTTPException(
+                status_code=400,
+                detail="Selected resume version does not exist or does not belong to you",
+            )
+
     application = JobApplication(user_id=current_user.id, **app_in.model_dump())
 
     # Calculate score
@@ -141,6 +158,22 @@ def update_application(
         raise HTTPException(status_code=404, detail="Application not found")
 
     update_data = app_in.model_dump(exclude_unset=True)
+    if "resume_version_id" in update_data and update_data["resume_version_id"] is not None:
+        v_check = (
+            db.query(ResumeVersion)
+            .join(Resume, ResumeVersion.resume_id == Resume.id)
+            .filter(
+                ResumeVersion.id == update_data["resume_version_id"],
+                Resume.user_id == current_user.id,
+            )
+            .first()
+        )
+        if not v_check:
+            raise HTTPException(
+                status_code=400,
+                detail="Selected resume version does not exist or does not belong to you",
+            )
+
     for field, value in update_data.items():
         setattr(application, field, value)
 

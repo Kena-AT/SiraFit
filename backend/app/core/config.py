@@ -39,6 +39,18 @@ class Settings(BaseSettings):
     # Environment
     ENVIRONMENT: str = "development"
 
+    # Semantic Search & Embeddings (Sprint 8)
+    ENABLE_EMBEDDINGS: bool = True
+    ENABLE_SEMANTIC_SEARCH: bool = True
+    DEFAULT_SEARCH_MODE: str = "keyword"  # keyword | semantic | hybrid
+    EMBEDDING_PROVIDER: str = "local"
+    EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
+    EMBEDDING_VERSION: str = "v1"
+    EMBEDDING_DIMENSION: int = 384
+    EMBEDDING_NORMALIZE: bool = True
+    EMBEDDING_MAX_INPUT_TOKENS: int = 256
+    EMBEDDING_BATCH_SIZE: int = 32
+
     # AI Integration — one field per supported provider. All optional; the
     # agent connection check and generation dispatcher pick the first key set.
     GEMINI_API: str | None = None
@@ -68,6 +80,14 @@ class Settings(BaseSettings):
     ENABLE_2FA: bool = True
     TOTP_ISSUER_NAME: str = "SiraFit"
     RECOVERY_CODE_COUNT: int = 8
+
+    # Analytics Expansion (Sprint 10)
+    SALARY_BENCHMARK_MIN_SAMPLES: int = 5
+    SALARY_BENCHMARK_MAX_ROLES: int = 10
+    SKILLS_GAP_TOP_N: int = 15
+    SKILLS_GAP_PRIORITY_THRESHOLD: float = 0.20
+    SKILLS_GAP_HIGH_MATCH_THRESHOLD: float = 0.70
+    STAGE_MEDIAN_MIN_APPLICATIONS: int = 3
 
     # Optional path to a user-supplied .env file holding provider API keys.
     # When set, keys in this file OVERLAY the server .env fields (see

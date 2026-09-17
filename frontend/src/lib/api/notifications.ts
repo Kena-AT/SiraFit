@@ -51,6 +51,9 @@ export interface MetricsResponse {
   top_technologies: TopTechItem[];
   salary_medians: Record<string, number>;
   skill_gaps: SkillGapItem[];
+  salary_benchmarks?: any[];
+  skills_gap_analysis?: any;
+  stall_insights?: any;
   generated_at: string;
 }
 

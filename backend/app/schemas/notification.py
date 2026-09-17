@@ -31,24 +31,15 @@ class NotificationListResponse(BaseModel):
     limit: int
 
 
-# Analytics schemas
-
-
-class MetricsResponse(BaseModel):
-    total_applications: int
-    interview_rate: float
-    avg_response_time_days: float
-    offer_rate: float
-    conversion_funnel: List[Dict[str, Any]]
-    rejection_stages: List[Dict[str, Any]]
-    skill_coverage: List[Dict[str, Any]]
-    market_demand: List[Dict[str, Any]]
-    top_technologies: List[Dict[str, Any]] = Field(default_factory=list)
-    salary_medians: Dict[str, float] = Field(default_factory=dict)
-    skill_gaps: List[Dict[str, Any]] = Field(default_factory=list)
-    generated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
+# Analytics schemas - canonical definitions live in app.schemas.analytics
+from app.schemas.analytics import (
+    MetricsResponse,
+    SalaryBenchmark,
+    SkillGapItem,
+    SkillsGapResponse,
+    StageInsight,
+    StallInsightsResponse,
+)
 
 
 class AnalyticsSnapshotResponse(BaseModel):

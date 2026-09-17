@@ -40,6 +40,7 @@ import { Route as DocsResumeProfileRouteImport } from './routes/docs.resume-prof
 import { Route as DocsTrackApplicationsRouteImport } from './routes/docs.track-applications'
 import { Route as AppAnalyticsIndexRouteImport } from './routes/_app.analytics.index'
 import { Route as AppAnalyticsMarketRouteImport } from './routes/_app.analytics.market'
+import { Route as AppAnalyticsReportRouteImport } from './routes/_app.analytics.report'
 import { Route as AppAnalyticsSkillsRouteImport } from './routes/_app.analytics.skills'
 import { Route as AppApplicationsIndexRouteImport } from './routes/_app.applications.index'
 import { Route as AppApplicationsIdRouteImport } from './routes/_app.applications.$id'
@@ -218,6 +219,11 @@ const AppAnalyticsMarketRoute = AppAnalyticsMarketRouteImport.update({
   path: '/market',
   getParentRoute: () => AppAnalyticsRoute,
 } as any)
+const AppAnalyticsReportRoute = AppAnalyticsReportRouteImport.update({
+  id: '/report',
+  path: '/report',
+  getParentRoute: () => AppAnalyticsRoute,
+} as any)
 const AppAnalyticsSkillsRoute = AppAnalyticsSkillsRouteImport.update({
   id: '/skills',
   path: '/skills',
@@ -366,6 +372,7 @@ export interface FileRoutesByFullPath {
   '/docs/resume-profile': typeof DocsResumeProfileRoute
   '/docs/track-applications': typeof DocsTrackApplicationsRoute
   '/analytics/market': typeof AppAnalyticsMarketRoute
+  '/analytics/report': typeof AppAnalyticsReportRoute
   '/analytics/skills': typeof AppAnalyticsSkillsRoute
   '/applications/$id': typeof AppApplicationsIdRoute
   '/applications/followups': typeof AppApplicationsFollowupsRoute
@@ -415,6 +422,7 @@ export interface FileRoutesByTo {
   '/docs/resume-profile': typeof DocsResumeProfileRoute
   '/docs/track-applications': typeof DocsTrackApplicationsRoute
   '/analytics/market': typeof AppAnalyticsMarketRoute
+  '/analytics/report': typeof AppAnalyticsReportRoute
   '/analytics/skills': typeof AppAnalyticsSkillsRoute
   '/applications/$id': typeof AppApplicationsIdRoute
   '/applications/followups': typeof AppApplicationsFollowupsRoute
@@ -472,6 +480,7 @@ export interface FileRoutesById {
   '/docs/resume-profile': typeof DocsResumeProfileRoute
   '/docs/track-applications': typeof DocsTrackApplicationsRoute
   '/_app/analytics/market': typeof AppAnalyticsMarketRoute
+  '/_app/analytics/report': typeof AppAnalyticsReportRoute
   '/_app/analytics/skills': typeof AppAnalyticsSkillsRoute
   '/_app/applications/$id': typeof AppApplicationsIdRoute
   '/_app/applications/followups': typeof AppApplicationsFollowupsRoute
@@ -529,6 +538,7 @@ export interface FileRouteTypes {
     | '/docs/resume-profile'
     | '/docs/track-applications'
     | '/analytics/market'
+    | '/analytics/report'
     | '/analytics/skills'
     | '/applications/$id'
     | '/applications/followups'
@@ -578,6 +588,7 @@ export interface FileRouteTypes {
     | '/docs/resume-profile'
     | '/docs/track-applications'
     | '/analytics/market'
+    | '/analytics/report'
     | '/analytics/skills'
     | '/applications/$id'
     | '/applications/followups'
@@ -634,6 +645,7 @@ export interface FileRouteTypes {
     | '/docs/resume-profile'
     | '/docs/track-applications'
     | '/_app/analytics/market'
+    | '/_app/analytics/report'
     | '/_app/analytics/skills'
     | '/_app/applications/$id'
     | '/_app/applications/followups'
@@ -894,6 +906,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAnalyticsMarketRouteImport
       parentRoute: typeof AppAnalyticsRoute
     }
+    '/_app/analytics/report': {
+      id: '/_app/analytics/report'
+      path: '/report'
+      fullPath: '/analytics/report'
+      preLoaderRoute: typeof AppAnalyticsReportRouteImport
+      parentRoute: typeof AppAnalyticsRoute
+    }
     '/_app/analytics/skills': {
       id: '/_app/analytics/skills'
       path: '/skills'
@@ -1060,12 +1079,14 @@ declare module '@tanstack/react-router' {
 
 interface AppAnalyticsRouteChildren {
   AppAnalyticsMarketRoute: typeof AppAnalyticsMarketRoute
+  AppAnalyticsReportRoute: typeof AppAnalyticsReportRoute
   AppAnalyticsSkillsRoute: typeof AppAnalyticsSkillsRoute
   AppAnalyticsIndexRoute: typeof AppAnalyticsIndexRoute
 }
 
 const AppAnalyticsRouteChildren: AppAnalyticsRouteChildren = {
   AppAnalyticsMarketRoute: AppAnalyticsMarketRoute,
+  AppAnalyticsReportRoute: AppAnalyticsReportRoute,
   AppAnalyticsSkillsRoute: AppAnalyticsSkillsRoute,
   AppAnalyticsIndexRoute: AppAnalyticsIndexRoute,
 }
