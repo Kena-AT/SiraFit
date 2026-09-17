@@ -528,6 +528,12 @@ def process_import(
                     status="imported",
                     title_guess=normalized["title"],
                 ))
+                # Trigger async embedding generation (Sprint 8)
+                try:
+                    from app.worker.tasks.embeddings import enqueue_job_embedding
+                    enqueue_job_embedding(job.id)
+                except Exception as emb_err:
+                    logger.warning("Failed to enqueue embedding for job %s: %s", job.id, emb_err)
 
         job_import.total_found = job_import.ok_count + job_import.fail_count
         job_import.status = "completed"

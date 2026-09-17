@@ -48,6 +48,28 @@ class Job(Base):
     created_at = Column(DateTime, default=_utcnow, index=True)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
+    # Semantic Search & Embeddings (Sprint 8)
+    # Using JSON column type in SQLite tests / when pgvector is absent, or Vector(384) in PostgreSQL
+    def _resolve_vector_col():
+        try:
+            import importlib.util
+            if importlib.util.find_spec("pgvector") is not None:
+                from pgvector.sqlalchemy import Vector
+                return Vector(384)
+        except Exception:
+            pass
+        return JSON
+
+    embedding = Column(_resolve_vector_col(), nullable=True)
+
+    embedding_model = Column(String(100), nullable=True)
+    embedding_version = Column(String(20), nullable=True)
+    embedding_source_hash = Column(String(64), nullable=True, index=True)
+    embedding_status = Column(
+        String(20), nullable=False, default="pending", index=True
+    )  # pending | processing | ready | failed | stale
+    embedding_updated_at = Column(DateTime, nullable=True)
+
     applications = relationship(
         "JobApplication", back_populates="job", cascade="all, delete-orphan"
     )
@@ -63,6 +85,12 @@ class JobApplication(Base):
     )
     job_id = Column(
         UUID(as_uuid=True), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False
+    )
+    resume_version_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("resume_versions.id", ondelete="SET NULL", use_alter=True),
+        nullable=True,
+        index=True,
     )
 
     status = Column(
@@ -86,6 +114,7 @@ class JobApplication(Base):
     resumes = relationship(
         "Resume", back_populates="application", cascade="all, delete-orphan"
     )
+    resume_version = relationship("ResumeVersion", foreign_keys=[resume_version_id])
 
 
 class JobAnalysis(Base):
@@ -220,8 +249,17 @@ class ResumeVersion(Base):
         String(100), nullable=True
     )  # "minimal", "technical", "modern", "corporate", "compact"
     job_id = Column(
-        UUID(as_uuid=True), ForeignKey("jobs.id", ondelete="SET NULL"), nullable=True
+        UUID(as_uuid=True), ForeignKey("jobs.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    parent_version_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("resume_versions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    source_type = Column(
+        String(20), nullable=False, default="base"
+    )  # "base", "tailored", "revert"
     tailoring_notes = Column(Text, nullable=True)
     score = Column(Integer, nullable=True)  # ATS readiness score
     status = Column(
@@ -233,6 +271,12 @@ class ResumeVersion(Base):
 
     resume = relationship("Resume", backref="versions")
     job = relationship("Job")
+    parent = relationship(
+        "ResumeVersion",
+        remote_side=[id],
+        foreign_keys=[parent_version_id],
+        backref="children",
+    )
 
 
 # ---------------------------------------------------------------------------

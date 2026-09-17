@@ -11,6 +11,7 @@ import {
   triggerAnalysis,
   getJobAnalysis,
   getCachedMatchScore,
+  getSimilarJobs,
 } from "@/lib/api/jobs";
 import { getApplications, createApplication } from "@/lib/api/applications";
 import { AnalysisInsights, AnalysisSkeleton } from "@/components/sirafit/analysis-insights";
@@ -66,6 +67,13 @@ function JobDetails() {
   const [existingApplication, setExistingApplication] = useState<any | null>(null);
   const [savingPipeline, setSavingPipeline] = useState(false);
   const [pipelineMsg, setPipelineMsg] = useState<string | null>(null);
+
+  // Similar jobs query (Sprint 8)
+  const { data: similarData, isLoading: similarLoading } = useQuery({
+    queryKey: ["similar-jobs", jobId],
+    queryFn: () => getSimilarJobs(jobId, 5),
+    enabled: !!jobId,
+  });
 
   // Load job
   useEffect(() => {
@@ -555,6 +563,30 @@ function JobDetails() {
             ) : (
               <div className="p-4 text-xs text-muted-foreground">
                 No application record for this job yet.
+              </div>
+            )}
+          </Panel>
+
+          <Panel title="Similar jobs">
+            {similarLoading ? (
+              <div className="p-4 text-xs text-muted-foreground">Searching similar jobs…</div>
+            ) : similarData && similarData.jobs.length > 0 ? (
+              <div className="divide-y divide-border">
+                {similarData.jobs.map((simJob) => (
+                  <Link
+                    key={simJob.id}
+                    to="/jobs/$jobId"
+                    params={{ jobId: simJob.id }}
+                    className="block p-3 transition-colors hover:bg-muted/50"
+                  >
+                    <div className="text-xs font-medium text-foreground">{simJob.title}</div>
+                    <div className="text-[11px] text-muted-foreground">{simJob.company}</div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 text-xs text-muted-foreground">
+                No similar jobs found yet.
               </div>
             )}
           </Panel>

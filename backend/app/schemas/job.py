@@ -103,6 +103,7 @@ class JobApplicationBase(BaseModel):
     general_notes: Optional[str] = None
     follow_up_at: Optional[datetime] = None
     follow_up_note: Optional[str] = None
+    resume_version_id: Optional[uuid.UUID] = None
 
 
 class JobApplicationCreate(JobApplicationBase):

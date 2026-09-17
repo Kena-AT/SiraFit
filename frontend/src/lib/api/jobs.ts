@@ -3,6 +3,7 @@ import type {
   ImportResult,
   JobImportRecord,
   RankedJobListResponse,
+  JobListResponse,
 } from "@/types/job";
 import { apiFetch } from "./client";
 
@@ -44,10 +45,13 @@ export const deleteImport = async (importId: string): Promise<void> => {
   }
 };
 
+export type SearchMode = "keyword" | "semantic" | "hybrid";
+
 export interface JobSearchParams {
   skip?: number;
   limit?: number;
   search?: string;
+  mode?: SearchMode;
   company?: string;
   location?: string;
   source?: string;
@@ -70,6 +74,14 @@ export const getJobs = async (params: JobSearchParams = {}) => {
   const response = await apiFetch(`/api/v1/jobs?${queryParams.toString()}`);
   if (!response.ok) {
     throw new Error("Failed to fetch jobs");
+  }
+  return response.json();
+};
+
+export const getSimilarJobs = async (jobId: string, limit = 10): Promise<JobListResponse> => {
+  const response = await apiFetch(`/api/v1/jobs/${jobId}/similar?limit=${limit}`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch similar jobs");
   }
   return response.json();
 };

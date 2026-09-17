@@ -31,6 +31,7 @@ function JobsExplorer() {
   // Search and filter state
   const [searchTerm, setSearchTerm] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
+  const [searchMode, setSearchMode] = useState<"keyword" | "semantic" | "hybrid">("keyword");
   const [companyInput, setCompanyInput] = useState("");
   const [companyFilter, setCompanyFilter] = useState("");
   const [locationInput, setLocationInput] = useState("");
@@ -60,12 +61,15 @@ function JobsExplorer() {
       sort_by: sortBy,
       sort_order: sortOrder,
     };
-    if (activeSearch) params.search = activeSearch;
+    if (activeSearch) {
+      params.search = activeSearch;
+      params.mode = searchMode;
+    }
     if (companyFilter) params.company = companyFilter;
     if (locationFilter) params.location = locationFilter;
     if (sourceFilter) params.source = sourceFilter;
     return ["jobs", params];
-  }, [page, limit, sortBy, sortOrder, activeSearch, companyFilter, locationFilter, sourceFilter]);
+  }, [page, limit, sortBy, sortOrder, activeSearch, searchMode, companyFilter, locationFilter, sourceFilter]);
 
   const queryParams = queryKey[1];
 
@@ -250,14 +254,64 @@ function JobsExplorer() {
 
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex max-w-md flex-1 gap-2">
+          <div className="relative flex max-w-xl flex-1 items-center gap-2">
             <Input
-              placeholder="Search role, company, description…"
+              placeholder={
+                searchMode === "semantic"
+                  ? "Semantic query (e.g. distributed systems high throughput)..."
+                  : searchMode === "hybrid"
+                  ? "Hybrid search role, skills, keywords…"
+                  : "Search role, company, description…"
+              }
               className="h-9 bg-card"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             />
+            <div className="flex h-9 items-center rounded-md border border-border bg-card p-0.5 text-xs">
+              <button
+                type="button"
+                className={`rounded px-2 py-1 font-medium transition-colors ${
+                  searchMode === "keyword"
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => {
+                  setSearchMode("keyword");
+                  if (activeSearch) setPage(0);
+                }}
+              >
+                Keyword
+              </button>
+              <button
+                type="button"
+                className={`rounded px-2 py-1 font-medium transition-colors ${
+                  searchMode === "semantic"
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => {
+                  setSearchMode("semantic");
+                  if (activeSearch) setPage(0);
+                }}
+              >
+                Semantic
+              </button>
+              <button
+                type="button"
+                className={`rounded px-2 py-1 font-medium transition-colors ${
+                  searchMode === "hybrid"
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => {
+                  setSearchMode("hybrid");
+                  if (activeSearch) setPage(0);
+                }}
+              >
+                Hybrid
+              </button>
+            </div>
             <Button size="sm" onClick={handleSearch} disabled={isLoading}>
               Search
             </Button>

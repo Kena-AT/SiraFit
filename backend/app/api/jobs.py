@@ -57,6 +57,15 @@ from app.services.scraping.session_importer import (
     SUPPORTED_PLATFORMS,
     SavedJobsImporter,
 )
+from app.core.config import settings
+from app.core import metrics
+from app.repositories.job_search import (
+    keyword_search_jobs,
+    semantic_search_jobs,
+    hybrid_search_jobs,
+    find_similar_jobs,
+)
+from app.services.embeddings import generate_query_embedding
 
 router = APIRouter()
 
@@ -104,37 +113,43 @@ def list_ranked_jobs(
 def job_search(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    q: str = Query(..., min_length=1, description="Free-text search against title, company, description, location"),
+    q: str = Query(..., min_length=1, description="Search query"),
+    mode: str = Query("keyword", regex="^(keyword|semantic|hybrid)$", description="Search mode: keyword, semantic, or hybrid"),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
 ) -> Any:
-    """Free-text search across job title, company, description, and location.
+    """Search jobs using keyword, semantic (pgvector), or hybrid (RRF) retrieval."""
+    import time
+    start_time = time.perf_counter()
 
-    Performs a PostgreSQL-optimized ``ilike`` search on four columns.
-    For production scale, add a GIN trigram index:
+    # If semantic/hybrid requested but embeddings disabled, fall back to keyword
+    effective_mode = mode
+    if effective_mode in ("semantic", "hybrid") and not settings.ENABLE_SEMANTIC_SEARCH:
+        effective_mode = "keyword"
 
-        CREATE INDEX idx_jobs_search ON jobs
-        USING GIN (tolower(title) gin_trgm_ops,
-                   tolower(company) gin_trgm_ops,
-                   tolower(description) gin_trgm_ops,
-                   tolower(location) gin_trgm_ops);
+    try:
+        if effective_mode == "semantic":
+            query_vector = generate_query_embedding(q)
+            jobs, total = semantic_search_jobs(db, query_vector=query_vector, skip=skip, limit=limit)
+        elif effective_mode == "hybrid":
+            query_vector = generate_query_embedding(q)
+            jobs, total = hybrid_search_jobs(
+                db, query_text=q, query_vector=query_vector, skip=skip, limit=limit
+            )
+        else:
+            jobs, total = keyword_search_jobs(db, query_text=q, skip=skip, limit=limit)
 
-    Without the index, large tables will suffer sequential scans; the index
-    reduces search latency from O(n) to effectively O(log n) for pattern
-    matching.
-    """
-    term = f"%{q}%"
-    query = db.query(Job).filter(
-        or_(
-            Job.title.ilike(term),
-            Job.company.ilike(term),
-            Job.description.ilike(term),
-            Job.location.ilike(term),
-        )
-    )
-    total = query.with_entities(func.count(Job.id)).scalar() or 0
-    jobs = query.offset(skip).limit(limit).all()
-    return JobListResponse(jobs=jobs, total=total, skip=skip, limit=limit)
+        duration = time.perf_counter() - start_time
+        metrics.SEMANTIC_SEARCH_TOTAL.labels(mode=effective_mode, status="success").inc()
+        metrics.SEMANTIC_SEARCH_DURATION_SECONDS.labels(mode=effective_mode).observe(duration)
+        return JobListResponse(jobs=jobs, total=total, skip=skip, limit=limit)
+
+    except Exception as exc:
+        metrics.SEMANTIC_SEARCH_TOTAL.labels(mode=effective_mode, status="failure").inc()
+        logger.exception("Search failure in mode %s: %s", effective_mode, exc)
+        # Graceful fallback to keyword search if semantic model fails
+        jobs, total = keyword_search_jobs(db, query_text=q, skip=skip, limit=limit)
+        return JobListResponse(jobs=jobs, total=total, skip=skip, limit=limit)
 
 
 @router.get("/with-scores", response_model=RankedJobListResponse)
@@ -195,15 +210,49 @@ def _list_jobs_query(db: Session, current_user: User, skip: int, limit: int,
                      tags: Optional[str], min_salary: Optional[int],
                      max_salary: Optional[int], sort_by: Optional[str],
                      sort_order: Optional[str], include_archived: bool,
-                     skill_keywords: list[str] | None = None) -> JobListResponse:
-    """Core job-listing query logic (sync, callable from sync or async paths).
+                     skill_keywords: list[str] | None = None,
+                     mode: str = "keyword") -> JobListResponse:
+    """Core job-listing query logic with support for keyword, semantic, and hybrid retrieval."""
+    effective_mode = mode
+    if effective_mode in ("semantic", "hybrid") and not settings.ENABLE_SEMANTIC_SEARCH:
+        effective_mode = "keyword"
 
-    If ``skill_keywords`` is non-empty, we AND an additional ``tags `` LIKE
-    any-of-keywords clause so the returned list is pre-filtered to jobs that
-    mention at least one of the user's top 3 skills. This is a best-effort
-    relevance filter — it avoids returning completely unrelated jobs when the
-    user has a profile, at negligible extra DB cost.
-    """
+    if search and search.strip() and effective_mode in ("semantic", "hybrid"):
+        try:
+            query_vector = generate_query_embedding(search.strip())
+            if effective_mode == "semantic":
+                jobs, total = semantic_search_jobs(
+                    db,
+                    query_vector=query_vector,
+                    skip=skip,
+                    limit=limit,
+                    company=company,
+                    location=location,
+                    source=source,
+                    tags=tags,
+                    min_salary=min_salary,
+                    max_salary=max_salary,
+                    include_archived=include_archived,
+                )
+            else:
+                jobs, total = hybrid_search_jobs(
+                    db,
+                    query_text=search.strip(),
+                    query_vector=query_vector,
+                    skip=skip,
+                    limit=limit,
+                    company=company,
+                    location=location,
+                    source=source,
+                    tags=tags,
+                    min_salary=min_salary,
+                    max_salary=max_salary,
+                    include_archived=include_archived,
+                )
+            return JobListResponse(jobs=jobs, total=total, skip=skip, limit=limit)
+        except Exception as exc:
+            logger.warning("Semantic/hybrid retrieval failed in list_jobs, falling back to keyword: %s", exc)
+
     query = db.query(Job)
 
     if not include_archived:
@@ -278,6 +327,7 @@ async def list_jobs(
     sort_by: Optional[str] = Query("created_at"),
     sort_order: Optional[str] = Query("desc"),
     include_archived: bool = Query(False, description="Include archived jobs"),
+    mode: str = Query("keyword", regex="^(keyword|semantic|hybrid)$", description="Search mode"),
     # Profiling: if a user profile exists, we pre-filter jobs by skill overlap
     # so the returned list is immediately relevant. This is a best-effort filter —
     # if no profile is found we fall back to the full list unchanged.
@@ -301,6 +351,7 @@ async def list_jobs(
     cache_key = _build_cache_key(
         str(current_user.id),
         search=search,
+        mode=mode,
         company=company,
         location=location,
         source=source,
@@ -330,6 +381,7 @@ async def list_jobs(
             sort_order,
             include_archived,
             skill_keywords,
+            mode,
         )
         return result
 
@@ -582,6 +634,25 @@ def get_cached_match_score(
     resp_data["status"] = "done"
     cache_set(cache_key, resp_data, ttl=300)
     return score
+
+
+@router.get("/{job_id}/similar", response_model=JobListResponse)
+def get_similar_jobs(
+    job_id: uuid.UUID,
+    limit: int = Query(10, ge=1, le=50, description="Max similar jobs to retrieve"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """Retrieve semantically similar jobs using pgvector cosine distance.
+
+    Excludes the source job, jobs without ready embeddings, and archived jobs.
+    """
+    source_job = db.query(Job).filter(Job.id == job_id, Job.is_archived == False).first()  # noqa: E712
+    if not source_job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    similar = find_similar_jobs(db, source_job_id=job_id, limit=limit)
+    return JobListResponse(jobs=similar, total=len(similar), skip=0, limit=limit)
 
 
 # ---------------------------------------------------------------------------
