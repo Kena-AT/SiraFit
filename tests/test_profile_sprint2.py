@@ -215,13 +215,20 @@ class TestProfileVersioning:
         version = create_profile_version(test_user.id, test_profile, db)
         assert version.version == 1
         assert version.user_id == test_user.id
-        assert version.data["first_name"] == "Jane"
-        assert version.data["last_name"] == "Doe"
-        assert len(version.data["experiences"]) == 1
-        assert len(version.data["skills"]) == 2
+        # Data is stored in schema-versioned envelope
+        data = version.data
+        assert data["schema_version"] == 1
+        profile_data = data["profile"]
+        assert profile_data["first_name"] == "Jane"
+        assert profile_data["last_name"] == "Doe"
+        assert len(profile_data["experiences"]) == 1
+        assert len(profile_data["skills"]) == 2
 
     def test_create_subsequent_versions(self, db, test_user, test_profile):
         v1 = create_profile_version(test_user.id, test_profile, db)
+        db.commit()
+        # Mutate profile so it's not a no-op snapshot
+        test_profile.headline = "Updated Headline"
         db.commit()
         v2 = create_profile_version(test_user.id, test_profile, db)
         db.commit()
@@ -229,6 +236,9 @@ class TestProfileVersioning:
 
     def test_get_profile_history(self, db, test_user, test_profile):
         create_profile_version(test_user.id, test_profile, db)
+        db.commit()
+        # Mutate so second create_profile_version is not a no-op
+        test_profile.headline = "Version Two"
         db.commit()
         create_profile_version(test_user.id, test_profile, db)
         db.commit()

@@ -16,13 +16,20 @@ from app.models.profile import (
     Certification,
 )
 from app.models.profile_version import ProfileVersion
-from app.schemas.profile import ProfileResponse, ProfileUpdate
+from app.schemas.profile import (
+    ProfileResponse,
+    ProfileUpdate,
+    ProfileVersionSummaryResponse,
+    ProfileVersionDetailResponse,
+)
 from app.services.profile_validation import validate_profile
 from app.services.profile_versioning import (
     create_profile_version,
     get_profile_history,
+    get_profile_version_detail,
     revert_to_version,
 )
+from app.services.skill_taxonomy import canonicalize_profile_skills
 
 router = APIRouter()
 
@@ -138,6 +145,7 @@ def update_my_profile(
     """
     Update the current user's profile with business validation and versioning.
     Creates an immutable snapshot before each update for rollback support.
+    Supports optimistic concurrency via expected_revision.
     """
     profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
 
@@ -148,15 +156,34 @@ def update_my_profile(
 
     update_data = profile_in.model_dump(exclude_unset=True)
 
-    # Sprint 2: Run business validation before any destructive changes
+    # Optimistic concurrency: reject stale updates
+    expected_revision = update_data.pop("expected_revision", None)
+    if expected_revision is not None and (profile.revision or 1) != expected_revision:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "REVISION_CONFLICT",
+                "message": (
+                    f"Profile has been modified since you loaded it. "
+                    f"Expected revision {expected_revision}, current is {profile.revision or 1}."
+                ),
+                "current_revision": profile.revision or 1,
+            },
+        )
+
+    # Canonicalize skills before validation
+    if "skills" in update_data and update_data["skills"]:
+        update_data["skills"] = canonicalize_profile_skills(update_data["skills"], db)
+
+    # Business validation
     errors = validate_profile(update_data)
     if errors:
-        raise HTTPException(status_code=422, detail=errors)
+        structured = [e.to_dict() for e in errors]
+        raise HTTPException(status_code=422, detail={"errors": structured})
 
-    # Sprint 2: Create version snapshot before update
+    # Create version snapshot of current state before applying changes
     create_profile_version(current_user.id, profile, db)
 
-    # Validate nested list items BEFORE deleting existing records
     nested_fields = {
         "experiences": (Experience, "profile_id"),
         "educations": (Education, "profile_id"),
@@ -168,13 +195,11 @@ def update_my_profile(
     for field_name, (ModelClass, fkey_name) in nested_fields.items():
         if field_name in update_data:
             items_data = update_data[field_name]
-            # Delete existing records
             getattr(profile, field_name).clear()
             db.query(ModelClass).filter(
                 getattr(ModelClass, fkey_name) == profile.id
             ).delete()
 
-            # Add new records
             new_items = []
             for item_data in items_data:
                 item_data.pop("id", None)
@@ -187,6 +212,9 @@ def update_my_profile(
         if field not in nested_fields:
             setattr(profile, field, value)
 
+    # Increment revision counter
+    profile.revision = (profile.revision or 1) + 1
+
     db.commit()
     db.refresh(profile)
     return profile
@@ -196,18 +224,61 @@ class ProfileVersionResponse(BaseModel):
     id: str
     version: int
     created_at: str | None = None
+    source: str = "update"
     summary: str
 
+
+# ── Canonical Sprint 2 Version Endpoints ──────────────────────────────────────
+
+@router.get("/me/versions", response_model=List[ProfileVersionSummaryResponse])
+def list_my_profile_versions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """List profile version summaries, newest first."""
+    return get_profile_history(current_user.id, db)
+
+
+@router.get("/me/versions/{version_id}", response_model=ProfileVersionDetailResponse)
+def get_my_profile_version(
+    version_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """Get full snapshot details for a specific profile version."""
+    try:
+        return get_profile_version_detail(current_user.id, version_id, db)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("/me/versions/{version_id}/revert", response_model=ProfileResponse)
+def revert_my_profile_version(
+    version_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """
+    Revert profile to a previous version. Creates a new version recording the revert.
+    Does not modify or delete any existing history.
+    """
+    try:
+        profile = revert_to_version(current_user.id, version_id, db)
+        db.commit()
+        db.refresh(profile)
+        return profile
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+# ── Backward-Compatible Aliases ───────────────────────────────────────────────
 
 @router.get("/me/history", response_model=List[ProfileVersionResponse])
 def get_my_profile_history(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Any:
-    """
-    Get the version history of the current user's profile.
-    Returns versions in reverse chronological order.
-    """
+    """[Deprecated alias] Use GET /me/versions instead."""
     return get_profile_history(current_user.id, db)
 
 
@@ -217,10 +288,7 @@ def revert_my_profile(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Any:
-    """
-    Revert the current user's profile to a specific version.
-    Creates a version of the current state before reverting.
-    """
+    """[Deprecated alias] Use POST /me/versions/{version_id}/revert instead."""
     try:
         profile = revert_to_version(current_user.id, version_id, db)
         db.commit()

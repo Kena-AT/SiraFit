@@ -2,16 +2,31 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { History, RotateCcw, Clock, Loader2 } from "lucide-react";
-import {
-  getProfileHistory,
-  revertProfileToVersion,
-  type ProfileVersionSummary,
-} from "@/lib/api/profiles";
+import { getProfileVersions, revertProfileToVersion } from "@/lib/api/profiles";
+import { type ProfileVersionSummary, RevisionConflictError } from "@/types/profile";
 
 interface VersionHistoryProps {
   open: boolean;
   onClose: () => void;
   onReverted: () => void; // Called after successful revert so parent can refresh
+}
+
+function SourceBadge({ source }: { source: string }) {
+  if (source === "revert") {
+    return (
+      <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+        revert
+      </span>
+    );
+  }
+  if (source === "baseline") {
+    return (
+      <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+        baseline
+      </span>
+    );
+  }
+  return null;
 }
 
 export function VersionHistory({ open, onClose, onReverted }: VersionHistoryProps) {
@@ -22,7 +37,7 @@ export function VersionHistory({ open, onClose, onReverted }: VersionHistoryProp
   useEffect(() => {
     if (!open) return;
     setLoading(true);
-    getProfileHistory()
+    getProfileVersions()
       .then(setVersions)
       .catch((err) => toast.error(`Failed to load history: ${err.message}`))
       .finally(() => setLoading(false));
@@ -42,8 +57,12 @@ export function VersionHistory({ open, onClose, onReverted }: VersionHistoryProp
       toast.success(`Reverted to version ${version}`);
       onReverted();
       onClose();
-    } catch (err: any) {
-      toast.error(`Revert failed: ${err.message}`);
+    } catch (err) {
+      if (err instanceof RevisionConflictError) {
+        toast.error("Profile was modified in another tab. Please reload before reverting.");
+      } else if (err instanceof Error) {
+        toast.error(`Revert failed: ${err.message}`);
+      }
     } finally {
       setRevertingId(null);
     }
@@ -84,6 +103,7 @@ export function VersionHistory({ open, onClose, onReverted }: VersionHistoryProp
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 text-sm">
                       <span className="font-mono font-semibold text-foreground">v{v.version}</span>
+                      <SourceBadge source={v.source} />
                       {v.summary && (
                         <span className="text-muted-foreground truncate">{v.summary}</span>
                       )}

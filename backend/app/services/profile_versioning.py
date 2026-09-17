@@ -1,11 +1,14 @@
 """
-Profile versioning service.
+Profile versioning service (Sprint 2).
 
-Handles creating immutable snapshots of the profile before each update,
-retrieving version history, and reverting to a previous version.
+Handles:
+- Creating immutable snapshots of profile state with schema versioning.
+- No-op save detection to prevent redundant versions.
+- Safe rollback by creating a new version from a previous snapshot.
+- Retrieving version history and full snapshot details.
 """
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Optional
 from uuid import UUID
 from sqlalchemy.orm import Session
 
@@ -100,29 +103,62 @@ def _profile_to_dict(profile: Profile) -> dict[str, Any]:
     }
 
 
-def create_profile_version(user_id: UUID, profile: Profile, db: Session) -> ProfileVersion:
+def _extract_profile_data(snapshot_data: dict[str, Any]) -> dict[str, Any]:
+    """Extract profile dict handling both schema_version wrappers and legacy bare dicts."""
+    if not snapshot_data:
+        return {}
+    if "profile" in snapshot_data and isinstance(snapshot_data["profile"], dict):
+        return snapshot_data["profile"]
+    return snapshot_data
+
+
+def create_profile_version(
+    user_id: UUID,
+    profile: Profile,
+    db: Session,
+    source: str = "update",
+    reverted_from_version_id: Optional[UUID] = None,
+    allow_noop: bool = False,
+) -> ProfileVersion:
     """
     Create an immutable snapshot of the current profile state.
-    Returns the new ProfileVersion.
+    - Uses schema-versioned envelope `{"schema_version": 1, "profile": {...}}`.
+    - Detects no-ops: if incoming state matches latest version and source is 'update',
+      reuses the latest version unless allow_noop=True.
     """
-    # Get next version number
     latest = (
         db.query(ProfileVersion)
         .filter(ProfileVersion.user_id == user_id)
         .order_by(ProfileVersion.version.desc())
         .first()
     )
+
+    current_profile_dict = _profile_to_dict(profile)
+
+    # No-op check
+    if latest and source == "update" and not allow_noop:
+        latest_profile_dict = _extract_profile_data(latest.data or {})
+        if latest_profile_dict == current_profile_dict:
+            return latest
+
     next_version = (latest.version + 1) if latest else 1
+
+    snapshot_envelope = {
+        "schema_version": 1,
+        "profile": current_profile_dict,
+    }
 
     snapshot = ProfileVersion(
         user_id=user_id,
         version=next_version,
-        data=_profile_to_dict(profile),
+        data=snapshot_envelope,
+        source=source,
+        reverted_from_version_id=reverted_from_version_id,
     )
     db.add(snapshot)
     db.flush()
 
-    # Enforce retention policy — keep last MAX_VERSIONS, delete older ones
+    # Enforce retention policy
     if next_version > MAX_VERSIONS:
         cutoff_version = next_version - MAX_VERSIONS
         (
@@ -141,7 +177,7 @@ def create_profile_version(user_id: UUID, profile: Profile, db: Session) -> Prof
 def get_profile_history(user_id: UUID, db: Session, limit: int = 50) -> list[dict]:
     """
     Return all profile versions for a user, newest first.
-    Each entry contains version number, timestamp, and a summary of changes.
+    Each entry contains version number, timestamp, source, and a summary.
     """
     versions = (
         db.query(ProfileVersion)
@@ -153,15 +189,49 @@ def get_profile_history(user_id: UUID, db: Session, limit: int = 50) -> list[dic
 
     result = []
     for v in versions:
-        data = v.data or {}
+        raw_data = v.data or {}
+        profile_data = _extract_profile_data(raw_data)
         result.append({
             "id": str(v.id),
             "version": v.version,
             "created_at": v.created_at.isoformat() if v.created_at else None,
-            "summary": _build_version_summary(data),
+            "source": v.source or "update",
+            "summary": _build_version_summary(profile_data),
         })
 
     return result
+
+
+def get_profile_version_detail(user_id: UUID, version_id: UUID, db: Session) -> dict[str, Any]:
+    """
+    Return full details of a specific profile version snapshot.
+    """
+    v = (
+        db.query(ProfileVersion)
+        .filter(
+            ProfileVersion.id == version_id,
+            ProfileVersion.user_id == user_id,
+        )
+        .first()
+    )
+    if not v:
+        raise ValueError("Profile version not found")
+
+    raw_data = v.data or {}
+    profile_data = _extract_profile_data(raw_data)
+    schema_version = raw_data.get("schema_version", 1) if isinstance(raw_data, dict) else 1
+
+    return {
+        "id": str(v.id),
+        "user_id": str(v.user_id),
+        "version": v.version,
+        "created_at": v.created_at.isoformat() if v.created_at else None,
+        "source": v.source or "update",
+        "reverted_from_version_id": str(v.reverted_from_version_id) if v.reverted_from_version_id else None,
+        "schema_version": schema_version,
+        "profile": profile_data,
+        "summary": _build_version_summary(profile_data),
+    }
 
 
 def _build_version_summary(data: dict) -> str:
@@ -192,9 +262,10 @@ def _build_version_summary(data: dict) -> str:
 def revert_to_version(user_id: UUID, version_id: UUID, db: Session) -> Profile:
     """
     Revert the user's profile to a specific version snapshot.
-    Creates a version of the current state first, then restores from the snapshot.
+    - Restores fields from snapshot.
+    - Creates a new immutable ProfileVersion with source="revert" and reverted_from_version_id.
+    - Increments profile revision for concurrency tracking.
     """
-    # Get the target version
     target = (
         db.query(ProfileVersion)
         .filter(
@@ -206,17 +277,15 @@ def revert_to_version(user_id: UUID, version_id: UUID, db: Session) -> Profile:
     if not target:
         raise ValueError("Version not found")
 
-    snapshot_data = target.data
-    if not snapshot_data:
+    raw_data = target.data
+    if not raw_data:
         raise ValueError("Version has no data")
 
-    # Get current profile
+    snapshot_data = _extract_profile_data(raw_data)
+
     profile = db.query(Profile).filter(Profile.user_id == user_id).first()
     if not profile:
         raise ValueError("Profile not found")
-
-    # Create a version of the current state before reverting
-    create_profile_version(user_id, profile, db)
 
     # Clear existing nested objects
     for field_name in ["experiences", "educations", "skills", "projects", "certifications"]:
@@ -231,23 +300,44 @@ def revert_to_version(user_id: UUID, version_id: UUID, db: Session) -> Profile:
 
     # Restore nested objects
     for exp_data in snapshot_data.get("experiences", []):
-        exp_data["start_date"] = _parse_date(exp_data.get("start_date"))
-        exp_data["end_date"] = _parse_date(exp_data.get("end_date"))
-        db.add(Experience(profile_id=profile.id, **exp_data))
-    for edu_data in snapshot_data.get("educations", []):
-        edu_data["start_date"] = _parse_date(edu_data.get("start_date"))
-        edu_data["end_date"] = _parse_date(edu_data.get("end_date"))
-        db.add(Education(profile_id=profile.id, **edu_data))
-    for skill_data in snapshot_data.get("skills", []):
-        db.add(Skill(profile_id=profile.id, **skill_data))
-    for proj_data in snapshot_data.get("projects", []):
-        proj_data["start_date"] = _parse_date(proj_data.get("start_date"))
-        proj_data["end_date"] = _parse_date(proj_data.get("end_date"))
-        db.add(Project(profile_id=profile.id, **proj_data))
-    for cert_data in snapshot_data.get("certifications", []):
-        cert_data["issue_date"] = _parse_date(cert_data.get("issue_date"))
-        cert_data["expiration_date"] = _parse_date(cert_data.get("expiration_date"))
-        db.add(Certification(profile_id=profile.id, **cert_data))
+        exp_dict = dict(exp_data)
+        exp_dict["start_date"] = _parse_date(exp_dict.get("start_date"))
+        exp_dict["end_date"] = _parse_date(exp_dict.get("end_date"))
+        db.add(Experience(profile_id=profile.id, **exp_dict))
 
+    for edu_data in snapshot_data.get("educations", []):
+        edu_dict = dict(edu_data)
+        edu_dict["start_date"] = _parse_date(edu_dict.get("start_date"))
+        edu_dict["end_date"] = _parse_date(edu_dict.get("end_date"))
+        db.add(Education(profile_id=profile.id, **edu_dict))
+
+    for skill_data in snapshot_data.get("skills", []):
+        db.add(Skill(profile_id=profile.id, **dict(skill_data)))
+
+    for proj_data in snapshot_data.get("projects", []):
+        proj_dict = dict(proj_data)
+        proj_dict["start_date"] = _parse_date(proj_dict.get("start_date"))
+        proj_dict["end_date"] = _parse_date(proj_dict.get("end_date"))
+        db.add(Project(profile_id=profile.id, **proj_dict))
+
+    for cert_data in snapshot_data.get("certifications", []):
+        cert_dict = dict(cert_data)
+        cert_dict["issue_date"] = _parse_date(cert_dict.get("issue_date"))
+        cert_dict["expiration_date"] = _parse_date(cert_dict.get("expiration_date"))
+        db.add(Certification(profile_id=profile.id, **cert_dict))
+
+    # Concurrency revision increment
+    profile.revision = (profile.revision or 1) + 1
     db.flush()
+
+    # Record the revert as a new version
+    create_profile_version(
+        user_id=user_id,
+        profile=profile,
+        db=db,
+        source="revert",
+        reverted_from_version_id=target.id,
+        allow_noop=True,
+    )
+
     return profile

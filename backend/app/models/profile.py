@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text, Date
+from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text, Date, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -17,6 +17,7 @@ class Profile(Base):
     user_id = Column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True
     )
+    revision = Column(Integer, default=1, nullable=False)
 
     # Personal Info
     first_name = Column(String(255), nullable=True)

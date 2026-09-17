@@ -47,6 +47,7 @@ export interface Certification {
 
 export interface Profile {
   id?: string;
+  user_id?: string;
   first_name?: string | null;
   last_name?: string | null;
   headline?: string | null;
@@ -57,10 +58,42 @@ export interface Profile {
   website?: string | null;
   linkedin?: string | null;
   github?: string | null;
+  revision?: number;
+  created_at?: string;
+  updated_at?: string;
 
   experiences: Experience[];
   educations: Education[];
   skills: Skill[];
   projects: Project[];
   certifications: Certification[];
+}
+
+export interface ProfileVersionSummary {
+  id: string;
+  version: number;
+  created_at: string | null;
+  source: "update" | "revert" | "baseline" | string;
+  summary: string;
+}
+
+export interface ProfileVersionDetail {
+  id: string;
+  user_id: string;
+  version: number;
+  created_at: string | null;
+  source: "update" | "revert" | "baseline" | string;
+  reverted_from_version_id?: string | null;
+  schema_version: number;
+  profile: Omit<Profile, "id" | "user_id" | "revision" | "created_at" | "updated_at">;
+  summary: string;
+}
+
+export class RevisionConflictError extends Error {
+  currentRevision: number;
+  constructor(message: string, currentRevision: number) {
+    super(message);
+    this.name = "RevisionConflictError";
+    this.currentRevision = currentRevision;
+  }
 }

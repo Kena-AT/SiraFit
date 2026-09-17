@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import date, datetime
 from pydantic import BaseModel, ConfigDict, Field
 import uuid
@@ -186,11 +186,13 @@ class ProfileUpdate(ProfileBase):
     skills: Optional[List[SkillCreate]] = None
     projects: Optional[List[ProjectCreate]] = None
     certifications: Optional[List[CertificationCreate]] = None
+    expected_revision: Optional[int] = None
 
 
 class ProfileResponse(ProfileBase):
     id: uuid.UUID
     user_id: uuid.UUID
+    revision: int = 1
     created_at: datetime
     updated_at: datetime
 
@@ -199,3 +201,29 @@ class ProfileResponse(ProfileBase):
     skills: List[SkillResponse] = []
     projects: List[ProjectResponse] = []
     certifications: List[CertificationResponse] = []
+
+
+class ValidationErrorItem(BaseModel):
+    code: str
+    path: str
+    message: str
+
+
+class ProfileVersionSummaryResponse(BaseModel):
+    id: str
+    version: int
+    created_at: Optional[str] = None
+    source: str = "update"
+    summary: str
+
+
+class ProfileVersionDetailResponse(BaseModel):
+    id: str
+    user_id: str
+    version: int
+    created_at: Optional[str] = None
+    source: str = "update"
+    reverted_from_version_id: Optional[str] = None
+    schema_version: int = 1
+    profile: dict[str, Any]
+    summary: str
