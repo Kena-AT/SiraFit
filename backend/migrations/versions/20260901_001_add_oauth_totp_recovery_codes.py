@@ -17,81 +17,93 @@ depends_on = None
 
 
 def upgrade():
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    existing_tables = inspector.get_table_names()
+
     # --- oauth_accounts table ---
-    op.create_table(
-        "oauth_accounts",
-        sa.Column("id", sa.UUID(as_uuid=True), primary_key=True),
-        sa.Column(
-            "user_id",
-            sa.UUID(as_uuid=True),
-            sa.ForeignKey("users.id", ondelete="CASCADE"),
-            nullable=False,
-        ),
-        sa.Column("provider", sa.String(20), nullable=False),
-        sa.Column("provider_user_id", sa.String(255), nullable=False),
-        sa.Column("access_token", sa.Text, nullable=False),
-        sa.Column("refresh_token", sa.Text, nullable=True),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.func.now(),
-        ),
-    )
-    op.create_index("ix_oauth_accounts_user_id", "oauth_accounts", ["user_id"])
-    op.create_index(
-        "ix_oauth_accounts_provider",
-        "oauth_accounts",
-        ["provider", "provider_user_id"],
-        unique=True,
-    )
+    if "oauth_accounts" not in existing_tables:
+        op.create_table(
+            "oauth_accounts",
+            sa.Column("id", sa.UUID(as_uuid=True), primary_key=True),
+            sa.Column(
+                "user_id",
+                sa.UUID(as_uuid=True),
+                sa.ForeignKey("users.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column("provider", sa.String(20), nullable=False),
+            sa.Column("provider_user_id", sa.String(255), nullable=False),
+            sa.Column("access_token", sa.Text, nullable=False),
+            sa.Column("refresh_token", sa.Text, nullable=True),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+            ),
+        )
+        op.create_index("ix_oauth_accounts_user_id", "oauth_accounts", ["user_id"])
+        op.create_index(
+            "ix_oauth_accounts_provider",
+            "oauth_accounts",
+            ["provider", "provider_user_id"],
+            unique=True,
+        )
 
     # --- totp_secrets table ---
-    op.create_table(
-        "totp_secrets",
-        sa.Column("id", sa.UUID(as_uuid=True), primary_key=True),
-        sa.Column(
-            "user_id",
-            sa.UUID(as_uuid=True),
-            sa.ForeignKey("users.id", ondelete="CASCADE"),
-            nullable=False,
-            unique=True,
-        ),
-        sa.Column("encrypted_secret", sa.Text, nullable=False),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.func.now(),
-        ),
-    )
+    if "totp_secrets" not in existing_tables:
+        op.create_table(
+            "totp_secrets",
+            sa.Column("id", sa.UUID(as_uuid=True), primary_key=True),
+            sa.Column(
+                "user_id",
+                sa.UUID(as_uuid=True),
+                sa.ForeignKey("users.id", ondelete="CASCADE"),
+                nullable=False,
+                unique=True,
+            ),
+            sa.Column("encrypted_secret", sa.Text, nullable=False),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+            ),
+        )
 
     # --- recovery_codes table ---
-    op.create_table(
-        "recovery_codes",
-        sa.Column("id", sa.UUID(as_uuid=True), primary_key=True),
-        sa.Column(
-            "user_id",
-            sa.UUID(as_uuid=True),
-            sa.ForeignKey("users.id", ondelete="CASCADE"),
-            nullable=False,
-        ),
-        sa.Column("code_hash", sa.String(255), nullable=False),
-        sa.Column("is_used", sa.Boolean, nullable=False, server_default=sa.text("false")),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.func.now(),
-        ),
-    )
-    op.create_index("ix_recovery_codes_user_id", "recovery_codes", ["user_id"])
+    if "recovery_codes" not in existing_tables:
+        op.create_table(
+            "recovery_codes",
+            sa.Column("id", sa.UUID(as_uuid=True), primary_key=True),
+            sa.Column(
+                "user_id",
+                sa.UUID(as_uuid=True),
+                sa.ForeignKey("users.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column("code_hash", sa.String(255), nullable=False),
+            sa.Column("is_used", sa.Boolean, nullable=False, server_default=sa.text("false")),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+            ),
+        )
+        op.create_index("ix_recovery_codes_user_id", "recovery_codes", ["user_id"])
 
     # --- Add 2FA fields to users table ---
-    op.add_column(
-        "users",
-        sa.Column("is_2fa_enabled", sa.Boolean, nullable=False, server_default=sa.text("false")),
-    )
-    op.add_column("users", sa.Column("avatar_url", sa.String(500), nullable=True))
-    op.add_column("users", sa.Column("auth_provider", sa.String(20), nullable=True))
-    op.add_column("users", sa.Column("auth_provider_id", sa.String(255), nullable=True))
+    existing_user_cols = {c["name"] for c in inspector.get_columns("users")}
+    if "is_2fa_enabled" not in existing_user_cols:
+        op.add_column(
+            "users",
+            sa.Column("is_2fa_enabled", sa.Boolean, nullable=False, server_default=sa.text("false")),
+        )
+    if "avatar_url" not in existing_user_cols:
+        op.add_column("users", sa.Column("avatar_url", sa.String(500), nullable=True))
+    if "auth_provider" not in existing_user_cols:
+        op.add_column("users", sa.Column("auth_provider", sa.String(20), nullable=True))
+    if "auth_provider_id" not in existing_user_cols:
+        op.add_column("users", sa.Column("auth_provider_id", sa.String(255), nullable=True))
 
 
 def downgrade():

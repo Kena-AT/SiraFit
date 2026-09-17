@@ -181,14 +181,55 @@ async def generate_cover_letter(
     if not candidates:
         raise ValueError("No AI API key configured for cover letter generation")
 
-    body = await complete_with_fallback(
-        prompt,
-        candidates,
-        system="You are an expert cover letter writer. Return only plain text.",
-        max_tokens=2048,
-    )
+    from app.services.structured_ai import structured_completion_with_fallback
+    from app.schemas.ai_output import AICoverLetterOutput
+    import uuid
 
-    return body.strip()
+    try:
+        user_uuid = uuid.UUID(str(user_id)) if user_id else None
+    except (ValueError, TypeError):
+        user_uuid = None
+
+    messages = [
+        {
+            "role": "system",
+            "content": "You are an expert career coach and cover letter writer. Return structured cover letter output with salutation, body, sign_off, and key_points.",
+        },
+        {"role": "user", "content": prompt},
+    ]
+
+    try:
+        res, _ = await structured_completion_with_fallback(
+            operation="cover_letter_generation",
+            response_model=AICoverLetterOutput,
+            messages=messages,
+            candidates=candidates,
+            db=db,
+            user_id=user_uuid,
+        )
+        parts = []
+        body_text = res.body.strip()
+        salutation = (res.salutation or "").strip()
+        sign_off = (res.sign_off or "").strip()
+
+        if salutation and not body_text.startswith(salutation):
+            parts.append(salutation)
+        parts.append(body_text)
+        if sign_off and not body_text.endswith(sign_off):
+            parts.append(sign_off)
+        return "\n\n".join(parts)
+    except Exception as structured_err:
+        logger.warning(
+            "Structured cover letter generation failed (%s); falling back to legacy completion loop",
+            structured_err,
+        )
+        body = await complete_with_fallback(
+            prompt,
+            candidates,
+            system="You are an expert cover letter writer. Return only plain text.",
+            max_tokens=2048,
+        )
+        return body.strip()
 
 
 # ---------------------------------------------------------------------------

@@ -965,15 +965,46 @@ async def generate_tailored_resume(
     if not candidates:
         raise ValueError("No AI API key configured for resume generation")
 
-    tailored = await complete_with_fallback(
-        prompt,
-        candidates,
-        system="You are an expert resume writer. Return only valid JSON.",
-        max_tokens=2048,
-        parse_fn=_parse_ai_response,
-    )
+    from app.services.structured_ai import structured_completion_with_fallback
+    from app.schemas.ai_output import AIResumeOutput
+    import uuid
 
-    resume_data = tailored.model_dump()
+    try:
+        user_uuid = uuid.UUID(str(user_id)) if user_id else None
+    except (ValueError, TypeError):
+        user_uuid = None
+
+    messages = [
+        {
+            "role": "system",
+            "content": "You are an expert resume writer and ATS optimization specialist. Return only valid structured resume data conforming to schema.",
+        },
+        {"role": "user", "content": prompt},
+    ]
+
+    try:
+        res, _ = await structured_completion_with_fallback(
+            operation="resume_generation",
+            response_model=AIResumeOutput,
+            messages=messages,
+            candidates=candidates,
+            db=db,
+            user_id=user_uuid,
+        )
+        resume_data = res.model_dump()
+    except Exception as structured_err:
+        logger.warning(
+            "Structured resume generation failed (%s); falling back to legacy completion loop",
+            structured_err,
+        )
+        tailored = await complete_with_fallback(
+            prompt,
+            candidates,
+            system="You are an expert resume writer. Return only valid JSON.",
+            max_tokens=2048,
+            parse_fn=_parse_ai_response,
+        )
+        resume_data = tailored.model_dump()
 
     # Validate
     is_valid, issues = validate_resume_json(resume_data, job)

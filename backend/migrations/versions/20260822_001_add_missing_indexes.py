@@ -31,32 +31,32 @@ _INDEXES = [
     (
         "ix_job_apps_user_status",
         "job_applications",
-        "CREATE INDEX CONCURRENTLY ix_job_apps_user_status "
+        "CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_job_apps_user_status "
         "ON job_applications (user_id, status)",
     ),
     (
         "ix_job_apps_user_followup",
         "job_applications",
-        "CREATE INDEX CONCURRENTLY ix_job_apps_user_followup "
+        "CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_job_apps_user_followup "
         "ON job_applications (user_id, follow_up_at) "
         "WHERE follow_up_at IS NOT NULL",
     ),
     (
         "ix_match_scores_user_score",
         "job_match_scores",
-        "CREATE INDEX CONCURRENTLY ix_match_scores_user_score "
+        "CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_match_scores_user_score "
         "ON job_match_scores (user_id, score DESC)",
     ),
     (
         "ix_audit_log_user_created",
         "audit_logs",
-        "CREATE INDEX CONCURRENTLY ix_audit_log_user_created "
+        "CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_audit_log_user_created "
         "ON audit_logs (user_id, created_at DESC)",
     ),
     (
         "ix_notifications_user_status",
         "notifications",
-        "CREATE INDEX CONCURRENTLY ix_notifications_user_status "
+        "CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_notifications_user_status "
         "ON notifications (user_id, status)",
     ),
 ]

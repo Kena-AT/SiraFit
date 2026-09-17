@@ -33,6 +33,7 @@ from app.models.session_access_log import SessionAccessLog
 from app.models.notification import Notification
 from app.models.analytics import AnalyticsSnapshot
 from app.models.extension_token import ExtensionToken
+from app.models.ai_completion import AICompletion, AICompletionAttempt
 
 __all__ = [
     # users
@@ -78,4 +79,7 @@ __all__ = [
     # notifications & analytics
     "Notification",
     "AnalyticsSnapshot",
+    # ai completions
+    "AICompletion",
+    "AICompletionAttempt",
 ]

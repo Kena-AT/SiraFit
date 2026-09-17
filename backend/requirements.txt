@@ -26,3 +26,4 @@ pytest-cov==7.1.0
 scrapling[fetchers]==0.4.14
 pyotp==2.9.0
 cryptography>=42.0.0
+instructor>=1.17.0

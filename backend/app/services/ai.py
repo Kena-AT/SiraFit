@@ -309,15 +309,50 @@ async def analyze_job_with_fallback(
     prompt_context: str,
     candidates: list,
     prompt_version: str = CURRENT_PROMPT_VERSION,
+    db=None,
+    user_id=None,
 ) -> AnalysisOutput:
     """Run job analysis over an ordered candidate list, returning the first valid result.
 
-    Each candidate is ``(provider, model, key)``. On transient failure the
-    candidate is retried; on a permanent failure or exhaustion the next
-    candidate is tried. A malformed response also advances to the next
-    candidate rather than failing the whole analysis.
+    Uses Instructor-powered structured completion with candidate fallback and
+    telemetry tracking. Falls back to raw text completion if structured generation
+    encounters unexpected provider errors.
     """
     system_prompt = PROMPTS.get(prompt_version, PROMPTS[CURRENT_PROMPT_VERSION])
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": prompt_context},
+    ]
+
+    try:
+        from app.services.structured_ai import structured_completion_with_fallback
+        from app.schemas.ai_output import AIJobAnalysisOutput
+        import uuid
+
+        user_uuid = uuid.UUID(str(user_id)) if user_id else None
+        res, _ = await structured_completion_with_fallback(
+            operation="job_analysis",
+            response_model=AIJobAnalysisOutput,
+            messages=messages,
+            candidates=candidates,
+            db=db,
+            user_id=user_uuid,
+        )
+        return AnalysisOutput(
+            score=res.score,
+            summary=res.summary,
+            pros=res.pros,
+            cons=res.cons,
+            skills_gap=res.skills_gap,
+            key_requirements=res.key_requirements,
+            seniority=res.seniority,
+        )
+    except Exception as structured_err:
+        logger.warning(
+            "Structured job analysis failed (%s); falling back to legacy completion loop",
+            structured_err,
+        )
+
     last_exc = None
     for provider, model, api_key in candidates:
         try:

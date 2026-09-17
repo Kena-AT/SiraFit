@@ -13,6 +13,7 @@ from prometheus_client import (
     CONTENT_TYPE_LATEST,
     Counter,
     Gauge,
+    Histogram,
     generate_latest,
 )
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -59,6 +60,29 @@ JOB_IMPORTS_DUPLICATE = Counter(
 JOB_IMPORTS_FAILED = Counter(
     "job_imports_failed_total",
     "Import pipelines that ended in failure.",
+)
+
+# AI Structured Generation & Observability (Sprint 7)
+AI_COMPLETIONS_TOTAL = Counter(
+    "ai_completions_total",
+    "Total structured AI completion operations.",
+    ["operation", "provider", "model", "status"],
+)
+AI_COMPLETION_DURATION_SECONDS = Histogram(
+    "ai_completion_duration_seconds",
+    "Duration of structured AI completions in seconds.",
+    ["operation", "provider"],
+    buckets=(0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 20.0, 30.0, 60.0),
+)
+AI_COMPLETION_FAILURES_TOTAL = Counter(
+    "ai_completion_failures_total",
+    "Structured AI completion failures categorized by failure code.",
+    ["operation", "provider", "failure_code"],
+)
+AI_VALIDATION_RETRIES_TOTAL = Counter(
+    "ai_validation_retries_total",
+    "Validation retries triggered by schema mismatches during generation.",
+    ["operation", "provider"],
 )
 
 _SKIP_PREFIXES = ("/metrics", "/docs", "/openapi.json", "/health")
