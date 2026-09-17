@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +31,6 @@ export function TwoFactorSetup({ onComplete, onCancel }: TwoFactorSetupProps) {
         const data = await response.json();
         setQrUri(data.qr_uri);
         setSecret(data.secret);
-        setRecoveryCodes(data.recovery_codes);
         setStep("scan");
       } else {
         const errData = await response.json();
@@ -44,7 +43,7 @@ export function TwoFactorSetup({ onComplete, onCancel }: TwoFactorSetupProps) {
     }
   };
 
-  const handleVerify = async () => {
+  const handleConfirm = async () => {
     if (!verifyCode || verifyCode.length !== 6) {
       setError("Please enter a 6-digit code");
       return;
@@ -53,12 +52,15 @@ export function TwoFactorSetup({ onComplete, onCancel }: TwoFactorSetupProps) {
     setIsLoading(true);
     setError("");
     try {
-      const response = await apiFetch("/api/v1/auth/2fa/verify", {
+      // Confirm enrollment and activate 2FA
+      const response = await apiFetch("/api/v1/auth/2fa/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: verifyCode }),
       });
       if (response.ok) {
+        const data = await response.json();
+        setRecoveryCodes(data.recovery_codes || []);
         setStep("recovery");
       } else {
         const errData = await response.json();
@@ -82,7 +84,7 @@ export function TwoFactorSetup({ onComplete, onCancel }: TwoFactorSetupProps) {
         </div>
         <div className="bg-muted p-4 rounded-md text-sm">
           <p>
-            Once enabled, you'll need to enter a code from your authenticator app each time you log
+            Once enabled, you will need to enter a code from your authenticator app each time you log
             in.
           </p>
         </div>
@@ -139,7 +141,7 @@ export function TwoFactorSetup({ onComplete, onCancel }: TwoFactorSetupProps) {
         <div>
           <h3 className="text-lg font-medium">Verify Your Code</h3>
           <p className="text-sm text-muted-foreground">
-            Enter the 6-digit code from your authenticator app
+            Enter the 6-digit code from your authenticator app to activate 2FA
           </p>
         </div>
         <div className="space-y-2">
@@ -153,11 +155,12 @@ export function TwoFactorSetup({ onComplete, onCancel }: TwoFactorSetupProps) {
             placeholder="000000"
             value={verifyCode}
             onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ""))}
+            autoFocus
           />
         </div>
         {error && <p className="text-red-500 text-sm">{error}</p>}
         <div className="flex gap-2">
-          <Button onClick={handleVerify} disabled={isLoading || verifyCode.length !== 6}>
+          <Button onClick={handleConfirm} disabled={isLoading || verifyCode.length !== 6}>
             {isLoading ? "Verifying..." : "Verify & Enable"}
           </Button>
           <Button variant="outline" onClick={() => setStep("scan")}>
@@ -174,14 +177,14 @@ export function TwoFactorSetup({ onComplete, onCancel }: TwoFactorSetupProps) {
         <div>
           <h3 className="text-lg font-medium">2FA Enabled Successfully!</h3>
           <p className="text-sm text-muted-foreground">
-            Save these recovery codes in a safe place. You can use them to access your account if
+            Save these single-use recovery codes in a safe place. You can use them to access your account if
             you lose your authenticator device.
           </p>
         </div>
         <div className="bg-muted p-4 rounded-md">
           <div className="grid grid-cols-2 gap-2 font-mono text-sm">
             {recoveryCodes.map((code, i) => (
-              <div key={i} className="p-1 bg-background rounded">
+              <div key={i} className="p-1 bg-background rounded text-center">
                 {code}
               </div>
             ))}
@@ -189,7 +192,7 @@ export function TwoFactorSetup({ onComplete, onCancel }: TwoFactorSetupProps) {
         </div>
         <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-md text-sm">
           <p className="font-medium text-yellow-800 dark:text-yellow-200">
-            Important: Each recovery code can only be used once.
+            Important: Each recovery code can only be used once. They will not be displayed again.
           </p>
         </div>
         <Button onClick={onComplete} className="w-full">
@@ -210,11 +213,17 @@ interface TwoFactorVerifyProps {
 
 export function TwoFactorVerify({ tempToken, onSuccess, onBack }: TwoFactorVerifyProps) {
   const [code, setCode] = useState("");
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleVerify = async () => {
-    if (!code || code.length !== 6) {
+    if (!code) {
+      setError(isRecoveryMode ? "Please enter a recovery code" : "Please enter a 6-digit code");
+      return;
+    }
+
+    if (!isRecoveryMode && code.length !== 6) {
       setError("Please enter a 6-digit code");
       return;
     }
@@ -222,10 +231,14 @@ export function TwoFactorVerify({ tempToken, onSuccess, onBack }: TwoFactorVerif
     setIsLoading(true);
     setError("");
     try {
-      const response = await apiFetch("/api/v1/auth/2fa/complete-login", {
+      const response = await apiFetch("/api/v1/auth/2fa/login/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ temp_token: tempToken, code }),
+        body: JSON.stringify({
+          challenge_token: tempToken,
+          temp_token: tempToken,
+          code: code.trim(),
+        }),
       });
       if (response.ok) {
         onSuccess();
@@ -245,27 +258,48 @@ export function TwoFactorVerify({ tempToken, onSuccess, onBack }: TwoFactorVerif
       <div>
         <h3 className="text-lg font-medium">Two-Factor Authentication</h3>
         <p className="text-sm text-muted-foreground">
-          Enter the 6-digit code from your authenticator app
+          {isRecoveryMode
+            ? "Enter one of your emergency recovery codes"
+            : "Enter the 6-digit code from your authenticator app"}
         </p>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="login-totp-code">Verification Code</Label>
+        <Label htmlFor="login-totp-code">
+          {isRecoveryMode ? "Recovery Code" : "Verification Code"}
+        </Label>
         <Input
           id="login-totp-code"
           type="text"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          maxLength={6}
-          placeholder="000000"
+          inputMode={isRecoveryMode ? "text" : "numeric"}
+          pattern={isRecoveryMode ? undefined : "[0-9]*"}
+          maxLength={isRecoveryMode ? 32 : 6}
+          placeholder={isRecoveryMode ? "e.g. ab12-cd34..." : "000000"}
           value={code}
-          onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+          onChange={(e) =>
+            setCode(isRecoveryMode ? e.target.value : e.target.value.replace(/\D/g, ""))
+          }
           autoFocus
         />
       </div>
       {error && <p className="text-red-500 text-sm">{error}</p>}
-      <div className="flex gap-2">
-        <Button onClick={handleVerify} disabled={isLoading || code.length !== 6} className="w-full">
+      <div className="space-y-2">
+        <Button
+          onClick={handleVerify}
+          disabled={isLoading || !code || (!isRecoveryMode && code.length !== 6)}
+          className="w-full"
+        >
           {isLoading ? "Verifying..." : "Verify"}
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => {
+            setIsRecoveryMode(!isRecoveryMode);
+            setCode("");
+            setError("");
+          }}
+          className="w-full text-xs"
+        >
+          {isRecoveryMode ? "Use Authenticator Code Instead" : "Use a Backup Recovery Code"}
         </Button>
       </div>
       {onBack && (
@@ -290,6 +324,39 @@ export function TwoFactorStatus({
   onDisable,
   onSetup,
 }: TwoFactorStatusProps) {
+  const [showRegenerateModal, setShowRegenerateModal] = useState(false);
+  const [password, setPassword] = useState("");
+  const [newCodes, setNewCodes] = useState<string[]>([]);
+  const [regenError, setRegenError] = useState("");
+  const [isRegenerating, setIsRegenerating] = useState(false);
+
+  const handleRegenerate = async () => {
+    if (!password) {
+      setRegenError("Password is required");
+      return;
+    }
+    setIsRegenerating(true);
+    setRegenError("");
+    try {
+      const response = await apiFetch("/api/v1/auth/2fa/recovery-codes/regenerate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setNewCodes(data.recovery_codes || []);
+      } else {
+        const errData = await response.json();
+        setRegenError(errData.detail || "Failed to regenerate codes");
+      }
+    } catch (err: any) {
+      setRegenError(err.message || "Failed to regenerate codes");
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div>
@@ -305,15 +372,79 @@ export function TwoFactorStatus({
           Recovery codes remaining: <span className="font-medium">{recoveryCodesRemaining}</span>
         </div>
       )}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {enabled ? (
-          <Button variant="destructive" onClick={onDisable}>
-            Disable 2FA
-          </Button>
+          <>
+            <Button variant="destructive" onClick={onDisable}>
+              Disable 2FA
+            </Button>
+            <Button variant="outline" onClick={() => setShowRegenerateModal(true)}>
+              Regenerate Recovery Codes
+            </Button>
+          </>
         ) : (
           <Button onClick={onSetup}>Enable 2FA</Button>
         )}
       </div>
+
+      {showRegenerateModal && (
+        <div className="border p-4 rounded-lg bg-card space-y-3 mt-4">
+          <h4 className="font-semibold text-sm">Regenerate Recovery Codes</h4>
+          {newCodes.length > 0 ? (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Your previous recovery codes have been invalidated. Save your new codes:
+              </p>
+              <div className="grid grid-cols-2 gap-2 font-mono text-xs bg-muted p-3 rounded">
+                {newCodes.map((c, i) => (
+                  <div key={i} className="p-1 bg-background rounded text-center">
+                    {c}
+                  </div>
+                ))}
+              </div>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setShowRegenerateModal(false);
+                  setNewCodes([]);
+                  setPassword("");
+                }}
+              >
+                Done
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Confirm your password to generate new single-use recovery codes. This invalidates old codes.
+              </p>
+              <Input
+                type="password"
+                placeholder="Current password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              {regenError && <p className="text-red-500 text-xs">{regenError}</p>}
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleRegenerate} disabled={isRegenerating}>
+                  {isRegenerating ? "Regenerating..." : "Confirm & Regenerate"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setShowRegenerateModal(false);
+                    setPassword("");
+                    setRegenError("");
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

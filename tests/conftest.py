@@ -64,6 +64,8 @@ import app.models.user_session  # noqa: E402, F401
 import app.models.session_access_log  # noqa: E402, F401
 import app.models.extension_token  # noqa: E402, F401
 import app.models.ai_completion  # noqa: E402, F401
+import app.models.oauth  # noqa: E402, F401
+import app.models.totp  # noqa: E402, F401
 
 SQLALCHEMY_DATABASE_URL = "sqlite://"
 

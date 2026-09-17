@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, DateTime, ForeignKey, Text
+from sqlalchemy import Column, String, DateTime, ForeignKey, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -31,6 +31,7 @@ class OAuthAccount(Base):
     user = relationship("User", back_populates="oauth_accounts")
 
     __table_args__ = (
-        # Ensure a user can't link the same provider account twice
+        UniqueConstraint("provider", "provider_user_id", name="uq_oauth_provider_uid"),
+        UniqueConstraint("user_id", "provider", name="uq_oauth_user_provider"),
         {"extend_existing": True},
     )

@@ -104,6 +104,7 @@ def create_access_token(
         "exp": expire,
         "sub": str(subject),
         "type": token_type,
+        "purpose": "refresh" if token_type == "refresh" else "access",
         "jti": str(uuid.uuid4()),  # Add unique ID for token revocation
     }
 
@@ -111,6 +112,21 @@ def create_access_token(
         to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
     )
     return encoded_jwt
+
+
+def create_2fa_challenge_token(subject: Union[str, Any]) -> str:
+    """Create a short-lived restricted 2FA challenge token (5 min).
+    This token is NOT valid for normal authenticated API endpoints or refresh.
+    """
+    expire = datetime.now(timezone.utc) + timedelta(minutes=5)
+    to_encode = {
+        "exp": expire,
+        "sub": str(subject),
+        "type": "2fa_pending",
+        "purpose": "2fa_pending",
+        "jti": str(uuid.uuid4()),
+    }
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
 def create_refresh_token(

@@ -31,7 +31,33 @@ class TokenPayload(BaseModel):
     sub: Optional[str] = None
     exp: Optional[int] = None
     type: Optional[str] = None
+    purpose: Optional[str] = None
     jti: Optional[str] = None
+
+
+class TwoFactorChallengeResponse(BaseModel):
+    requires_2fa: bool = True
+    challenge_token: str
+    temp_token: str
+    token_type: str = "2fa_pending"
+
+
+class TwoFactorConfirmRequest(BaseModel):
+    code: str
+
+
+class TwoFactorLoginVerifyRequest(BaseModel):
+    challenge_token: Optional[str] = None
+    temp_token: Optional[str] = None
+    code: str
+
+
+class TwoFactorDisableRequest(BaseModel):
+    password: str
+
+
+class RegenerateRecoveryCodesRequest(BaseModel):
+    password: str
 
 
 class PasswordChangeRequest(BaseModel):

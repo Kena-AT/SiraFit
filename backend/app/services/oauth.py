@@ -1,14 +1,19 @@
 """OAuth social login service.
 
-Handles OAuth flow initiation, code exchange, and user creation/linking
-for Google, GitHub, and LinkedIn providers.
+Handles OAuth flow initiation with PKCE, single-use state CSRF protection,
+code exchange, safe account resolution (anti-takeover), and explicit account linking.
 """
+import base64
+import hashlib
 import secrets
 import logging
+import uuid
 from dataclasses import dataclass
-from typing import Optional
+from datetime import datetime, timezone, timedelta
+from typing import Optional, Any
 
 import httpx
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -28,6 +33,7 @@ PROVIDERS = {
         "token_url": "https://oauth2.googleapis.com/token",
         "userinfo_url": "https://www.googleapis.com/oauth2/v3/userinfo",
         "scope": "openid email profile",
+        "supports_pkce": True,
         "client_id": lambda: settings.GOOGLE_CLIENT_ID,
         "client_secret": lambda: settings.GOOGLE_CLIENT_SECRET,
         "redirect_uri": lambda: settings.GOOGLE_REDIRECT_URI,
@@ -43,6 +49,7 @@ PROVIDERS = {
         "token_url": "https://github.com/login/oauth/access_token",
         "userinfo_url": "https://api.github.com/user",
         "scope": "read:user user:email",
+        "supports_pkce": True,
         "client_id": lambda: settings.GITHUB_CLIENT_ID,
         "client_secret": lambda: settings.GITHUB_CLIENT_SECRET,
         "redirect_uri": lambda: settings.GITHUB_REDIRECT_URI,
@@ -58,6 +65,7 @@ PROVIDERS = {
         "token_url": "https://www.linkedin.com/oauth/v2/accessToken",
         "userinfo_url": "https://api.linkedin.com/v2/userinfo",
         "scope": "openid profile email",
+        "supports_pkce": True,
         "client_id": lambda: settings.LINKEDIN_CLIENT_ID,
         "client_secret": lambda: settings.LINKEDIN_CLIENT_SECRET,
         "redirect_uri": lambda: settings.LINKEDIN_REDIRECT_URI,
@@ -70,26 +78,84 @@ PROVIDERS = {
     },
 }
 
+
 # ---------------------------------------------------------------------------
-# State management for CSRF protection
+# PKCE and State management for CSRF protection
 # ---------------------------------------------------------------------------
 
-_oauth_states: dict[str, str] = {}
+@dataclass
+class OAuthStateRecord:
+    state: str
+    code_verifier: str
+    code_challenge: str
+    created_at: datetime
+    link_user_id: Optional[str] = None
 
 
-def generate_oauth_state() -> str:
-    """Generate and store a random state token for CSRF protection."""
+_oauth_states: dict[str, OAuthStateRecord] = {}
+STATE_TTL_MINUTES = 10
+
+
+def generate_pkce_pair() -> tuple[str, str]:
+    """Generate PKCE code_verifier and S256 code_challenge according to RFC 7636."""
+    verifier = (
+        base64.urlsafe_b64encode(secrets.token_bytes(32))
+        .decode("utf-8")
+        .rstrip("=")
+    )
+    digest = hashlib.sha256(verifier.encode("utf-8")).digest()
+    challenge = (
+        base64.urlsafe_b64encode(digest)
+        .decode("utf-8")
+        .rstrip("=")
+    )
+    return verifier, challenge
+
+
+def generate_oauth_state(link_user_id: Optional[str] = None) -> str:
+    """Generate and store a random single-use state token with PKCE parameters."""
+    _cleanup_expired_states()
     state = secrets.token_urlsafe(32)
-    _oauth_states[state] = state
+    verifier, challenge = generate_pkce_pair()
+    now = datetime.now(timezone.utc)
+    _oauth_states[state] = OAuthStateRecord(
+        state=state,
+        code_verifier=verifier,
+        code_challenge=challenge,
+        created_at=now,
+        link_user_id=str(link_user_id) if link_user_id else None,
+    )
     return state
 
 
+def consume_oauth_state(state: str) -> Optional[OAuthStateRecord]:
+    """Consume single-use OAuth state record and return its details if valid and unexpired."""
+    _cleanup_expired_states()
+    record = _oauth_states.pop(state, None)
+    if not record:
+        return None
+
+    now = datetime.now(timezone.utc)
+    if (now - record.created_at).total_seconds() > STATE_TTL_MINUTES * 60:
+        return None
+
+    return record
+
+
 def validate_oauth_state(state: str) -> bool:
-    """Validate and consume an OAuth state token."""
-    if state in _oauth_states:
-        del _oauth_states[state]
-        return True
-    return False
+    """Backwards-compatible boolean check that consumes the state."""
+    return consume_oauth_state(state) is not None
+
+
+def _cleanup_expired_states() -> None:
+    now = datetime.now(timezone.utc)
+    expired_keys = [
+        k
+        for k, v in _oauth_states.items()
+        if (now - v.created_at).total_seconds() > STATE_TTL_MINUTES * 60
+    ]
+    for k in expired_keys:
+        _oauth_states.pop(k, None)
 
 
 # ---------------------------------------------------------------------------
@@ -105,8 +171,12 @@ class OAuthUserInfo:
     avatar_url: Optional[str] = None
 
 
-def get_oauth_redirect_url(provider: str, state: str) -> str:
-    """Build the authorization URL to redirect the user to."""
+def get_oauth_redirect_url(
+    provider: str,
+    state: str,
+    code_challenge: Optional[str] = None,
+) -> str:
+    """Build the authorization URL to redirect the user to, with PKCE where supported."""
     if provider not in PROVIDERS:
         raise ValueError(f"Unsupported provider: {provider}")
 
@@ -117,6 +187,10 @@ def get_oauth_redirect_url(provider: str, state: str) -> str:
     if not client_id:
         raise ValueError(f"OAuth not configured for {provider}: missing client ID")
 
+    # If code_challenge wasn't explicitly passed, check if state record exists
+    if not code_challenge and state in _oauth_states:
+        code_challenge = _oauth_states[state].code_challenge
+
     params = {
         "client_id": client_id,
         "redirect_uri": redirect_uri,
@@ -125,16 +199,18 @@ def get_oauth_redirect_url(provider: str, state: str) -> str:
         "state": state,
     }
 
-    # LinkedIn uses a different param name
-    if provider == "linkedin":
-        params["response_type"] = "code"
+    if code_challenge and config.get("supports_pkce", True):
+        params["code_challenge"] = code_challenge
+        params["code_challenge_method"] = "S256"
 
     query = "&".join(f"{k}={v}" for k, v in params.items())
     return f"{config['authorize_url']}?{query}"
 
 
-async def exchange_code_for_token(provider: str, code: str) -> dict:
-    """Exchange an authorization code for an access token."""
+async def exchange_code_for_token(
+    provider: str, code: str, code_verifier: Optional[str] = None
+) -> dict:
+    """Exchange an authorization code for an access token, verifying PKCE if available."""
     if provider not in PROVIDERS:
         raise ValueError(f"Unsupported provider: {provider}")
 
@@ -146,16 +222,21 @@ async def exchange_code_for_token(provider: str, code: str) -> dict:
     if not client_id or not client_secret:
         raise ValueError(f"OAuth not configured for {provider}: missing credentials")
 
+    data = {
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "code": code,
+        "redirect_uri": redirect_uri,
+        "grant_type": "authorization_code",
+    }
+
+    if code_verifier:
+        data["code_verifier"] = code_verifier
+
     async with httpx.AsyncClient() as client:
         response = await client.post(
             config["token_url"],
-            data={
-                "client_id": client_id,
-                "client_secret": client_secret,
-                "code": code,
-                "redirect_uri": redirect_uri,
-                "grant_type": "authorization_code",
-            },
+            data=data,
             headers={"Accept": "application/json"},
         )
         response.raise_for_status()
@@ -178,7 +259,12 @@ async def get_user_info_from_provider(provider: str, access_token: str) -> OAuth
         data = response.json()
 
     extracted = config["extract_user"](data)
-    return OAuthUserInfo(**extracted)
+    return OAuthUserInfo(
+        provider_user_id=str(extracted.get("provider_user_id", "")),
+        email=str(extracted.get("email", "")),
+        name=str(extracted.get("name", "")),
+        avatar_url=extracted.get("avatar_url"),
+    )
 
 
 def find_or_create_user_from_oauth(
@@ -190,13 +276,16 @@ def find_or_create_user_from_oauth(
     avatar_url: Optional[str] = None,
     access_token: Optional[str] = None,
     refresh_token: Optional[str] = None,
+    link_user_id: Optional[str] = None,
 ) -> User:
-    """Find an existing user by OAuth identity or create a new one.
+    """Find an existing user by OAuth identity, create a new one, or link explicitly.
 
-    Links the OAuth account to the user. If a user with the same email
-    exists but isn't linked to this provider, links it.
+    Security Rule (Phase 5 - Anti-Takeover):
+    If an existing local password user matches the OAuth email and is NOT already linked,
+    DO NOT automatically link unless link_user_id was supplied (indicating an authenticated
+    account linking session). Otherwise, raise 409 Conflict to prevent account takeover.
     """
-    # Check if this OAuth account is already linked
+    # 1. Check if this OAuth account is already linked
     existing_account = (
         db.query(OAuthAccount)
         .filter(
@@ -215,27 +304,80 @@ def find_or_create_user_from_oauth(
         db.commit()
         return existing_account.user
 
-    # Check if a user with this email already exists
-    user = db.query(User).filter(User.email == email).first()
+    # 2. Check if this is an explicit account linking flow for an authenticated user
+    if link_user_id:
+        try:
+            target_uuid = uuid.UUID(str(link_user_id))
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid linking user ID",
+            )
+        target_user = db.query(User).filter(User.id == target_uuid).first()
+        if not target_user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Target user for account linking not found",
+            )
 
-    if not user:
-        # Create new user
-        user = User(
-            email=email,
-            full_name=name,
-            avatar_url=avatar_url,
-            is_active=True,
-            is_verified=True,  # OAuth emails are pre-verified
-            auth_provider=provider,
-            auth_provider_id=provider_user_id,
-            hashed_password="",  # No password for OAuth-only users
+        # Ensure this user doesn't already have this provider linked
+        user_provider_account = (
+            db.query(OAuthAccount)
+            .filter(
+                OAuthAccount.user_id == target_user.id,
+                OAuthAccount.provider == provider,
+            )
+            .first()
         )
-        db.add(user)
-        db.flush()
+        if user_provider_account:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"You already have a {provider} account linked",
+            )
 
-    # Link the OAuth account
+        oauth_account = OAuthAccount(
+            user_id=target_user.id,
+            provider=provider,
+            provider_user_id=provider_user_id,
+            access_token=encrypt_value(access_token) if access_token else "",
+            refresh_token=encrypt_value(refresh_token) if refresh_token else None,
+        )
+        db.add(oauth_account)
+        db.commit()
+        db.refresh(target_user)
+        return target_user
+
+    # 3. Standard Login / Registration: Check if user with this email already exists
+    existing_user = db.query(User).filter(User.email == email).first()
+    if existing_user:
+        # Safe Account Resolution: Prevent automatic account takeover!
+        logger.warning(
+            f"OAuth login for {email} blocked: user already exists with different credentials"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "An account with this email already exists. "
+                "Please log in with your credentials and link this provider in Account Settings."
+            ),
+        )
+
+    # 4. New user: Create user and link OAuth identity
+    new_user = User(
+        email=email,
+        full_name=name,
+        avatar_url=avatar_url,
+        is_active=True,
+        is_verified=True,  # OAuth email pre-verified by provider
+        auth_provider=provider,
+        auth_provider_id=provider_user_id,
+        hashed_password="",  # No password for OAuth-only users
+    )
+    db.add(new_user)
+    db.flush()
+
     oauth_account = OAuthAccount(
-        user_id=user.id,
+        user_id=new_user.id,
         provider=provider,
         provider_user_id=provider_user_id,
         access_token=encrypt_value(access_token) if access_token else "",
@@ -243,6 +385,6 @@ def find_or_create_user_from_oauth(
     )
     db.add(oauth_account)
     db.commit()
-    db.refresh(user)
+    db.refresh(new_user)
 
-    return user
+    return new_user

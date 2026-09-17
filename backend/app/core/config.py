@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     DATA_ENCRYPTION_KEY: str | None = None
 
     # OAuth / Social Login
-    ENABLE_OAUTH: bool = False
+    ENABLE_OAUTH: bool = True
     GOOGLE_CLIENT_ID: str | None = None
     GOOGLE_CLIENT_SECRET: str | None = None
     GOOGLE_REDIRECT_URI: str | None = None
@@ -65,7 +65,7 @@ class Settings(BaseSettings):
     LINKEDIN_REDIRECT_URI: str | None = None
 
     # 2FA / TOTP
-    ENABLE_2FA: bool = False
+    ENABLE_2FA: bool = True
     TOTP_ISSUER_NAME: str = "SiraFit"
     RECOVERY_CODE_COUNT: int = 8
 

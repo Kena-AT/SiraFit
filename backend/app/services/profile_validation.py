@@ -66,8 +66,12 @@ def validate_project_dates(projects: list[dict]) -> list[str]:
 
 
 def validate_required_fields(profile_data: dict) -> list[str]:
-    """Ensure at least first_name or headline is set."""
+    """Ensure at least first_name or headline is set when identity fields are present."""
     errors = []
+    name_keys = {"first_name", "last_name", "headline"}
+    if not any(k in profile_data for k in name_keys):
+        return errors
+
     first_name = profile_data.get("first_name", "").strip() if profile_data.get("first_name") else ""
     last_name = profile_data.get("last_name", "").strip() if profile_data.get("last_name") else ""
     headline = profile_data.get("headline", "").strip() if profile_data.get("headline") else ""

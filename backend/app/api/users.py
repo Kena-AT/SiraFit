@@ -1,7 +1,7 @@
 import uuid
 import hashlib
 from typing import Any, Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordBearer
@@ -80,7 +80,7 @@ def get_current_user(
         )
         token_data = TokenPayload(**payload)
 
-        if token_data.type != "access":
+        if token_data.type != "access" or token_data.purpose == "2fa_pending":
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token type",

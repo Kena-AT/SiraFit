@@ -23,6 +23,7 @@ class TOTPSecret(Base):
         unique=True,  # One TOTP secret per user
     )
     encrypted_secret = Column(Text, nullable=False)  # Fernet encrypted
+    is_confirmed = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime(timezone=True), default=_utcnow)
 
     user = relationship("User", back_populates="totp_secret")
