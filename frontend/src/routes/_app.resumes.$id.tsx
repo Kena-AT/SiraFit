@@ -1,11 +1,25 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { PageBody } from "@/components/sirafit/shell";
-import { PageHeader, Panel, ScorePill, Tag } from "@/components/sirafit/bits";
+import { PageHeader, Panel, ScorePill } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
-import { getResume, getResumeVersions } from "@/lib/api/resumes";
-import { getExportUrl } from "@/lib/api/resumes";
-import type { Resume, ResumeVersion } from "@/types/resume";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  getResume,
+  getResumeVersions,
+  getResumeDiff,
+  revertResumeVersion,
+  getExportUrl,
+} from "@/lib/api/resumes";
+import type { Resume, ResumeVersion, ResumeDiffResponse } from "@/types/resume";
+import { VersionCard } from "@/components/sirafit/resume/VersionCard";
+import { DiffViewer } from "@/components/sirafit/resume/DiffViewer";
 
 export const Route = createFileRoute("/_app/resumes/$id")({
   head: () => ({ meta: [{ title: "Resume preview · SiraFit" }] }),
@@ -49,6 +63,30 @@ function ResumePreviewPage() {
   const [selectedVersion, setSelectedVersion] = useState<ResumeVersion | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Compare & Diff state
+  const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
+  const [diffModalOpen, setDiffModalOpen] = useState(false);
+  const [diffLoading, setDiffLoading] = useState(false);
+  const [diffError, setDiffError] = useState<string | null>(null);
+  const [diffData, setDiffData] = useState<ResumeDiffResponse | null>(null);
+
+  // Revert confirmation state
+  const [revertModalOpen, setRevertModalOpen] = useState(false);
+  const [targetVersionForRevert, setTargetVersionForRevert] = useState<ResumeVersion | null>(null);
+  const [isReverting, setIsReverting] = useState(false);
+
+  const fetchVersions = async () => {
+    try {
+      const versionsData = await getResumeVersions(id);
+      setVersions(versionsData);
+      if (versionsData.length > 0 && !selectedVersion) {
+        setSelectedVersion(versionsData[0]);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -70,6 +108,58 @@ function ResumePreviewPage() {
     };
     fetchData();
   }, [id]);
+
+  const toggleCompareSelection = (versionId: string) => {
+    setSelectedForCompare((prev) => {
+      if (prev.includes(versionId)) {
+        return prev.filter((i) => i !== versionId);
+      }
+      if (prev.length >= 2) {
+        // Replace second selection
+        return [prev[0], versionId];
+      }
+      return [...prev, versionId];
+    });
+  };
+
+  const handleOpenDiff = async () => {
+    if (selectedForCompare.length !== 2) return;
+    setDiffModalOpen(true);
+    setDiffLoading(true);
+    setDiffError(null);
+
+    // Sort so earlier version is vA and later is vB
+    const v1 = versions.find((v) => v.id === selectedForCompare[0]);
+    const v2 = versions.find((v) => v.id === selectedForCompare[1]);
+    if (!v1 || !v2) return;
+
+    const [vA, vB] = v1.version_number <= v2.version_number ? [v1, v2] : [v2, v1];
+
+    try {
+      const data = await getResumeDiff(id, vA.id, vB.id);
+      setDiffData(data);
+    } catch (err: any) {
+      setDiffError(err?.message || "Failed to compare versions");
+    } finally {
+      setDiffLoading(false);
+    }
+  };
+
+  const handleRevertConfirm = async () => {
+    if (!targetVersionForRevert) return;
+    setIsReverting(true);
+    try {
+      const newVersion = await revertResumeVersion(id, targetVersionForRevert.id);
+      setRevertModalOpen(false);
+      setTargetVersionForRevert(null);
+      await fetchVersions();
+      setSelectedVersion(newVersion);
+    } catch (err) {
+      console.error("Revert failed:", err);
+    } finally {
+      setIsReverting(false);
+    }
+  };
 
   const parsedContent = (() => {
     if (!selectedVersion?.content) return null;
@@ -148,7 +238,7 @@ function ResumePreviewPage() {
         }
       />
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         {/* Preview */}
         <Panel bodyClassName="bg-muted/30 p-8 grid place-items-center">
           {parsedContent ? (
@@ -162,52 +252,96 @@ function ResumePreviewPage() {
 
         {/* Sidebar */}
         <div className="space-y-4">
-          <Panel title="ATS Readiness">
-            <div className="space-y-3 p-4 text-sm">
-              <div className="flex items-center justify-between">
-                <span>Overall score</span>
-                {selectedVersion?.score !== null && selectedVersion?.score !== undefined ? (
-                  <ScorePill value={selectedVersion.score} />
-                ) : (
-                  <span className="text-muted-foreground">-</span>
-                )}
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Status</span>
-                <Tag>{selectedVersion?.status || "unknown"}</Tag>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Template</span>
-                <span className="text-muted-foreground">
-                  {selectedVersion?.template || "default"}
-                </span>
+          <Panel
+            title="Version History"
+            action={
+              <Button
+                size="sm"
+                variant={selectedForCompare.length === 2 ? "default" : "outline"}
+                className="h-7 text-xs"
+                disabled={selectedForCompare.length !== 2}
+                onClick={handleOpenDiff}
+              >
+                Compare ({selectedForCompare.length}/2)
+              </Button>
+            }
+          >
+            <div className="p-3 space-y-3">
+              {selectedForCompare.length > 0 && selectedForCompare.length < 2 && (
+                <div className="text-[11px] text-muted-foreground bg-muted/40 p-2 rounded border border-border/60">
+                  Select 1 more version to compare side-by-side differences.
+                </div>
+              )}
+
+              <div className="space-y-2.5 max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
+                {versions.map((v) => (
+                  <VersionCard
+                    key={v.id}
+                    version={v}
+                    isActive={selectedVersion?.id === v.id}
+                    isSelectedForCompare={selectedForCompare.includes(v.id)}
+                    onSelect={() => setSelectedVersion(v)}
+                    onToggleCompare={() => toggleCompareSelection(v.id)}
+                    onRevertClick={() => {
+                      setTargetVersionForRevert(v);
+                      setRevertModalOpen(true);
+                    }}
+                    isReverting={isReverting}
+                  />
+                ))}
               </div>
             </div>
           </Panel>
-
-          <Panel title="Versions">
-            <ul className="divide-y divide-border text-sm">
-              {versions.map((v) => (
-                <li
-                  key={v.id}
-                  className={`flex cursor-pointer items-center justify-between px-3 py-2 hover:bg-muted/30 ${
-                    selectedVersion?.id === v.id ? "bg-muted/30" : ""
-                  }`}
-                  onClick={() => setSelectedVersion(v)}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs">v{v.version_number}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(v.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <Tag>{v.status}</Tag>
-                </li>
-              ))}
-            </ul>
-          </Panel>
         </div>
       </div>
+
+      {/* Diff Viewer Modal */}
+      <Dialog open={diffModalOpen} onOpenChange={setDiffModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-6">
+          <DialogHeader>
+            <DialogTitle>Compare Resume Versions</DialogTitle>
+            <DialogDescription>
+              Side-by-side semantic differences between selected snapshots.
+            </DialogDescription>
+          </DialogHeader>
+          <DiffViewer
+            diff={diffData}
+            isLoading={diffLoading}
+            error={diffError}
+            onClose={() => setDiffModalOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Revert Confirmation Modal */}
+      <Dialog open={revertModalOpen} onOpenChange={setRevertModalOpen}>
+        <DialogContent className="max-w-md p-6">
+          <DialogHeader>
+            <DialogTitle>Revert to Version v{targetVersionForRevert?.version_number}</DialogTitle>
+            <DialogDescription className="pt-2 text-sm leading-relaxed text-foreground/90">
+              This will create a <strong>new immutable version</strong> using this resume's exact content. The existing version history will remain intact and will never be modified or overwritten.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRevertModalOpen(false);
+                setTargetVersionForRevert(null);
+              }}
+              disabled={isReverting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRevertConfirm}
+              disabled={isReverting}
+            >
+              {isReverting ? "Creating new version..." : "Confirm Revert"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </PageBody>
   );
 }
@@ -241,7 +375,7 @@ function ResumePreview({
         </section>
       )}
 
-      {data.experience.length > 0 && (
+      {data.experience && data.experience.length > 0 && (
         <section>
           <h3 className="font-mono text-[10px] font-semibold uppercase tracking-widest">
             Experience
@@ -265,7 +399,7 @@ function ResumePreview({
         </section>
       )}
 
-      {data.projects.length > 0 && (
+      {data.projects && data.projects.length > 0 && (
         <section>
           <h3 className="font-mono text-[10px] font-semibold uppercase tracking-widest">
             Projects
@@ -289,14 +423,14 @@ function ResumePreview({
         </section>
       )}
 
-      {data.skills.length > 0 && (
+      {data.skills && data.skills.length > 0 && (
         <section>
           <h3 className="font-mono text-[10px] font-semibold uppercase tracking-widest">Skills</h3>
           <p className="mt-1 text-[12px]">{data.skills.join(" · ")}</p>
         </section>
       )}
 
-      {data.education.length > 0 && (
+      {data.education && data.education.length > 0 && (
         <section>
           <h3 className="font-mono text-[10px] font-semibold uppercase tracking-widest">
             Education
@@ -316,7 +450,7 @@ function ResumePreview({
         <footer className="border-t border-border pt-4 text-[10px] text-muted-foreground">
           <div className="flex items-center justify-between">
             <span>
-              Generated with {version.template || "default"} template · v{version.version_number}
+              Generated with {version.template || "default"} template · v{version.version_number} ({version.source_type})
             </span>
             {version.score && <ScorePill value={version.score} />}
           </div>

@@ -1,4 +1,4 @@
-import type { Resume, ResumeVersion } from "@/types/resume";
+import type { Resume, ResumeVersion, ResumeDiffResponse } from "@/types/resume";
 import { apiFetch } from "./client";
 
 // --- Resumes ---
@@ -92,17 +92,50 @@ export const createResumeVersion = async (
   return response.json();
 };
 
+export const getResumeDiff = async (
+  resumeId: string,
+  versionAId: string,
+  versionBId: string,
+): Promise<ResumeDiffResponse> => {
+  const response = await apiFetch(
+    `/api/v1/resumes/${resumeId}/versions/${versionAId}/diff/${versionBId}`,
+  );
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ detail: "Failed to compare resume versions" }));
+    throw new Error(err.detail || "Failed to compare resume versions");
+  }
+  return response.json();
+};
+
+export const revertResumeVersion = async (
+  resumeId: string,
+  versionId: string,
+): Promise<ResumeVersion> => {
+  const response = await apiFetch(`/api/v1/resumes/${resumeId}/versions/${versionId}/revert`, {
+    method: "POST",
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ detail: "Failed to revert resume version" }));
+    throw new Error(err.detail || "Failed to revert resume version");
+  }
+  return response.json();
+};
+
 // --- AI Resume Generation ---
 
 export const generateResume = async (
   resumeId: string,
   params: {
     job_id: string;
+    parent_version_id?: string;
     template?: string;
   },
 ): Promise<ResumeVersion> => {
   const queryParams = new URLSearchParams();
   queryParams.append("job_id", params.job_id);
+  if (params.parent_version_id) {
+    queryParams.append("parent_version_id", params.parent_version_id);
+  }
   if (params.template) {
     queryParams.append("template", params.template);
   }

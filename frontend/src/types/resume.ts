@@ -11,6 +11,8 @@ export interface Resume {
   updated_at: string;
 }
 
+export type ResumeVersionSource = "base" | "tailored" | "revert";
+
 export interface ResumeVersion {
   id: string;
   resume_id: string;
@@ -18,6 +20,10 @@ export interface ResumeVersion {
   content: string;
   template: string | null;
   job_id: string | null;
+  parent_version_id: string | null;
+  source_type: ResumeVersionSource;
+  job_title?: string | null;
+  job_company?: string | null;
   tailoring_notes: string | null;
   score: number | null;
   status: "pending" | "processing" | "completed" | "failed";
@@ -27,6 +33,7 @@ export interface ResumeVersion {
 
 export interface ResumeGenerationRequest {
   job_id: string;
+  parent_version_id?: string | null;
   template: string;
   provider?: string;
   model?: string;
@@ -60,4 +67,76 @@ export interface TailoredResumeData {
     field_of_study: string | null;
     period: string;
   }[];
+}
+
+// --- Resume Diff Types ---
+
+export interface DiffSummary {
+  added: number;
+  removed: number;
+  changed: number;
+}
+
+export interface StringListDiff {
+  added: string[];
+  removed: string[];
+  preserved: string[];
+}
+
+export interface TextDiff {
+  from_text: string | null;
+  to_text: string | null;
+  changed: boolean;
+}
+
+export interface ExperienceItemDiff {
+  key: string;
+  status: "added" | "removed" | "modified" | "unchanged";
+  company: string;
+  title: string;
+  period_from: string | null;
+  period_to: string | null;
+  location_from: string | null;
+  location_to: string | null;
+  bullets_added: string[];
+  bullets_removed: string[];
+  bullets_preserved: string[];
+}
+
+export interface ProjectItemDiff {
+  name: string;
+  status: "added" | "removed" | "modified" | "unchanged";
+  description_from: string | null;
+  description_to: string | null;
+  url_from: string | null;
+  url_to: string | null;
+}
+
+export interface EducationItemDiff {
+  key: string;
+  status: "added" | "removed" | "modified" | "unchanged";
+  institution: string;
+  degree: string;
+  field_of_study_from: string | null;
+  field_of_study_to: string | null;
+  period_from: string | null;
+  period_to: string | null;
+}
+
+export interface ResumeDiffSections {
+  summary: TextDiff;
+  skills: StringListDiff;
+  experience: ExperienceItemDiff[];
+  projects: ProjectItemDiff[];
+  education: EducationItemDiff[];
+}
+
+export interface ResumeDiffResponse {
+  from_version_id: string;
+  to_version_id: string;
+  from_version_number: number;
+  to_version_number: number;
+  has_changes: boolean;
+  summary: DiffSummary;
+  sections: ResumeDiffSections;
 }
