@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from app.api.users import get_current_user
@@ -8,13 +8,16 @@ from app.core.cache import cache_delete, cache_get, cache_set
 from app.core.database import get_db
 from app.models.analytics import AnalyticsSnapshot
 from app.models.user import User
+from app.schemas.analytics import (
+    MetricsResponse,
+)
 from app.schemas.notification import (
     AnalyticsSnapshotListResponse,
     AnalyticsSnapshotResponse,
-    MetricsResponse,
 )
 from app.services.analytics import (
     create_analytics_snapshot,
+    generate_analytics_excel,
     generate_analytics_metrics,
     get_latest_snapshot,
 )
@@ -37,6 +40,26 @@ def get_metrics(
     metrics = generate_analytics_metrics(db, current_user.id)
     cache_set(cache_key, metrics, ttl=_METRICS_TTL)
     return metrics
+
+
+@router.get("/export")
+def export_analytics(
+    format: str = Query("xlsx", pattern="^(xlsx)$"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """
+    Export unified analytics report as an Excel (.xlsx) workbook.
+    Consumes the exact same metrics result as the dashboard.
+    """
+    metrics = generate_analytics_metrics(db, current_user.id)
+    content = generate_analytics_excel(metrics)
+    filename = "sirafit_analytics_export.xlsx"
+    return Response(
+        content=content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/snapshots", response_model=AnalyticsSnapshotResponse)

@@ -59,6 +59,7 @@ const NAV: NavGroup[] = [
     header: "Intelligence",
     items: [
       { label: "Analytics", to: "/analytics" },
+      { label: "Report", to: "/analytics/report" },
       { label: "Skill Insights", to: "/analytics/skills" },
       { label: "Market Insights", to: "/analytics/market" },
     ],
