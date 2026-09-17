@@ -532,6 +532,13 @@ except Exception as exc:  # pragma: no cover - import-time broker failure
     logger.warning("celery_dlq_task_unavailable", extra={"error": str(exc)})
 
 
+try:
+    from app.worker.tasks.scraping import scrape_and_import_job
+    from app.worker.tasks.monitoring import detect_stuck_imports
+except Exception:
+    scrape_and_import_job = None
+    detect_stuck_imports = None
+
 __all__ = [
     "enqueue_resume_generation",
     "enqueue_resume_pdf_render",
@@ -542,4 +549,6 @@ __all__ = [
     "process_batch_job",
     "send_notification_task",
     "check_reminders_task",
+    "scrape_and_import_job",
+    "detect_stuck_imports",
 ]

@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
+from typing import Optional
 
 from sqlalchemy import (
     Column,
@@ -143,6 +144,21 @@ class JobImport(Base):
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
     user = relationship("User")
+
+    @property
+    def error(self) -> Optional[str]:
+        if self.errors and isinstance(self.errors, list) and len(self.errors) > 0:
+            return str(self.errors[0])
+        elif isinstance(self.errors, str):
+            return self.errors
+        return None
+
+    @error.setter
+    def error(self, val: Optional[str]):
+        if val is None:
+            self.errors = []
+        else:
+            self.errors = [str(val)]
 
 
 class Resume(Base):
