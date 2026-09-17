@@ -60,6 +60,9 @@ import app.models.cover_letter  # noqa: E402, F401
 import app.models.batch  # noqa: E402, F401
 import app.models.notification  # noqa: E402, F401
 import app.models.analytics  # noqa: E402, F401
+import app.models.user_session  # noqa: E402, F401
+import app.models.session_access_log  # noqa: E402, F401
+import app.models.extension_token  # noqa: E402, F401
 
 SQLALCHEMY_DATABASE_URL = "sqlite://"
 

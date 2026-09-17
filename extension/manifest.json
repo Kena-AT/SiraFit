@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "SiraFit - Job Capture & Autofill",
+  "version": "1.0.0",
+  "description": "1-Click Job Capture and Candidate Form Autofill for SiraFit",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "http://localhost:8000/*",
+    "https://api.sirafit.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "SiraFit"
+  },
+  "background": {
+    "service_worker": "service_worker.js"
+  }
+}

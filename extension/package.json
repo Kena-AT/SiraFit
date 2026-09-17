@@ -1,0 +1,19 @@
+{
+  "name": "sirafit-extension",
+  "version": "1.0.0",
+  "description": "SiraFit Browser Extension for Job Capture and Application Autofill",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.306",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "typescript": "^5.7.3"
+  }
+}

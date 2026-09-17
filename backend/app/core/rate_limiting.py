@@ -81,6 +81,8 @@ RATE_LIMITS: Dict[str, Tuple[int, int]] = {
     "ai_generate": (10, 3600),  # AI resume/cover-letter generation (10 / hour per user)
     "session_import": (10, 3600),  # Authenticated session import (10 / hour per user)
     "session_validate": (20, 3600),  # Session credential validation (20 / hour per user)
+    "agent_import": (60, 3600),  # Browser extension job import (60 / hour per user)
+    "agent_profile": (120, 3600),  # Browser extension profile reads (120 / hour per user)
 }
 
 
@@ -99,6 +101,10 @@ def get_client_ip(request: Request) -> str:
 
 def _limit_type_for(path: str, method: str) -> Optional[str]:
     p = path.lower()
+    if "/agent/import" in p and method.upper() == "POST":
+        return "agent_import"
+    if "/agent/profile" in p:
+        return "agent_profile"
     # Route AI analysis/generation endpoints to their own tighter budgets
     # (Phase 3.2). Checked before the POST/PUT/PATCH/DELETE -> api_write
     # fallback so /analyze and /generate don't get bucketed as generic writes.

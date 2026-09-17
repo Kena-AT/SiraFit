@@ -32,6 +32,7 @@ from app.models.user_session import UserSession
 from app.models.session_access_log import SessionAccessLog
 from app.models.notification import Notification
 from app.models.analytics import AnalyticsSnapshot
+from app.models.extension_token import ExtensionToken
 
 __all__ = [
     # users
@@ -41,6 +42,7 @@ __all__ = [
     "DeviceSession",
     "UserSession",
     "SessionAccessLog",
+    "ExtensionToken",
     # auth
     "OAuthAccount",
     "TOTPSecret",

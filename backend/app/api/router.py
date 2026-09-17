@@ -13,6 +13,7 @@ from app.api import (
     notifications,
     analytics,
     stats,
+    agent,
 )
 from app.core.health import router as health_router
 
@@ -23,6 +24,7 @@ api_router.include_router(users.router, prefix="/users", tags=["users"])
 api_router.include_router(settings.router, prefix="/users", tags=["settings"])
 api_router.include_router(profiles.router, prefix="/profiles", tags=["profiles"])
 api_router.include_router(jobs.router, prefix="/jobs", tags=["jobs"])
+api_router.include_router(agent.router, prefix="/agent", tags=["agent"])
 api_router.include_router(
     applications.router, prefix="/applications", tags=["applications"]
 )

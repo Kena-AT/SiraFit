@@ -47,6 +47,9 @@ class User(Base):
     user_sessions = relationship(
         "UserSession", back_populates="user", cascade="all, delete-orphan"
     )
+    extension_tokens = relationship(
+        "ExtensionToken", back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class UserPreference(Base):
