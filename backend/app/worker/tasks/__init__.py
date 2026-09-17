@@ -535,9 +535,12 @@ except Exception as exc:  # pragma: no cover - import-time broker failure
 try:
     from app.worker.tasks.scraping import scrape_and_import_job
     from app.worker.tasks.monitoring import detect_stuck_imports
+    from app.worker.tasks.session_import import import_saved_jobs_task, import_single_saved_job
 except Exception:
     scrape_and_import_job = None
     detect_stuck_imports = None
+    import_saved_jobs_task = None
+    import_single_saved_job = None
 
 __all__ = [
     "enqueue_resume_generation",
@@ -551,4 +554,6 @@ __all__ = [
     "check_reminders_task",
     "scrape_and_import_job",
     "detect_stuck_imports",
+    "import_saved_jobs_task",
+    "import_single_saved_job",
 ]

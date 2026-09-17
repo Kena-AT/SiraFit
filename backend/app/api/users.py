@@ -1,6 +1,6 @@
 import uuid
 import hashlib
-from typing import Any, Optional
+from typing import Any, Optional, List
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
 from sqlalchemy.orm import Session
@@ -19,6 +19,8 @@ from app.schemas.user import (
     ResumeDefaultsBase, ResumeDefaults,
     AIProviderKeysWrite, AIProviderKeysRead,
 )
+from app.schemas.job import UserSessionResponse
+from app.services.session_management import list_user_sessions
 
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(
@@ -307,6 +309,18 @@ def export_user_data(
     }
     
     return JSONResponse(content=user_data)
+
+
+@router.get("/me/sessions", response_model=List[UserSessionResponse])
+def list_stored_user_sessions(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """List metadata for stored authenticated platform sessions.
+
+    Never returns cookies or credentials.
+    """
+    return list_user_sessions(db, current_user.id)
 
 
 @router.delete("/me")

@@ -1,5 +1,5 @@
 from typing import List, Any, Optional
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Header
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Header, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
@@ -7,8 +7,12 @@ from sqlalchemy import or_, and_, cast, String, func
 import uuid
 import json
 import hashlib
+import logging
+
+logger = logging.getLogger(__name__)
 
 from app.core.database import get_db
+from app.core.rate_limiting import check_rate_limit
 from app.core.cache import (
     cache_get,
     cache_set,
@@ -37,10 +41,22 @@ from app.schemas.job import (
     TopMatchItem,
     TopMatchListResponse,
     JobArchiveRequest,
+    SessionImportIn,
+    SessionValidationResponse,
+    SupportedPlatformsResponse,
 )
 from app.services.job_import import process_import
 from app.services.job_analysis import run_job_analysis
 from app.services.matching_engine import calculate_match_score
+from app.services.session_management import (
+    store_user_session,
+    delete_user_session,
+    enqueue_session_import,
+)
+from app.services.scraping.session_importer import (
+    SUPPORTED_PLATFORMS,
+    SavedJobsImporter,
+)
 
 router = APIRouter()
 
@@ -761,6 +777,120 @@ def delete_import(
         raise HTTPException(status_code=403, detail="Not authorized")
     db.delete(import_record)
     db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Authenticated Session Import (Sprint 5)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/import/session/platforms", response_model=SupportedPlatformsResponse)
+def get_supported_session_platforms() -> Any:
+    """List platforms approved and supported for authenticated session import."""
+    return SupportedPlatformsResponse(platforms=sorted(list(SUPPORTED_PLATFORMS)))
+
+
+@router.post("/import/session/{platform}/validate", response_model=SessionValidationResponse)
+def validate_platform_session(
+    platform: str,
+    body: SessionImportIn,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """Validate user-supplied session credentials against the platform.
+
+    Does NOT persist credentials or import jobs.
+    """
+    check_rate_limit(request, "session_validate", str(current_user.id))
+
+    if platform not in SUPPORTED_PLATFORMS:
+        raise HTTPException(status_code=400, detail=f"Platform '{platform}' is not supported")
+
+    importer = SavedJobsImporter()
+    valid, message = importer.validate_session(platform, body.model_dump())
+    return SessionValidationResponse(valid=valid, platform=platform, message=message)
+
+
+@router.post("/import/session/{platform}", response_model=ImportResultResponse)
+def import_saved_jobs_from_session(
+    platform: str,
+    body: SessionImportIn,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """Store encrypted session credentials and initiate async saved-job import.
+
+    Returns HTTP 202 immediately; discovery runs in the Celery worker.
+    """
+    check_rate_limit(request, "session_import", str(current_user.id))
+
+    if platform not in SUPPORTED_PLATFORMS:
+        raise HTTPException(status_code=400, detail=f"Platform '{platform}' is not supported")
+
+    if not body.consent_confirmed:
+        raise HTTPException(status_code=422, detail="Consent must be confirmed to import saved jobs")
+
+    # 1. Validate & store encrypted session
+    try:
+        store_user_session(
+            db=db,
+            user_id=current_user.id,
+            platform=platform,
+            session_data=body.model_dump(),
+            expires_at=body.expires_at,
+        )
+    except ValueError as val_err:
+        raise HTTPException(status_code=422, detail=str(val_err))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Failed to securely store session credentials")
+
+    # 2. Create JobImport tracking record
+    job_import = JobImport(
+        user_id=current_user.id,
+        source=f"session_{platform}",
+        status="processing",
+        source_data=f"Authenticated saved jobs import ({platform})",
+    )
+    db.add(job_import)
+    db.commit()
+    db.refresh(job_import)
+
+    # 3. Offload discovery to Celery queue
+    enqueue_session_import(
+        import_id=str(job_import.id),
+        platform=platform,
+        user_id=str(current_user.id),
+    )
+
+    invalidate_job_related(str(current_user.id))
+
+    return JSONResponse(
+        status_code=202,
+        content=ImportResultResponse(
+            import_record=JobImportResponse.model_validate(job_import),
+            jobs=[],
+            errors=[],
+            scrape_method="session_async",
+            source_platform=platform,
+        ).model_dump(mode="json"),
+    )
+
+
+@router.delete("/import/session/{platform}", status_code=204)
+def delete_stored_platform_session(
+    platform: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Delete a stored platform session."""
+    if platform not in SUPPORTED_PLATFORMS:
+        raise HTTPException(status_code=400, detail=f"Platform '{platform}' is not supported")
+
+    deleted = delete_user_session(db, current_user.id, platform)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Stored session not found")
+
 
 
 def _import_detail_response(db: Session, import_record: JobImport) -> ImportResultResponse:

@@ -294,3 +294,34 @@ class ApplicationContactResponse(ApplicationContactBase):
 
 class StatusTransitionRequest(BaseModel):
     to_status: str
+
+
+# --- Authenticated Session Import Schemas (Sprint 5) ---
+
+
+class SessionImportIn(BaseModel):
+    cookies: Dict[str, str]
+    headers: Optional[Dict[str, str]] = None
+    user_agent: Optional[str] = None
+    expires_at: Optional[datetime] = None
+    consent_confirmed: bool
+
+
+class SessionValidationResponse(BaseModel):
+    valid: bool
+    platform: str
+    message: str
+
+
+class UserSessionResponse(BaseModel):
+    platform: str
+    stored_at: datetime
+    expires_at: Optional[datetime] = None
+    last_used_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SupportedPlatformsResponse(BaseModel):
+    platforms: List[str]
+

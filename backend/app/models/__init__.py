@@ -28,6 +28,8 @@ from app.models.skill_taxonomy import SkillTaxonomy
 from app.models.scrape_history import ScrapeHistory
 from app.models.score import JobMatchScore
 from app.models.batch import BatchJob
+from app.models.user_session import UserSession
+from app.models.session_access_log import SessionAccessLog
 from app.models.notification import Notification
 from app.models.analytics import AnalyticsSnapshot
 
@@ -37,6 +39,8 @@ __all__ = [
     "UserPreference",
     "RefreshToken",
     "DeviceSession",
+    "UserSession",
+    "SessionAccessLog",
     # auth
     "OAuthAccount",
     "TOTPSecret",

@@ -44,6 +44,9 @@ class User(Base):
     oauth_accounts = relationship("OAuthAccount", back_populates="user")
     totp_secret = relationship("TOTPSecret", back_populates="user", uselist=False)
     recovery_codes = relationship("RecoveryCode", back_populates="user")
+    user_sessions = relationship(
+        "UserSession", back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class UserPreference(Base):

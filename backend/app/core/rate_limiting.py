@@ -79,6 +79,8 @@ RATE_LIMITS: Dict[str, Tuple[int, int]] = {
     "api_export": (10, 60),  # Stricter limit for file downloads
     "ai_analyze": (10, 3600),  # AI job analysis (10 / hour per user)
     "ai_generate": (10, 3600),  # AI resume/cover-letter generation (10 / hour per user)
+    "session_import": (10, 3600),  # Authenticated session import (10 / hour per user)
+    "session_validate": (20, 3600),  # Session credential validation (20 / hour per user)
 }
 
 
@@ -100,6 +102,10 @@ def _limit_type_for(path: str, method: str) -> Optional[str]:
     # Route AI analysis/generation endpoints to their own tighter budgets
     # (Phase 3.2). Checked before the POST/PUT/PATCH/DELETE -> api_write
     # fallback so /analyze and /generate don't get bucketed as generic writes.
+    if "/import/session/" in p and "/validate" in p:
+        return "session_validate"
+    if "/import/session/" in p and method.upper() == "POST":
+        return "session_import"
     if "/analyze" in p:
         return "ai_analyze"
     if "/generate" in p:

@@ -93,6 +93,12 @@ try:
 except Exception:
     pass
 
+try:
+    import app.worker.tasks.session_import
+    app.worker.tasks.session_import.SessionLocal = TestingSessionLocal
+except Exception:
+    pass
+
 
 def override_get_db():
     db = TestingSessionLocal()

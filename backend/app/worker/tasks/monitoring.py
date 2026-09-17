@@ -12,7 +12,7 @@ def detect_stuck_imports():
     try:
         stuck_threshold = datetime.now(timezone.utc) - timedelta(minutes=5)
         stuck_imports = db.query(JobImport).filter(
-            JobImport.status == "processing",
+            JobImport.status.in_(["processing", "queued_batch"]),
             JobImport.created_at < stuck_threshold,
         ).all()
         

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { importJobs, getImportHistory } from "@/lib/api/jobs";
 import { JobNavTabs } from "@/components/sirafit/job-nav-tabs";
 import { ImportProgressCard } from "@/components/sirafit/jobs/ImportProgressCard";
+import { SessionImportModal } from "@/components/sirafit/jobs/SessionImportModal";
 import type { ImportResult, JobData, JobImportRecord } from "@/types/job";
 
 export const Route = createFileRoute("/_app/jobs/import")({
@@ -89,6 +90,7 @@ function Import() {
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [activeImportId, setActiveImportId] = useState<string | null>(null);
+  const [sessionModalOpen, setSessionModalOpen] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [recentHistory, setRecentHistory] = useState<JobImportRecord[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -124,11 +126,13 @@ function Import() {
       try {
         const history = await getImportHistory(0, 3);
         setRecentHistory(history);
-      } catch (e: any) {
-        console.error("Failed to fetch import history:", e.message);
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error("Failed to fetch import history:", msg);
       }
-    } catch (e: any) {
-      setResult({ import_record: null as any, jobs: [], errors: [e.message] });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setResult({ import_record: null as unknown as import("@/types/job").JobImportRecord, jobs: [], errors: [msg] });
     } finally {
       setLoading(false);
     }
@@ -150,11 +154,13 @@ function Import() {
       try {
         const history = await getImportHistory(0, 3);
         setRecentHistory(history);
-      } catch (e: any) {
-        console.error("Failed to fetch import history:", e.message);
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error("Failed to fetch import history:", msg);
       }
-    } catch (e: any) {
-      setResult({ import_record: null as any, jobs: [], errors: [e.message] });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setResult({ import_record: null as unknown as import("@/types/job").JobImportRecord, jobs: [], errors: [msg] });
     } finally {
       setLoading(false);
     }
@@ -172,11 +178,13 @@ function Import() {
       try {
         const history = await getImportHistory(0, 3);
         setRecentHistory(history);
-      } catch (e: any) {
-        console.error("Failed to fetch import history:", e.message);
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error("Failed to fetch import history:", msg);
       }
-    } catch (e: any) {
-      setResult({ import_record: null as any, jobs: [], errors: [e.message] });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setResult({ import_record: null as unknown as import("@/types/job").JobImportRecord, jobs: [], errors: [msg] });
     } finally {
       setLoading(false);
     }
@@ -190,12 +198,17 @@ function Import() {
         title="Import jobs"
         description="Paste URLs, paste full descriptions, or upload a batch CSV."
         actions={
-          <Link
-            to="/jobs/history"
-            className="rounded-md bg-card px-3 py-1.5 text-sm font-medium ring-1 ring-border hover:bg-muted"
-          >
-            Import history
-          </Link>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setSessionModalOpen(true)}>
+              Saved-jobs session
+            </Button>
+            <Link
+              to="/jobs/history"
+              className="rounded-md bg-card px-3 py-1.5 text-sm font-medium ring-1 ring-border hover:bg-muted"
+            >
+              Import history
+            </Link>
+          </div>
         }
       />
 
@@ -381,6 +394,27 @@ function Import() {
       </Panel>
 
       <Panel
+        title="Saved jobs session import"
+        description="Discover and import your saved jobs from LinkedIn or Indeed"
+      >
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-foreground">Authenticated session scraping</p>
+            <p className="text-xs text-muted-foreground">
+              Provide your session cookie to securely discover and queue your saved jobs asynchronously.
+            </p>
+            <div className="flex gap-1.5 pt-1">
+              <Tag>LinkedIn</Tag>
+              <Tag>Indeed</Tag>
+            </div>
+          </div>
+          <Button onClick={() => setSessionModalOpen(true)} className="shrink-0">
+            Import saved jobs
+          </Button>
+        </div>
+      </Panel>
+
+      <Panel
         title="Recent imports"
         actions={
           <Link
@@ -423,6 +457,16 @@ function Import() {
           />
         )}
       </Panel>
+
+      <SessionImportModal
+        isOpen={sessionModalOpen}
+        onClose={() => setSessionModalOpen(false)}
+        onImportStarted={(id) => {
+          setActiveImportId(id);
+          queryClient.invalidateQueries({ queryKey: ["jobs"] });
+          queryClient.invalidateQueries({ queryKey: ["ranked-jobs"] });
+        }}
+      />
     </PageBody>
   );
 }

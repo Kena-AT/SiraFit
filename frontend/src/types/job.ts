@@ -129,7 +129,7 @@ export interface JobApplication {
     tags?: string[];
   };
   events?: ApplicationEvent[];
-  resumes?: any[];
+  resumes?: unknown[];
 }
 
 export interface ApplicationEvent {
@@ -166,4 +166,25 @@ export interface ApplicationContact {
   is_primary: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface SessionImportPayload {
+  cookies: Record<string, string>;
+  headers?: Record<string, string>;
+  user_agent?: string;
+  expires_at?: string;
+  consent_confirmed: boolean;
+}
+
+export interface SessionValidationResult {
+  valid: boolean;
+  platform: string;
+  message: string;
+}
+
+export interface UserSessionRecord {
+  platform: string;
+  stored_at: string;
+  expires_at: string | null;
+  last_used_at: string | null;
 }

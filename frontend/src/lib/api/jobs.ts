@@ -179,3 +179,61 @@ export const getJobsWithScores = async (
   }
   return response.json();
 };
+
+export const getSupportedSessionPlatforms = async (): Promise<{ platforms: string[] }> => {
+  const response = await apiFetch("/api/v1/jobs/import/session/platforms");
+  if (!response.ok) {
+    throw new Error("Failed to fetch supported platforms");
+  }
+  return response.json();
+};
+
+export const validatePlatformSession = async (
+  platform: string,
+  payload: import("@/types/job").SessionImportPayload,
+): Promise<import("@/types/job").SessionValidationResult> => {
+  const response = await apiFetch(`/api/v1/jobs/import/session/${platform}/validate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ detail: "Validation request failed" }));
+    throw new Error(err.detail || "Validation request failed");
+  }
+  return response.json();
+};
+
+export const importSessionJobs = async (
+  platform: string,
+  payload: import("@/types/job").SessionImportPayload,
+): Promise<ImportResult> => {
+  const response = await apiFetch(`/api/v1/jobs/import/session/${platform}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ detail: "Failed to initiate session import" }));
+    throw new Error(err.detail || "Failed to initiate session import");
+  }
+  return response.json();
+};
+
+export const deleteStoredSession = async (platform: string): Promise<void> => {
+  const response = await apiFetch(`/api/v1/jobs/import/session/${platform}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    throw new Error("Failed to delete stored session");
+  }
+};
+
+export const getUserSessions = async (): Promise<import("@/types/job").UserSessionRecord[]> => {
+  const response = await apiFetch("/api/v1/users/me/sessions");
+  if (!response.ok) {
+    throw new Error("Failed to fetch stored sessions");
+  }
+  return response.json();
+};
+
