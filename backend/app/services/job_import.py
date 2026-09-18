@@ -623,7 +623,10 @@ def process_import(
 
 
 def enqueue_job_import(
-    import_id: str, url: str, source: str, user_id: str
+    import_id: str,
+    url: str,
+    source: str,
+    user_id: str,
 ) -> Dict[str, Any]:
     """Dispatch a job import to the Celery scraping queue.
 
@@ -633,6 +636,17 @@ def enqueue_job_import(
     (broker failure makes the request block and completes inline).
     """
     try:
+        from app.core.config import settings
+        from app.worker.celery_app import celery_app
+
+        if getattr(settings, "ENVIRONMENT", "") == "testing" or getattr(
+            celery_app.conf, "task_always_eager", False
+        ):
+            result = _scrape_and_import_job_sync(
+                str(import_id), url, source, str(user_id)
+            )
+            return {"queued": False, "status": result.get("status", "failed")}
+
         from app.worker.tasks.scraping import scrape_and_import_job
 
         scrape_and_import_job.delay(
@@ -651,14 +665,21 @@ def enqueue_job_import(
 
 
 def _scrape_and_import_job_sync(
-    import_id: str, url: str, source: str, user_id: str
+    import_id: str,
+    url: str,
+    source: str,
+    user_id: str,
+    db: Optional[Session] = None,
 ) -> Dict[str, Any]:
     """Run the import pipeline synchronously for a pre-created ``JobImport``.
 
     Delegates to the single authoritative pipeline (``process_import``) rather
     than re-fetching/parsing, then stamps ``processed_at`` on the terminal state.
     """
-    db = SessionLocal()
+    close_db = False
+    if db is None:
+        db = SessionLocal()
+        close_db = True
     try:
         job_import = (
             db.query(JobImport).filter(JobImport.id == uuid.UUID(import_id)).first()
@@ -670,10 +691,7 @@ def _scrape_and_import_job_sync(
             db, uuid.UUID(user_id), source, url, existing_job_import=job_import
         )
 
-        if not jobs_data:
-            job_import.status = "failed"
-            job_import.error = f"No jobs imported. Details: {errors}"
-        elif errors:
+        if errors:
             logger.warning(
                 "partial_import_success",
                 extra={"errors": errors, "import_id": import_id},
@@ -685,22 +703,18 @@ def _scrape_and_import_job_sync(
         return {"status": job_import.status}
     except Exception as exc:
         db.rollback()
-        db2 = SessionLocal()
         try:
             ji = (
-                db2.query(JobImport)
-                .filter(JobImport.id == uuid.UUID(import_id))
-                .first()
+                db.query(JobImport).filter(JobImport.id == uuid.UUID(import_id)).first()
             )
             if ji:
                 ji.status = "failed"
                 ji.error = str(exc)[:500]
                 ji.processed_at = datetime.now(timezone.utc)
-                db2.commit()
+                db.commit()
         except Exception:
-            db2.rollback()
-        finally:
-            db2.close()
+            db.rollback()
         return {"status": "failed", "error": str(exc)[:500]}
     finally:
-        db.close()
+        if close_db:
+            db.close()

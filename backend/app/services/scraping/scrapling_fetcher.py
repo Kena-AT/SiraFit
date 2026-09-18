@@ -75,6 +75,10 @@ def fetch_job_html_detailed(url: str, timeout: int = 15) -> FetchOutcome:
     """Fetch a job page and return a structured outcome (HTML or error code)."""
     if not _SCRAPLING_AVAILABLE:
         return FetchOutcome(None, "SCRAPLING_UNAVAILABLE")
+    from app.core.config import settings
+
+    if getattr(settings, "ENVIRONMENT", "") == "testing":
+        return FetchOutcome(None, "FETCH_NETWORK_ERROR")
     try:
         Fetcher.configure(stealthy=True)
         response = Fetcher.get(url, timeout=timeout, follow_redirects=True, retries=2)
