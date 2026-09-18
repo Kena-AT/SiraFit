@@ -114,7 +114,7 @@ jobs:
           CELERY_RESULT_BACKEND: cache+memory://
           ENABLE_TRACING: "False"
           ERROR_TRACKING_ENABLED: "False"
-          PYTHONPATH: .
+          PYTHONPATH: .:..
         run: |
           pytest tests/ ../tests/ -v --tb=short -k "not integration and not slow" --cov=app --cov-report=xml
 
@@ -192,7 +192,9 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm install -g npm@11
+          npm ci
 
       - name: ESLint
         run: npm run lint
@@ -221,7 +223,9 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm install -g npm@11
+          npm ci
 
       - name: Build Web Application
         run: npm run build
