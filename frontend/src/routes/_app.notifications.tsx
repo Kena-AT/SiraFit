@@ -4,7 +4,8 @@ import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, StatusPill } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import {
   getNotifications,
   getUnreadCount,
@@ -22,6 +23,29 @@ function Notifications() {
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [limit, setLimit] = useState<number>(50);
+  const [isPolling, setIsPolling] = useState(true);
+
+  const fallbackPoll = useCallback(() => {
+    setIsPolling(true);
+    queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
+  }, [queryClient]);
+
+  const lastMessage = useWebSocket(
+    `ws://${window.location.host}/api/v1/ws/notifications`,
+    fallbackPoll
+  );
+
+  useEffect(() => {
+    if (lastMessage) {
+      setIsPolling(false);
+      // New notification received via WS
+      if (lastMessage.type === "connection.ready" || lastMessage.type === "notification.created") {
+        queryClient.invalidateQueries({ queryKey: ["notifications"] });
+        queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
+      }
+    }
+  }, [lastMessage, queryClient]);
 
   const {
     data: response,
@@ -34,13 +58,13 @@ function Notifications() {
         status: statusFilter === "all" ? undefined : statusFilter,
         limit,
       }),
-    refetchInterval: 5000,
+    refetchInterval: isPolling ? 5000 : false,
   });
 
   const { data: unreadData } = useQuery({
     queryKey: ["notifications-unread-count"],
     queryFn: getUnreadCount,
-    refetchInterval: 5000,
+    refetchInterval: isPolling ? 5000 : false,
   });
 
   const notifications = response?.notifications || [];

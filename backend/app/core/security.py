@@ -147,3 +147,12 @@ def decode_token(token: str) -> dict:
         raise Exception("Token has expired")
     except jwt.InvalidTokenError:
         raise Exception("Invalid token")
+
+
+def decode_access_token(token: str) -> Optional[dict]:
+    """Decode an access token safely, returning None if invalid or expired."""
+    try:
+        return decode_token(token)
+    except Exception:
+        return None
+
