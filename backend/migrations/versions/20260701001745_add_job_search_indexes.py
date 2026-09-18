@@ -23,13 +23,18 @@ def upgrade():
     op.create_index('ix_jobs_location', 'jobs', ['location'])
     op.create_index('ix_jobs_source', 'jobs', ['source'])
     op.create_index('ix_jobs_created_at', 'jobs', ['created_at'])
-    
+
     # GIN index for tags array (PostgreSQL specific)
-    op.execute('CREATE INDEX ix_jobs_tags ON jobs USING GIN (tags)')
+    bind = op.get_bind()
+    if bind.dialect.name == "postgresql":
+        op.execute('ALTER TABLE jobs ALTER COLUMN tags TYPE JSONB USING tags::jsonb')
+        op.execute('CREATE INDEX IF NOT EXISTS ix_jobs_tags ON jobs USING GIN (tags)')
 
 
 def downgrade():
-    op.drop_index('ix_jobs_tags', table_name='jobs')
+    bind = op.get_bind()
+    if bind.dialect.name == "postgresql":
+        op.execute('DROP INDEX IF EXISTS ix_jobs_tags')
     op.drop_index('ix_jobs_created_at', table_name='jobs')
     op.drop_index('ix_jobs_source', table_name='jobs')
     op.drop_index('ix_jobs_location', table_name='jobs')

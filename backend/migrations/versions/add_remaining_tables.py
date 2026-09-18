@@ -66,7 +66,7 @@ def upgrade():
         sa.Column('salary_min', sa.Integer(), nullable=True),
         sa.Column('salary_max', sa.Integer(), nullable=True),
         sa.Column('currency', sa.String(length=3), nullable=True),
-        sa.Column('tags', sa.JSON(), nullable=True),
+        sa.Column('tags', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column('url', sa.Text(), nullable=True),
         sa.Column('source', sa.String(length=50), nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=True),
