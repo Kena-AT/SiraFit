@@ -35,14 +35,6 @@ def upgrade() -> None:
         batch_op.drop_index('ix_analytics_snapshots_user')
         batch_op.drop_index('ix_analytics_snapshots_user_date')
 
-    with op.batch_alter_table('job_applications', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('general_notes', sa.Text(), nullable=True))
-        batch_op.alter_column('follow_up_at',
-               existing_type=postgresql.TIMESTAMP(timezone=True),
-               type_=sa.DateTime(),
-               existing_nullable=True)
-        batch_op.drop_index('ix_job_applications_user_followup')
-        batch_op.drop_column('notes')
 
     with op.batch_alter_table('notifications', schema=None) as batch_op:
         batch_op.alter_column('title',
@@ -97,14 +89,6 @@ def downgrade() -> None:
                type_=sa.VARCHAR(length=100),
                existing_nullable=False)
 
-    with op.batch_alter_table('job_applications', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('notes', sa.TEXT(), autoincrement=False, nullable=True))
-        batch_op.create_index('ix_job_applications_user_followup', ['user_id', 'follow_up_at'], unique=False)
-        batch_op.alter_column('follow_up_at',
-               existing_type=sa.DateTime(),
-               type_=postgresql.TIMESTAMP(timezone=True),
-               existing_nullable=True)
-        batch_op.drop_column('general_notes')
 
     with op.batch_alter_table('analytics_snapshots', schema=None) as batch_op:
         batch_op.create_index('ix_analytics_snapshots_user_date', ['user_id', 'snapshot_date'], unique=False)
