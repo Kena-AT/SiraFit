@@ -12,6 +12,8 @@ from app.core.logging import configure_logging
 from app.core.middleware import RequestTimingMiddleware
 from app.core.rate_limiting import RateLimitMiddleware
 from app.core.metrics import router as metrics_router, MetricsMiddleware
+from app.observability.tracing import init_tracing, shutdown_tracing
+from app.observability.error_tracking import init_error_tracking, capture_exception
 from starlette.middleware.base import BaseHTTPMiddleware
 
 # Configure structured logging
@@ -76,6 +78,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown events."""
+    # Initialize OpenTelemetry distributed tracing and Sentry error tracking (Sprint 15)
+    init_tracing(app=app)
+    init_error_tracking()
+
     from app.core.redis_client import get_redis_client
     redis_client = get_redis_client()
     if not redis_client:
@@ -465,9 +471,19 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("schema_drift_heal_skipped", extra={"error": str(e)})
 
+    # Initialize realtime Redis and start subscriber task
+    from app.services.realtime import init_redis as init_realtime_redis, close_redis as close_realtime_redis, run_subscriber
+    import asyncio
+    
+    await init_realtime_redis()
+    subscriber_task = asyncio.create_task(run_subscriber())
+
     logger.info("app_started", event_type="startup")
     yield
     logger.info("app_stopped", event_type="shutdown")
+    
+    await close_realtime_redis()
+    shutdown_tracing()
 
 
 app = FastAPI(
@@ -547,7 +563,8 @@ async def db_unavailable_handler(request: Request, exc: Exception):
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    """Global exception handler to mask internal errors."""
+    """Global exception handler to mask internal errors and report to error tracker."""
+    capture_exception(exc, path=request.url.path, method=request.method)
     logger.error(
         "unhandled_exception",
         path=request.url.path,
@@ -559,3 +576,9 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"detail": "A system error occurred. Please try again later."},
     )
+
+
+from fastapi import WebSocket
+@app.websocket("/ws/{path:path}")
+async def websocket_exception_handler(websocket: WebSocket, path: str):
+    await websocket.close(code=1011)

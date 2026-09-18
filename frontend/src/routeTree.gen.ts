@@ -32,6 +32,7 @@ import { Route as AppNotificationsRouteImport } from './routes/_app.notification
 import { Route as AppRankingRouteImport } from './routes/_app.ranking'
 import { Route as AppResumesRouteImport } from './routes/_app.resumes'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
+import { Route as AppStatusRouteImport } from './routes/_app.status'
 import { Route as DocsAgentInstallRouteImport } from './routes/docs.agent-install'
 import { Route as DocsGeminiKeyRouteImport } from './routes/docs.gemini-key'
 import { Route as DocsImportJobsRouteImport } from './routes/docs.import-jobs'
@@ -177,6 +178,11 @@ const AppResumesRoute = AppResumesRouteImport.update({
 const AppSettingsRoute = AppSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppStatusRoute = AppStatusRouteImport.update({
+  id: '/status',
+  path: '/status',
   getParentRoute: () => AppRoute,
 } as any)
 const DocsAgentInstallRoute = DocsAgentInstallRouteImport.update({
@@ -365,6 +371,7 @@ export interface FileRoutesByFullPath {
   '/ranking': typeof AppRankingRoute
   '/resumes': typeof AppResumesRouteWithChildren
   '/settings': typeof AppSettingsRouteWithChildren
+  '/status': typeof AppStatusRoute
   '/docs/agent-install': typeof DocsAgentInstallRoute
   '/docs/gemini-key': typeof DocsGeminiKeyRoute
   '/docs/import-jobs': typeof DocsImportJobsRoute
@@ -415,6 +422,7 @@ export interface FileRoutesByTo {
   '/match': typeof AppMatchRoute
   '/notifications': typeof AppNotificationsRoute
   '/ranking': typeof AppRankingRoute
+  '/status': typeof AppStatusRoute
   '/docs/agent-install': typeof DocsAgentInstallRoute
   '/docs/gemini-key': typeof DocsGeminiKeyRoute
   '/docs/import-jobs': typeof DocsImportJobsRoute
@@ -473,6 +481,7 @@ export interface FileRoutesById {
   '/_app/ranking': typeof AppRankingRoute
   '/_app/resumes': typeof AppResumesRouteWithChildren
   '/_app/settings': typeof AppSettingsRouteWithChildren
+  '/_app/status': typeof AppStatusRoute
   '/docs/agent-install': typeof DocsAgentInstallRoute
   '/docs/gemini-key': typeof DocsGeminiKeyRoute
   '/docs/import-jobs': typeof DocsImportJobsRoute
@@ -531,6 +540,7 @@ export interface FileRouteTypes {
     | '/ranking'
     | '/resumes'
     | '/settings'
+    | '/status'
     | '/docs/agent-install'
     | '/docs/gemini-key'
     | '/docs/import-jobs'
@@ -581,6 +591,7 @@ export interface FileRouteTypes {
     | '/match'
     | '/notifications'
     | '/ranking'
+    | '/status'
     | '/docs/agent-install'
     | '/docs/gemini-key'
     | '/docs/import-jobs'
@@ -638,6 +649,7 @@ export interface FileRouteTypes {
     | '/_app/ranking'
     | '/_app/resumes'
     | '/_app/settings'
+    | '/_app/status'
     | '/docs/agent-install'
     | '/docs/gemini-key'
     | '/docs/import-jobs'
@@ -848,6 +860,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/status': {
+      id: '/_app/status'
+      path: '/status'
+      fullPath: '/status'
+      preLoaderRoute: typeof AppStatusRouteImport
       parentRoute: typeof AppRoute
     }
     '/docs/agent-install': {
@@ -1220,6 +1239,7 @@ interface AppRouteChildren {
   AppRankingRoute: typeof AppRankingRoute
   AppResumesRoute: typeof AppResumesRouteWithChildren
   AppSettingsRoute: typeof AppSettingsRouteWithChildren
+  AppStatusRoute: typeof AppStatusRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -1234,6 +1254,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppRankingRoute: AppRankingRoute,
   AppResumesRoute: AppResumesRouteWithChildren,
   AppSettingsRoute: AppSettingsRouteWithChildren,
+  AppStatusRoute: AppStatusRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

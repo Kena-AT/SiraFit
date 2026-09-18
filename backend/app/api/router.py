@@ -14,6 +14,10 @@ from app.api import (
     analytics,
     stats,
     agent,
+    learning,
+    interview_prep,
+    websocket,
+    reports,
 )
 from app.core.health import router as health_router
 
@@ -39,4 +43,7 @@ api_router.include_router(
 )
 api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 api_router.include_router(stats.router, prefix="/stats", tags=["stats"])
+api_router.include_router(learning.router, prefix="/learning", tags=["learning"])
+api_router.include_router(interview_prep.router, prefix="/interview-prep", tags=["interview_prep"])
+api_router.include_router(websocket.router, prefix="/ws", tags=["websocket"])
 api_router.include_router(health_router, prefix="/health", tags=["health"])

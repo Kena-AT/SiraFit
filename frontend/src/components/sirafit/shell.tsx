@@ -68,6 +68,7 @@ const NAV: NavGroup[] = [
     header: "System",
     items: [
       { label: "Notifications", to: "/notifications", badge: "5" },
+      { label: "System Status", to: "/status" },
       { label: "Settings", to: "/settings" },
     ],
   },

@@ -28,6 +28,27 @@ class AgentAPIStatus(BaseModel):
     error: Optional[str] = None
 
 
+class StatusState(str):
+    HEALTHY = "healthy"
+    DEGRADED = "degraded"
+    FAILED = "failed"
+    UNKNOWN = "unknown"
+
+
+class SystemStatusResponse(BaseModel):
+    """Sanitized public system status response (Sprint 15).
+
+    Does not expose internal pool statistics, disk paths, or hostnames.
+    """
+
+    overall: str  # "healthy" | "degraded" | "failed" | "unknown"
+    api: str
+    database: str
+    redis: str
+    background_jobs: str
+    last_checked: datetime
+
+
 class HealthStatusResponse(BaseModel):
     frontend: bool
     backend: bool
@@ -39,6 +60,8 @@ class HealthStatusResponse(BaseModel):
     message: str  # Human-readable status message
     pool_utilization_pct: Optional[float] = None  # Pool exhaustion signal (Phase 2.5)
     worker_healthy: Optional[bool] = None  # Celery worker liveness (Phase 3.7)
+    # Sanitized system status structure for backward/forward compatibility
+    system_status: Optional[SystemStatusResponse] = None
 
 
 @router.get("/live")
@@ -128,6 +151,21 @@ def health_status(db: Session = Depends(get_db)):
 
         # Celery worker liveness (Phase 3.7) — None in dev/CI, True/False in prod.
         worker_healthy = _check_worker()
+        redis_healthy = _check_redis()
+
+        # Build sanitized SystemStatusResponse (Sprint 15)
+        overall_state = StatusState.HEALTHY
+        if not database_healthy or (worker_healthy is False):
+            overall_state = StatusState.DEGRADED if (database_healthy or worker_healthy is not False) else StatusState.FAILED
+
+        sanitized_status = SystemStatusResponse(
+            overall=overall_state,
+            api=StatusState.HEALTHY if backend_healthy else StatusState.FAILED,
+            database=StatusState.HEALTHY if database_healthy else StatusState.FAILED,
+            redis=StatusState.HEALTHY if redis_healthy else StatusState.DEGRADED,
+            background_jobs=StatusState.HEALTHY if (worker_healthy is not False) else StatusState.DEGRADED,
+            last_checked=datetime.utcnow(),
+        )
 
         return HealthStatusResponse(
             frontend=frontend_healthy,
@@ -135,28 +173,79 @@ def health_status(db: Session = Depends(get_db)):
             database=database_healthy,
             deployment=deployment_healthy,
             agent_api=agent_api_status.model_dump(),
-            checked_at=datetime.utcnow().isoformat(),
+            checked_at=datetime.utcnow(),
             color=color,
             message=message,
             # Pool exhaustion monitoring (Phase 2.5)
             pool_utilization_pct=pool_utilization_pct,
             # Celery worker liveness (Phase 3.7)
             worker_healthy=worker_healthy,
+            system_status=sanitized_status,
         )
         
     except Exception as e:
-        # If we can't even run the health checks, return red
+        # If we can't even run the health checks, return failed
+        now = datetime.utcnow()
         return HealthStatusResponse(
             frontend=False,
             backend=False,
             database=False,
             deployment=False,
             agent_api=AgentAPIStatus(connected=False, source="none", error=str(e)).model_dump(),
-            checked_at=datetime.utcnow().isoformat(),
+            checked_at=now,
             color="red",
             message="Health check failed",
             worker_healthy=None,
+            system_status=SystemStatusResponse(
+                overall=StatusState.FAILED,
+                api=StatusState.FAILED,
+                database=StatusState.UNKNOWN,
+                redis=StatusState.UNKNOWN,
+                background_jobs=StatusState.UNKNOWN,
+                last_checked=now,
+            ),
         )
+
+
+@router.get("/system-status", response_model=SystemStatusResponse)
+def get_system_status(db: Session = Depends(get_db)):
+    """Sanitized public system status endpoint (Sprint 15).
+
+    Returns high-level service status without leaking internal metrics, pool counts,
+    or server infrastructure details.
+    """
+    database_healthy = _check_database(db)
+    redis_healthy = _check_redis()
+    worker_healthy = _check_worker()
+
+    if database_healthy and redis_healthy and (worker_healthy is not False):
+        overall = StatusState.HEALTHY
+    elif database_healthy or (worker_healthy is not False):
+        overall = StatusState.DEGRADED
+    else:
+        overall = StatusState.FAILED
+
+    return SystemStatusResponse(
+        overall=overall,
+        api=StatusState.HEALTHY,
+        database=StatusState.HEALTHY if database_healthy else StatusState.FAILED,
+        redis=StatusState.HEALTHY if redis_healthy else StatusState.DEGRADED,
+        background_jobs=StatusState.HEALTHY if (worker_healthy is not False) else StatusState.DEGRADED,
+        last_checked=datetime.utcnow(),
+    )
+
+
+def _check_redis() -> bool:
+    """Check Redis connectivity with strict 1.0s timeout."""
+    try:
+        from app.core.redis_client import get_redis_client
+        client = get_redis_client()
+        if client:
+            client.ping()
+            return True
+        return False
+    except Exception:
+        return False
 
 
 def _check_database(db: Session) -> bool:

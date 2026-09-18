@@ -36,8 +36,28 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str | None = None
     CELERY_RESULT_BACKEND: str | None = None
 
-    # Environment
+    # Environment & Release
     ENVIRONMENT: str = "development"
+    RELEASE_VERSION: str = "1.0.0"
+
+    # Observability & Tracing (Sprint 15)
+    ENABLE_TRACING: bool = False
+    OTLP_ENDPOINT: str | None = None
+    OTLP_INSECURE: bool = True
+    OTEL_SAMPLE_RATE: float = 1.0
+
+    # Centralized Error Tracking (Sprint 15)
+    ERROR_TRACKING_DSN: str | None = None
+    ERROR_TRACKING_ENABLED: bool = False
+    ERROR_TRACKING_SAMPLE_RATE: float = 1.0
+
+    # Metrics & Backups (Sprint 15)
+    METRICS_ENABLED: bool = True
+    BACKUP_ENABLED: bool = True
+    BACKUP_DIR: str = "/var/backups/sirafit"
+    BACKUP_RETENTION_DAYS: int = 14
+    BACKUP_REMOTE_TARGET: str | None = None
+    BACKUP_ENCRYPTION_KEY: str | None = None
 
     # Semantic Search & Embeddings (Sprint 8)
     ENABLE_EMBEDDINGS: bool = True

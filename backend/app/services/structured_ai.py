@@ -26,6 +26,9 @@ from app.core.metrics import (
     AI_COMPLETION_DURATION_SECONDS,
     AI_COMPLETION_FAILURES_TOTAL,
     AI_VALIDATION_RETRIES_TOTAL,
+    SIRAFIT_AI_REQUESTS_TOTAL,
+    SIRAFIT_AI_REQUEST_DURATION_SECONDS,
+    SIRAFIT_AI_TOKENS_TOTAL,
 )
 from app.models.ai_completion import AICompletion, AICompletionAttempt
 
@@ -290,6 +293,18 @@ async def structured_completion_with_fallback(
                 provider=provider,
             ).observe(attempt_duration_ms / 1000.0)
 
+            # Record Sprint 15 AI metrics
+            SIRAFIT_AI_REQUESTS_TOTAL.labels(
+                provider=provider,
+                model=model,
+                status=status_label,
+                operation=operation,
+            ).inc()
+            SIRAFIT_AI_REQUEST_DURATION_SECONDS.labels(
+                provider=provider,
+                operation=operation,
+            ).observe(attempt_duration_ms / 1000.0)
+
             # Extract token counts if available
             raw_completion = getattr(result, "_raw_response", None)
             total_tokens = None
@@ -300,6 +315,15 @@ async def structured_completion_with_fallback(
                 total_tokens = getattr(usage, "total_tokens", None)
                 prompt_tokens = getattr(usage, "prompt_tokens", None)
                 completion_tokens = getattr(usage, "completion_tokens", None)
+
+                if prompt_tokens:
+                    SIRAFIT_AI_TOKENS_TOTAL.labels(
+                        provider=provider, model=model, direction="prompt"
+                    ).inc(prompt_tokens)
+                if completion_tokens:
+                    SIRAFIT_AI_TOKENS_TOTAL.labels(
+                        provider=provider, model=model, direction="completion"
+                    ).inc(completion_tokens)
 
             # Record audit telemetry in DB
             completion_rec = _safe_record_telemetry(

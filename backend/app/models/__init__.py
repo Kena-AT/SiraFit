@@ -34,6 +34,10 @@ from app.models.notification import Notification
 from app.models.analytics import AnalyticsSnapshot
 from app.models.extension_token import ExtensionToken
 from app.models.ai_completion import AICompletion, AICompletionAttempt
+from app.models.learning_resource import LearningResource
+from app.models.project_template import ProjectTemplate
+from app.models.user_learning_progress import UserLearningProgress
+from app.models.ws_connection_log import WSConnectionLog
 
 __all__ = [
     # users
@@ -82,4 +86,8 @@ __all__ = [
     # ai completions
     "AICompletion",
     "AICompletionAttempt",
+    # learning
+    "LearningResource",
+    "ProjectTemplate",
+    "UserLearningProgress",
 ]

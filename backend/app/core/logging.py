@@ -2,6 +2,26 @@ import structlog
 import uuid
 import datetime as dt
 from typing import Any
+from app.core.config import settings
+
+# Sensitive parameter names to scrub from log entries
+_SENSITIVE_PATTERNS = (
+    "password",
+    "access_token",
+    "refresh_token",
+    "secret",
+    "authorization",
+    "cookie",
+    "gemini_api",
+    "openai_api",
+    "openrouter_api",
+    "anthropic_api",
+    "grok_api",
+    "mistral_api",
+    "nvidia_api",
+    "api_key",
+    "totp_secret",
+)
 
 
 def get_request_id() -> str:
@@ -23,21 +43,52 @@ def add_timestamp(logger, method_name, event_dict):
     return event_dict
 
 
+def add_trace_correlation(logger, method_name, event_dict):
+    """Inject OpenTelemetry trace_id and span_id into log event if active."""
+    # If already set by contextvars, preserve them
+    if "trace_id" not in event_dict or "span_id" not in event_dict:
+        try:
+            from app.observability.tracing import get_current_trace_context
+
+            trace_id, span_id = get_current_trace_context()
+            if trace_id and "trace_id" not in event_dict:
+                event_dict["trace_id"] = trace_id
+            if span_id and "span_id" not in event_dict:
+                event_dict["span_id"] = span_id
+        except Exception:
+            pass
+    return event_dict
+
+
+def sanitize_sensitive_data(logger, method_name, event_dict):
+    """Scrub passwords, secrets, tokens and keys from log dictionary."""
+    for key in list(event_dict.keys()):
+        lower_key = str(key).lower()
+        if any(pattern in lower_key for pattern in _SENSITIVE_PATTERNS):
+            event_dict[key] = "[REDACTED]"
+    return event_dict
+
+
 def configure_logging():
-    """Configure structlog for JSON structured logging."""
+    """Configure structlog for JSON structured logging with trace correlation and redaction."""
     shared_processors = [
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_log_level,
         add_timestamp,
         add_request_id,
+        add_trace_correlation,
+        sanitize_sensitive_data,
         structlog.processors.UnicodeDecoder(),
     ]
 
+    # Use JSONRenderer in production, pretty ConsoleRenderer in local dev/testing
+    if settings.ENVIRONMENT == "production":
+        renderer = structlog.processors.JSONRenderer()
+    else:
+        renderer = structlog.dev.ConsoleRenderer()
+
     structlog.configure(
-        processors=shared_processors
-        + [
-            structlog.dev.ConsoleRenderer(),  # pretty-print in dev; swap for JSONRenderer in prod
-        ],
+        processors=shared_processors + [renderer],
         wrapper_class=structlog.stdlib.BoundLogger,
         context_class=dict,
         logger_factory=structlog.PrintLoggerFactory(),
