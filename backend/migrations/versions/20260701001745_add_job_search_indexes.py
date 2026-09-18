@@ -1,7 +1,7 @@
 """add job search indexes
 
 Revision ID: 20260701001745
-Revises: add_remaining_tables
+Revises: profile_tables_001
 Create Date: 2026-07-01 00:17:45
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '20260701001745'
-down_revision = 'remaining_tables_001'
+down_revision = 'profile_tables_001'
 branch_label = None
 depends_on = None
 

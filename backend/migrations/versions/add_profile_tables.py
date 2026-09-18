@@ -1,7 +1,7 @@
 """add profile tables
 
 Revision ID: profile_tables_001
-Revises: 4f0218ad2e0c
+Revises: remaining_tables_001
 Create Date: 2026-06-22 22:30:00.000000
 
 """
@@ -11,7 +11,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = 'profile_tables_001'
-down_revision = '3f487ed6cb6e'
+down_revision = 'remaining_tables_001'
 branch_labels = None
 depends_on = None
 
