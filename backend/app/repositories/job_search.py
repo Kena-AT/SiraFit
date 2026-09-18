@@ -3,22 +3,21 @@
 Encapsulates SQL and pgvector query abstractions, semantic search,
 keyword search, and Reciprocal Rank Fusion (RRF) hybrid retrieval.
 """
+
 from __future__ import annotations
 
 import logging
-import math
 import uuid
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, and_, desc, asc, text, cast, String
+from sqlalchemy import or_, text, cast, String
 
 from app.core.config import settings
 from app.models.job import Job
 from app.services.embeddings import (
     EMBEDDING_MODEL_NAME,
     EMBEDDING_VERSION,
-    DISTANCE_METRIC,
 )
 
 logger = logging.getLogger(__name__)
@@ -54,20 +53,23 @@ def keyword_search_jobs(
             fts_cond = text("search_vector @@ websearch_to_tsquery('english', :query)")
             # For fuzzy trigram matching, use similarity operator %
             trgm_cond = or_(
-                Job.title.op('%')(term_clean),
-                Job.company.op('%')(term_clean)
+                Job.title.op("%")(term_clean), Job.company.op("%")(term_clean)
             )
             q = q.filter(or_(fts_cond, trgm_cond)).params(query=term_clean)
-            
+
             # Rank based on a combination of FTS rank and Trigram word_similarity
             # We use GREATEST for word_similarity because we just care about the best fuzzy match
-            fts_rank = text("ts_rank_cd(search_vector, websearch_to_tsquery('english', :query))")
-            trgm_rank = text("GREATEST(word_similarity(:query, title), word_similarity(:query, company))")
-            
+            fts_rank = text(
+                "ts_rank_cd(search_vector, websearch_to_tsquery('english', :query))"
+            )
+            trgm_rank = text(
+                "GREATEST(word_similarity(:query, title), word_similarity(:query, company))"
+            )
+
             # Combine the scores. word_similarity is 0-1, ts_rank_cd can be > 1.
             # Normalization can be complex, but simple addition works as a baseline.
             relevance = (fts_rank + trgm_rank).desc()
-            
+
             # Update order_by
             q = q.order_by(relevance, Job.created_at.desc())
         else:

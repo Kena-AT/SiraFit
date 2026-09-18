@@ -120,9 +120,7 @@ def invalidate_user_profile(user_id: Any) -> None:
     cache_delete(f"user:me:{user_id}")
 
 
-async def cache_get_or_compute(
-    key: str, ttl: int, func, *args, **kwargs
-):
+async def cache_get_or_compute(key: str, ttl: int, func, *args, **kwargs):
     """Return cached value for ``key``, or compute via ``func`` if absent.
 
     Deduplicates concurrent requests for the same key using an asyncio.Lock
@@ -144,7 +142,11 @@ async def cache_get_or_compute(
             val = cache_get(key)
             if val is not None:
                 return val
-            result = await func(*args, **kwargs) if asyncio.iscoroutinefunction(func) else func(*args, **kwargs)
+            result = (
+                await func(*args, **kwargs)
+                if asyncio.iscoroutinefunction(func)
+                else func(*args, **kwargs)
+            )
             cache_set(key, _to_json_safe(result), ttl)
             return result
     finally:

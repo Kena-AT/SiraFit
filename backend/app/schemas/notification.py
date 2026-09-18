@@ -1,6 +1,6 @@
 from typing import List, Optional, Any, Dict
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 import uuid
 
 
@@ -32,14 +32,6 @@ class NotificationListResponse(BaseModel):
 
 
 # Analytics schemas - canonical definitions live in app.schemas.analytics
-from app.schemas.analytics import (
-    MetricsResponse,
-    SalaryBenchmark,
-    SkillGapItem,
-    SkillsGapResponse,
-    StageInsight,
-    StallInsightsResponse,
-)
 
 
 class AnalyticsSnapshotResponse(BaseModel):

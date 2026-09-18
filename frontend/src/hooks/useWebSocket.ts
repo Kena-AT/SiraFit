@@ -43,7 +43,7 @@ export function useWebSocket(url: string, fallbackPoll: () => void) {
           console.warn(`WebSocket disconnected (code: ${event.code}), reconnecting...`);
           setIsConnected(false);
           fallbackPoll();
-          
+
           // Exponential backoff
           const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), maxReconnectDelay);
           reconnectAttempts++;

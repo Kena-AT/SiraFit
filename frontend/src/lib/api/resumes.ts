@@ -101,7 +101,9 @@ export const getResumeDiff = async (
     `/api/v1/resumes/${resumeId}/versions/${versionAId}/diff/${versionBId}`,
   );
   if (!response.ok) {
-    const err = await response.json().catch(() => ({ detail: "Failed to compare resume versions" }));
+    const err = await response
+      .json()
+      .catch(() => ({ detail: "Failed to compare resume versions" }));
     throw new Error(err.detail || "Failed to compare resume versions");
   }
   return response.json();

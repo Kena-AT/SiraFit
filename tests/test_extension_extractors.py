@@ -1,5 +1,3 @@
-import pytest
-import re
 from bs4 import BeautifulSoup
 
 
@@ -11,6 +9,7 @@ def extract_from_html(html: str, url: str) -> dict:
     for script in soup.find_all("script", type="application/ld+json"):
         try:
             import json
+
             data = json.loads(script.string or "")
             items = data if isinstance(data, list) else data.get("@graph", [data])
             for item in items:
@@ -19,7 +18,11 @@ def extract_from_html(html: str, url: str) -> dict:
                     company = org.get("name") if isinstance(org, dict) else str(org)
                     loc = item.get("jobLocation", {})
                     addr = loc.get("address", {}) if isinstance(loc, dict) else {}
-                    loc_str = addr.get("addressLocality") if isinstance(addr, dict) else str(loc)
+                    loc_str = (
+                        addr.get("addressLocality")
+                        if isinstance(addr, dict)
+                        else str(loc)
+                    )
                     return {
                         "title": item.get("title", "").strip(),
                         "company": (company or "Unknown").strip(),
@@ -119,7 +122,9 @@ class TestExtractorAdapters:
             <div id="content"><p>Help build the future of design collaboration.</p></div>
         </div>
         """
-        extracted = extract_from_html(html, "https://boards.greenhouse.io/figma/jobs/445566")
+        extracted = extract_from_html(
+            html, "https://boards.greenhouse.io/figma/jobs/445566"
+        )
         assert extracted["extracted_via"] == "dom_adapter"
         assert extracted["title"] == "Senior React Developer"
         assert extracted["company"] == "Figma"

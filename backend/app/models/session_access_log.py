@@ -27,9 +27,15 @@ class SessionAccessLog(Base):
         index=True,
     )
     platform = Column(String(50), nullable=False, index=True)
-    action = Column(String(50), nullable=False)  # stored, validated, used, deleted, expired, failed
+    action = Column(
+        String(50), nullable=False
+    )  # stored, validated, used, deleted, expired, failed
     result = Column(String(50), nullable=False)  # success, failure
-    error_code = Column(String(100), nullable=True)  # safe code: session_expired, invalid_cookies, etc.
-    created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False, index=True)
+    error_code = Column(
+        String(100), nullable=True
+    )  # safe code: session_expired, invalid_cookies, etc.
+    created_at = Column(
+        DateTime(timezone=True), default=_utcnow, nullable=False, index=True
+    )
 
     user = relationship("User")

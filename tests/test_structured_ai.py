@@ -1,6 +1,5 @@
 """Unit tests for Structured AI Adapter, Schemas, Telemetry, and Call Sites (Sprint 7)."""
 
-import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from pydantic import BaseModel, Field, ValidationError
@@ -8,9 +7,6 @@ from pydantic import BaseModel, Field, ValidationError
 from app.schemas.ai_output import (
     AIJobAnalysisOutput,
     AIResumeOutput,
-    AIResumeExperienceItem,
-    AIResumeProjectItem,
-    AIResumeEducationItem,
     AICoverLetterOutput,
 )
 from app.services.structured_ai import (
@@ -30,8 +26,13 @@ def test_classify_ai_exception():
     assert classify_ai_exception(ValueError("Unknown error")) == "unknown"
     assert classify_ai_exception(Exception("Rate limit exceeded 429")) == "rate_limit"
     assert classify_ai_exception(Exception("Request timed out")) == "timeout"
-    assert classify_ai_exception(Exception("401 Unauthorized invalid api key")) == "auth_error"
-    assert classify_ai_exception(Exception("Invalid json schema format")) == "schema_error"
+    assert (
+        classify_ai_exception(Exception("401 Unauthorized invalid api key"))
+        == "auth_error"
+    )
+    assert (
+        classify_ai_exception(Exception("Invalid json schema format")) == "schema_error"
+    )
 
     try:
         SimpleSampleOutput(message="hi", count=50)
@@ -87,7 +88,9 @@ async def test_structured_completion_success(db, test_user):
     )
     mock_completions.create = AsyncMock(return_value=expected_output)
 
-    with patch("app.services.structured_ai.get_instructor_client", return_value=mock_client):
+    with patch(
+        "app.services.structured_ai.get_instructor_client", return_value=mock_client
+    ):
         candidates = [("openai", "gpt-4o-mini", "test-key-1")]
         messages = [{"role": "user", "content": "Analyze candidate"}]
         result, completion_rec = await structured_completion_with_fallback(
@@ -106,7 +109,9 @@ async def test_structured_completion_success(db, test_user):
     assert completion_rec.attempt_count == 1
 
     # Check attempt record in db
-    attempts = db.query(AICompletionAttempt).filter_by(completion_id=completion_rec.id).all()
+    attempts = (
+        db.query(AICompletionAttempt).filter_by(completion_id=completion_rec.id).all()
+    )
     assert len(attempts) == 1
     assert attempts[0].status == "success"
 
@@ -115,7 +120,9 @@ async def test_structured_completion_success(db, test_user):
 async def test_structured_completion_candidate_fallback(db, test_user):
     """Verify fallback to second candidate when first candidate fails."""
     client_fail = MagicMock()
-    client_fail.chat.completions.create = AsyncMock(side_effect=Exception("429 Too Many Requests"))
+    client_fail.chat.completions.create = AsyncMock(
+        side_effect=Exception("429 Too Many Requests")
+    )
 
     expected_output = AICoverLetterOutput(
         salutation="Dear Team,",
@@ -131,7 +138,10 @@ async def test_structured_completion_candidate_fallback(db, test_user):
             return client_fail
         return client_success
 
-    with patch("app.services.structured_ai.get_instructor_client", side_effect=get_client_side_effect):
+    with patch(
+        "app.services.structured_ai.get_instructor_client",
+        side_effect=get_client_side_effect,
+    ):
         candidates = [
             ("gemini", "gemini-1.5-flash", "gemini-bad-key"),
             ("openrouter", "anthropic/claude-3-5-sonnet", "openrouter-good-key"),
@@ -153,7 +163,12 @@ async def test_structured_completion_candidate_fallback(db, test_user):
     assert completion_rec.provider == "openrouter"
     assert completion_rec.attempt_count == 2
 
-    attempts = db.query(AICompletionAttempt).filter_by(completion_id=completion_rec.id).order_by(AICompletionAttempt.attempt_number).all()
+    attempts = (
+        db.query(AICompletionAttempt)
+        .filter_by(completion_id=completion_rec.id)
+        .order_by(AICompletionAttempt.attempt_number)
+        .all()
+    )
     assert len(attempts) == 2
     assert attempts[0].provider == "gemini"
     assert attempts[0].status == "failed"
@@ -178,7 +193,9 @@ async def test_telemetry_db_error_isolation(test_user):
     broken_db = MagicMock()
     broken_db.flush.side_effect = RuntimeError("DB connection dropped")
 
-    with patch("app.services.structured_ai.get_instructor_client", return_value=mock_client):
+    with patch(
+        "app.services.structured_ai.get_instructor_client", return_value=mock_client
+    ):
         candidates = [("mistral", "mistral-large-latest", "mistral-key")]
         messages = [{"role": "user", "content": "test"}]
 
@@ -200,9 +217,13 @@ async def test_telemetry_db_error_isolation(test_user):
 async def test_structured_completion_all_candidates_exhausted(db, test_user):
     """Verify RuntimeError when all candidate providers fail."""
     mock_client = MagicMock()
-    mock_client.chat.completions.create = AsyncMock(side_effect=Exception("API connection error"))
+    mock_client.chat.completions.create = AsyncMock(
+        side_effect=Exception("API connection error")
+    )
 
-    with patch("app.services.structured_ai.get_instructor_client", return_value=mock_client):
+    with patch(
+        "app.services.structured_ai.get_instructor_client", return_value=mock_client
+    ):
         candidates = [
             ("openai", "gpt-4o-mini", "key1"),
             ("anthropic", "claude-3-5-sonnet", "key2"),
@@ -221,7 +242,12 @@ async def test_structured_completion_all_candidates_exhausted(db, test_user):
         assert "API connection error" in str(excinfo.value)
 
     # Verify a failed completion record was created in DB
-    failed_comp = db.query(AICompletion).filter_by(status="failed").order_by(AICompletion.created_at.desc()).first()
+    failed_comp = (
+        db.query(AICompletion)
+        .filter_by(status="failed")
+        .order_by(AICompletion.created_at.desc())
+        .first()
+    )
     assert failed_comp is not None
     assert failed_comp.attempt_count == 2
 

@@ -1,11 +1,11 @@
 """Unit and integration tests for Sprint 8: Semantic Search & Embeddings (pgvector)."""
+
 import math
 import uuid
 import pytest
 from unittest.mock import MagicMock, patch
 
 from app.models.job import Job
-from app.models.user import User
 from app.services.embeddings import (
     build_job_embedding_text,
     compute_source_hash,
@@ -20,7 +20,6 @@ from app.repositories.job_search import (
     keyword_search_jobs,
     semantic_search_jobs,
     reciprocal_rank_fusion,
-    hybrid_search_jobs,
     find_similar_jobs,
 )
 

@@ -12,8 +12,6 @@ from app.services.scraping.session_importer import (
     SavedJobsImporter,
     SessionExpiredError,
     ScraperStructureError,
-    ScraperFetchError,
-    ScraperRateLimitError,
     SUPPORTED_PLATFORMS,
 )
 
@@ -65,7 +63,9 @@ def test_validate_session_success():
     mock_resp.text = SAMPLE_LINKEDIN_SAVED_JOBS_HTML
 
     with patch("requests.Session.get", return_value=mock_resp):
-        valid, msg = importer.validate_session("linkedin", {"cookies": {"li_at": "valid_token"}})
+        valid, msg = importer.validate_session(
+            "linkedin", {"cookies": {"li_at": "valid_token"}}
+        )
         assert valid is True
         assert "valid" in msg.lower()
 
@@ -80,7 +80,9 @@ def test_validate_session_expired_redirect_to_login():
     mock_resp.text = "<html><body>Please sign in</body></html>"
 
     with patch("requests.Session.get", return_value=mock_resp):
-        valid, msg = importer.validate_session("linkedin", {"cookies": {"li_at": "expired_token"}})
+        valid, msg = importer.validate_session(
+            "linkedin", {"cookies": {"li_at": "expired_token"}}
+        )
         assert valid is False
         assert "expired" in msg.lower() or "login" in msg.lower()
 
@@ -95,7 +97,9 @@ def test_validate_session_unauthorized_status():
     mock_resp.text = "Unauthorized"
 
     with patch("requests.Session.get", return_value=mock_resp):
-        valid, msg = importer.validate_session("indeed", {"cookies": {"CTK": "bad_token"}})
+        valid, msg = importer.validate_session(
+            "indeed", {"cookies": {"CTK": "bad_token"}}
+        )
         assert valid is False
 
 
@@ -109,7 +113,9 @@ def test_fetch_saved_jobs_list_linkedin():
     mock_resp.text = SAMPLE_LINKEDIN_SAVED_JOBS_HTML
 
     with patch("requests.Session.get", return_value=mock_resp):
-        refs, status = importer.fetch_saved_jobs_list("linkedin", {"cookies": {"li_at": "valid_token"}})
+        refs, status = importer.fetch_saved_jobs_list(
+            "linkedin", {"cookies": {"li_at": "valid_token"}}
+        )
 
     assert status == "completed"
     assert len(refs) == 2
@@ -129,7 +135,9 @@ def test_fetch_saved_jobs_list_indeed():
     mock_resp.text = SAMPLE_INDEED_SAVED_JOBS_HTML
 
     with patch("requests.Session.get", return_value=mock_resp):
-        refs, status = importer.fetch_saved_jobs_list("indeed", {"cookies": {"CTK": "valid_token"}})
+        refs, status = importer.fetch_saved_jobs_list(
+            "indeed", {"cookies": {"CTK": "valid_token"}}
+        )
 
     assert status == "completed"
     assert len(refs) == 1
@@ -143,10 +151,14 @@ def test_fetch_saved_jobs_list_empty_feed():
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     mock_resp.url = "https://www.linkedin.com/my-items/saved-jobs/"
-    mock_resp.text = "<html><body><div class='saved-jobs'>No saved jobs</div></body></html>"
+    mock_resp.text = (
+        "<html><body><div class='saved-jobs'>No saved jobs</div></body></html>"
+    )
 
     with patch("requests.Session.get", return_value=mock_resp):
-        refs, status = importer.fetch_saved_jobs_list("linkedin", {"cookies": {"li_at": "valid_token"}})
+        refs, status = importer.fetch_saved_jobs_list(
+            "linkedin", {"cookies": {"li_at": "valid_token"}}
+        )
 
     assert refs == []
     assert status == "completed_empty"
@@ -163,7 +175,9 @@ def test_fetch_saved_jobs_list_expired_raises():
 
     with patch("requests.Session.get", return_value=mock_resp):
         with pytest.raises(SessionExpiredError):
-            importer.fetch_saved_jobs_list("linkedin", {"cookies": {"li_at": "expired_token"}})
+            importer.fetch_saved_jobs_list(
+                "linkedin", {"cookies": {"li_at": "expired_token"}}
+            )
 
 
 def test_fetch_saved_jobs_list_unrecognized_structure_raises():

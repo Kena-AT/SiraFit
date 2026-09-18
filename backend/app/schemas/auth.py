@@ -21,5 +21,6 @@ class RefreshTokenRequest(BaseModel):
 class LogoutRequest(BaseModel):
     refresh_token: str
 
+
 class ResendVerificationRequest(BaseModel):
     email: EmailStr

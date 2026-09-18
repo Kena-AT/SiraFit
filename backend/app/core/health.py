@@ -9,7 +9,7 @@ import os
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -82,6 +82,7 @@ def health_ready(db: Session = Depends(get_db)):
         redis_ready = True
         try:
             import redis
+
             r = redis.from_url("redis://localhost:6379/0")
             r.ping()
         except Exception:
@@ -108,26 +109,26 @@ def health_ready(db: Session = Depends(get_db)):
 def health_status(db: Session = Depends(get_db)):
     """
     Comprehensive health status check for the entire system.
-    
+
     Checks:
     - Frontend: Can the frontend reach this endpoint?
     - Backend: Is this service running?
     - Database: Can we query the database?
     - Deployment: Is the deployment healthy?
     - Agent API: Is the model API connection working?
-    
+
     Returns a color-coded status based on the health checks.
     """
     try:
         # 1. Backend check (always true if we're running this endpoint)
         backend_healthy = True
-        
+
         # 2. Database check
         database_healthy = _check_database(db)
-        
+
         # 3. Deployment check
         deployment_healthy = _check_deployment()
-        
+
         # 4. Agent API check
         agent_api_status = check_agent_api_connection()
 
@@ -137,7 +138,7 @@ def health_status(db: Session = Depends(get_db)):
         # 5. Frontend check (self-reported by client, but we include it in the response)
         # The frontend will set this based on its own health
         frontend_healthy = True  # Placeholder - frontend will override
-        
+
         # Determine overall color based on health checks
         color, message = _determine_status_color(
             frontend_healthy,
@@ -146,7 +147,7 @@ def health_status(db: Session = Depends(get_db)):
             deployment_healthy,
             agent_api_status.connected,
         )
-        
+
         pool_utilization_pct = pool_stats.get("utilization_pct") if pool_stats else None
 
         # Celery worker liveness (Phase 3.7) — None in dev/CI, True/False in prod.
@@ -156,14 +157,20 @@ def health_status(db: Session = Depends(get_db)):
         # Build sanitized SystemStatusResponse (Sprint 15)
         overall_state = StatusState.HEALTHY
         if not database_healthy or (worker_healthy is False):
-            overall_state = StatusState.DEGRADED if (database_healthy or worker_healthy is not False) else StatusState.FAILED
+            overall_state = (
+                StatusState.DEGRADED
+                if (database_healthy or worker_healthy is not False)
+                else StatusState.FAILED
+            )
 
         sanitized_status = SystemStatusResponse(
             overall=overall_state,
             api=StatusState.HEALTHY if backend_healthy else StatusState.FAILED,
             database=StatusState.HEALTHY if database_healthy else StatusState.FAILED,
             redis=StatusState.HEALTHY if redis_healthy else StatusState.DEGRADED,
-            background_jobs=StatusState.HEALTHY if (worker_healthy is not False) else StatusState.DEGRADED,
+            background_jobs=StatusState.HEALTHY
+            if (worker_healthy is not False)
+            else StatusState.DEGRADED,
             last_checked=datetime.utcnow(),
         )
 
@@ -182,7 +189,7 @@ def health_status(db: Session = Depends(get_db)):
             worker_healthy=worker_healthy,
             system_status=sanitized_status,
         )
-        
+
     except Exception as e:
         # If we can't even run the health checks, return failed
         now = datetime.utcnow()
@@ -191,7 +198,9 @@ def health_status(db: Session = Depends(get_db)):
             backend=False,
             database=False,
             deployment=False,
-            agent_api=AgentAPIStatus(connected=False, source="none", error=str(e)).model_dump(),
+            agent_api=AgentAPIStatus(
+                connected=False, source="none", error=str(e)
+            ).model_dump(),
             checked_at=now,
             color="red",
             message="Health check failed",
@@ -230,7 +239,9 @@ def get_system_status(db: Session = Depends(get_db)):
         api=StatusState.HEALTHY,
         database=StatusState.HEALTHY if database_healthy else StatusState.FAILED,
         redis=StatusState.HEALTHY if redis_healthy else StatusState.DEGRADED,
-        background_jobs=StatusState.HEALTHY if (worker_healthy is not False) else StatusState.DEGRADED,
+        background_jobs=StatusState.HEALTHY
+        if (worker_healthy is not False)
+        else StatusState.DEGRADED,
         last_checked=datetime.utcnow(),
     )
 
@@ -239,6 +250,7 @@ def _check_redis() -> bool:
     """Check Redis connectivity with strict 1.0s timeout."""
     try:
         from app.core.redis_client import get_redis_client
+
         client = get_redis_client()
         if client:
             client.ping()
@@ -261,10 +273,10 @@ def _check_database(db: Session) -> bool:
 def _check_deployment() -> bool:
     """
     Check if the deployment is healthy.
-    
+
     This implementation assumes we're using a deployment platform that
     provides environment variables like COMMIT_SHA or DEPLOYMENT_ID.
-    
+
     For production, you'd want to implement platform-specific checks:
     - Vercel: Use the Vercel API to check deployment status
     - Render/Fly: Use their respective APIs
@@ -311,7 +323,7 @@ def _determine_status_color(
 ) -> tuple[str, str]:
     """
     Determine the overall status color based on the health checks.
-    
+
     Follows the priority-based color mapping from the spec:
     - All healthy: green
     - Only backend failing: blue
@@ -320,7 +332,7 @@ def _determine_status_color(
     - Only deployment failing: purple
     - Exactly 2 failing: blended color
     - 3+ failing: red
-    
+
     Returns:
         tuple: (color, message)
     """
@@ -331,13 +343,13 @@ def _determine_status_color(
         "deployment": deployment,
         "agent_api": agent_api,
     }
-    
+
     failing = [name for name, healthy in components.items() if not healthy]
-    
+
     # All healthy
     if not failing:
         return "green", "All systems operational"
-    
+
     # Single component failing
     if len(failing) == 1:
         component = failing[0]
@@ -349,7 +361,7 @@ def _determine_status_color(
             return "purple", f"{component.replace('_', ' ').title()} issue"
         elif component == "agent_api":
             return "orange", "Agent API connection issue"
-    
+
     # Two components failing
     if len(failing) == 2:
         # For two failures, use a split/gradient dot showing both colors
@@ -357,8 +369,11 @@ def _determine_status_color(
         # as a gradient between the two component colors
         color1 = _get_component_color(failing[0])
         color2 = _get_component_color(failing[1])
-        return f"blend:{color1}:{color2}", f"{failing[0].replace('_', ' ').title()} and {failing[1].replace('_', ' ').title()} issues"
-    
+        return (
+            f"blend:{color1}:{color2}",
+            f"{failing[0].replace('_', ' ').title()} and {failing[1].replace('_', ' ').title()} issues",
+        )
+
     # Three or more failing
     return "red", "Multiple system issues"
 

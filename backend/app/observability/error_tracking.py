@@ -59,7 +59,9 @@ def _scrub_sensitive_dict(data: dict[str, Any]) -> dict[str, Any]:
     return scrubbed
 
 
-def _before_send(event: dict[str, Any], hint: dict[str, Any]) -> Optional[dict[str, Any]]:
+def _before_send(
+    event: dict[str, Any], hint: dict[str, Any]
+) -> Optional[dict[str, Any]]:
     """Scrub sensitive request headers, query params, and body data before sending."""
     try:
         # Scrub request headers and data
@@ -72,7 +74,10 @@ def _before_send(event: dict[str, Any], hint: dict[str, Any]) -> Optional[dict[s
             if "query_string" in req and isinstance(req["query_string"], str):
                 # Mask potential token query params
                 req["query_string"] = re.sub(
-                    r"(token|key|secret)=[^&]+", r"\1=[REDACTED]", req["query_string"], flags=re.IGNORECASE
+                    r"(token|key|secret)=[^&]+",
+                    r"\1=[REDACTED]",
+                    req["query_string"],
+                    flags=re.IGNORECASE,
                 )
 
         # Scrub breadcrumbs

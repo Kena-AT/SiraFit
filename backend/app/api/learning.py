@@ -1,5 +1,5 @@
-from typing import Any, List, Dict
-from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import Any, Dict
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 import uuid
 
@@ -12,6 +12,7 @@ from app.models.job import Job
 from app.services.gap_to_plan import generate_learning_plan
 
 router = APIRouter()
+
 
 @router.get("/gap-to-plan/{job_id}", response_model=Dict[str, Any])
 def get_gap_to_plan(

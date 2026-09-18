@@ -1,11 +1,30 @@
 {
-  "extends": "plasmo/tsconfig.base",
   "compilerOptions": {
+    "strict": false,
+    "skipLibCheck": true,
+    "target": "esnext",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "incremental": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "resolveJsonModule": true,
+    "declaration": false,
+    "declarationMap": false,
+    "inlineSources": false,
+    "moduleResolution": "node",
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "preserveWatchOutput": true,
+    "verbatimModuleSyntax": false,
+    "jsx": "react-jsx",
     "paths": {
-      "~*": ["./*"]
+      "~*": ["./src/*"]
     },
     "baseUrl": "."
   },
-  "include": [".plasmo/index.d.ts", "./**/*.ts", "./**/*.tsx"],
+  "include": [".plasmo/index.d.ts", "./src/**/*.ts", "./src/**/*.tsx"],
   "exclude": ["node_modules"]
 }

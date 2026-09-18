@@ -225,6 +225,7 @@ def enqueue_resume_generation(
             extra={"error": str(exc)},
         )
         import threading
+
         threading.Thread(
             target=_run_generation,
             args=(version_id, user_id, profile_id, job_id, template),
@@ -535,8 +536,14 @@ except Exception as exc:  # pragma: no cover - import-time broker failure
 try:
     from app.worker.tasks.scraping import scrape_and_import_job
     from app.worker.tasks.monitoring import detect_stuck_imports
-    from app.worker.tasks.session_import import import_saved_jobs_task, import_single_saved_job
-    from app.worker.tasks.embeddings import generate_job_embedding_task, enqueue_job_embedding
+    from app.worker.tasks.session_import import (
+        import_saved_jobs_task,
+        import_single_saved_job,
+    )
+    from app.worker.tasks.embeddings import (
+        generate_job_embedding_task,
+        enqueue_job_embedding,
+    )
 except Exception:
     scrape_and_import_job = None
     detect_stuck_imports = None

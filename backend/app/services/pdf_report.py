@@ -5,15 +5,15 @@ from app.services.pdf_rendering import render_html_to_pdf_bytes
 
 logger = logging.getLogger(__name__)
 
+
 def generate_report_pdf(title: str, markdown_content: str) -> io.BytesIO:
     """Generate a PDF from markdown content."""
-    
+
     # Convert Markdown to HTML
     html_content = markdown.markdown(
-        markdown_content,
-        extensions=["fenced_code", "tables", "sane_lists", "nl2br"]
+        markdown_content, extensions=["fenced_code", "tables", "sane_lists", "nl2br"]
     )
-    
+
     # Wrap in our styling template
     full_html = f"""
     <!DOCTYPE html>
@@ -90,5 +90,5 @@ def generate_report_pdf(title: str, markdown_content: str) -> io.BytesIO:
     </body>
     </html>
     """
-    
+
     return render_html_to_pdf_bytes(full_html)

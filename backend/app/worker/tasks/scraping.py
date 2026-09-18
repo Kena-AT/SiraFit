@@ -10,6 +10,7 @@ from app.models.job import JobImport
 
 logger = logging.getLogger(__name__)
 
+
 @shared_task(
     name="app.worker.tasks.scrape_and_import_job",
     bind=True,
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
     acks_late=True,
     time_limit=90,  # Hard limit
     soft_time_limit=75,
-    queue="scraping"
+    queue="scraping",
 )
 def scrape_and_import_job(self, import_id: str, url: str, source: str, user_id: str):
     try:
@@ -27,7 +28,9 @@ def scrape_and_import_job(self, import_id: str, url: str, source: str, user_id: 
         logger.warning("scraping_timeout", extra={"import_id": import_id})
         db = SessionLocal()
         try:
-            ji = db.query(JobImport).filter(JobImport.id == uuid.UUID(import_id)).first()
+            ji = (
+                db.query(JobImport).filter(JobImport.id == uuid.UUID(import_id)).first()
+            )
             if ji:
                 ji.status = "failed"
                 ji.error = "Scraping timed out"
@@ -44,7 +47,9 @@ def scrape_and_import_job(self, import_id: str, url: str, source: str, user_id: 
         # Retries exhausted: ensure DB reflects failure
         db = SessionLocal()
         try:
-            ji = db.query(JobImport).filter(JobImport.id == uuid.UUID(import_id)).first()
+            ji = (
+                db.query(JobImport).filter(JobImport.id == uuid.UUID(import_id)).first()
+            )
             if ji and ji.status != "completed":
                 ji.status = "failed"
                 ji.error = str(exc)[:500]

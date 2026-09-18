@@ -33,7 +33,12 @@ def _sanitize_description(raw: str) -> str:
     if not raw:
         return ""
     # Strip dangerous HTML script / iframe tags
-    clean = re.sub(r"<(script|iframe|style)[^>]*>.*?</\1>", "", raw, flags=re.DOTALL | re.IGNORECASE)
+    clean = re.sub(
+        r"<(script|iframe|style)[^>]*>.*?</\1>",
+        "",
+        raw,
+        flags=re.DOTALL | re.IGNORECASE,
+    )
     # Strip HTML tags while preserving text formatting
     clean = re.sub(r"<[^>]+>", " ", clean)
     clean = re.sub(r"[ \t]+", " ", clean)
@@ -77,9 +82,7 @@ def authenticate_extension_token(db: Session, raw_token: str) -> Optional[User]:
 
     token_h = hash_token(raw_token)
     token_record = (
-        db.query(ExtensionToken)
-        .filter(ExtensionToken.token_hash == token_h)
-        .first()
+        db.query(ExtensionToken).filter(ExtensionToken.token_hash == token_h).first()
     )
 
     if not token_record:
@@ -114,9 +117,7 @@ def revoke_extension_token(db: Session, raw_token: str) -> bool:
 
     token_h = hash_token(raw_token)
     token_record = (
-        db.query(ExtensionToken)
-        .filter(ExtensionToken.token_hash == token_h)
-        .first()
+        db.query(ExtensionToken).filter(ExtensionToken.token_hash == token_h).first()
     )
     if token_record:
         token_record.is_revoked = True
@@ -233,9 +234,7 @@ def import_extension_capture(
             job_import.ok_count = 0
             job_import.total_found = 1
             job_import.status = "completed"
-            job_import.errors = [
-                f"Duplicate job: {capture.title} at {capture.company}"
-            ]
+            job_import.errors = [f"Duplicate job: {capture.title} at {capture.company}"]
 
             db.add(
                 JobImportItem(

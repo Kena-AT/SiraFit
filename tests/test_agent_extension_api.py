@@ -1,6 +1,5 @@
 import uuid
 import pytest
-from datetime import datetime, timezone
 from fastapi.testclient import TestClient
 
 from app.core.database import SessionLocal
@@ -9,7 +8,6 @@ from app.models.extension_token import ExtensionToken
 from app.models.job import Job, JobImport, JobImportItem
 from app.models.profile import Profile, Skill
 from app.models.user import User
-from app.services.extension_service import hash_token
 
 
 @pytest.fixture
@@ -64,13 +62,17 @@ def test_user(db):
         )
     ).delete(synchronize_session=False)
     db.query(Job).filter(
-        Job.import_id.in_(
-            db.query(JobImport.id).filter(JobImport.user_id == user.id)
-        )
+        Job.import_id.in_(db.query(JobImport.id).filter(JobImport.user_id == user.id))
     ).delete(synchronize_session=False)
-    db.query(JobImport).filter(JobImport.user_id == user.id).delete(synchronize_session=False)
-    db.query(ExtensionToken).filter(ExtensionToken.user_id == user.id).delete(synchronize_session=False)
-    db.query(Profile).filter(Profile.user_id == user.id).delete(synchronize_session=False)
+    db.query(JobImport).filter(JobImport.user_id == user.id).delete(
+        synchronize_session=False
+    )
+    db.query(ExtensionToken).filter(ExtensionToken.user_id == user.id).delete(
+        synchronize_session=False
+    )
+    db.query(Profile).filter(Profile.user_id == user.id).delete(
+        synchronize_session=False
+    )
     db.query(User).filter(User.id == user.id).delete(synchronize_session=False)
     db.commit()
 
@@ -100,7 +102,9 @@ class TestExtensionTokenLifecycle:
         assert data["name"] == "Chrome on MacBook"
         assert "expires_at" in data
 
-    def test_status_with_extension_token(self, client: TestClient, auth_headers: dict, test_user: User):
+    def test_status_with_extension_token(
+        self, client: TestClient, auth_headers: dict, test_user: User
+    ):
         # 1. Issue token
         issue_resp = client.post(
             "/api/v1/agent/token",
@@ -121,7 +125,9 @@ class TestExtensionTokenLifecycle:
         assert data["user_email"] == test_user.email
         assert data["user_name"] == "Alex Mercer"
 
-    def test_logout_revokes_extension_token(self, client: TestClient, auth_headers: dict):
+    def test_logout_revokes_extension_token(
+        self, client: TestClient, auth_headers: dict
+    ):
         # 1. Issue token
         issue_resp = client.post("/api/v1/agent/token", headers=auth_headers, json={})
         ext_token = issue_resp.json()["token"]
@@ -143,7 +149,9 @@ class TestExtensionTokenLifecycle:
 
 
 class TestAutofillProfileExport:
-    def test_get_autofill_profile(self, client: TestClient, auth_headers: dict, test_user: User):
+    def test_get_autofill_profile(
+        self, client: TestClient, auth_headers: dict, test_user: User
+    ):
         issue_resp = client.post("/api/v1/agent/token", headers=auth_headers, json={})
         ext_token = issue_resp.json()["token"]
 
@@ -209,19 +217,29 @@ class TestJobCaptureImport:
         assert job.import_id == uuid.UUID(data["import_id"])
 
         # Verify JobImport status
-        job_import = db.query(JobImport).filter(JobImport.id == uuid.UUID(data["import_id"])).first()
+        job_import = (
+            db.query(JobImport)
+            .filter(JobImport.id == uuid.UUID(data["import_id"]))
+            .first()
+        )
         assert job_import is not None
         assert job_import.status == "completed"
         assert job_import.ok_count == 1
         assert job_import.fail_count == 0
 
         # Verify JobImportItem
-        item = db.query(JobImportItem).filter(JobImportItem.import_id == job_import.id).first()
+        item = (
+            db.query(JobImportItem)
+            .filter(JobImportItem.import_id == job_import.id)
+            .first()
+        )
         assert item is not None
         assert item.status == "imported"
         assert item.job_id == job.id
 
-    def test_duplicate_capture_detection(self, client: TestClient, auth_headers: dict, db):
+    def test_duplicate_capture_detection(
+        self, client: TestClient, auth_headers: dict, db
+    ):
         issue_resp = client.post("/api/v1/agent/token", headers=auth_headers, json={})
         ext_token = issue_resp.json()["token"]
 
@@ -260,7 +278,11 @@ class TestJobCaptureImport:
         assert "already exists" in data2["message"]
 
         # Verify only 1 Job was created
-        jobs = db.query(Job).filter(Job.title == "Lead Platform Engineer", Job.company == "Netflix").all()
+        jobs = (
+            db.query(Job)
+            .filter(Job.title == "Lead Platform Engineer", Job.company == "Netflix")
+            .all()
+        )
         assert len(jobs) == 1
 
     def test_validation_bounds(self, client: TestClient, auth_headers: dict):

@@ -2,19 +2,11 @@
 
 Tests profile validation, versioning, history, and revert functionality.
 """
+
 import pytest
 from datetime import date
 from app.services.profile_validation import (
     validate_profile,
-    validate_experience_dates,
-    validate_education_dates,
-    validate_project_dates,
-    validate_required_fields,
-    validate_experiences,
-    validate_educations,
-    validate_projects,
-    validate_skills,
-    validate_certifications,
 )
 from app.services.profile_versioning import (
     create_profile_version,
@@ -22,8 +14,7 @@ from app.services.profile_versioning import (
     revert_to_version,
     _profile_to_dict,
 )
-from app.models.profile import Profile, Experience, Education, Skill, Project, Certification
-from app.models.profile_version import ProfileVersion
+from app.models.profile import Profile, Experience, Skill
 from app.models.user import User
 from app.core.security import get_password_hash
 
@@ -31,6 +22,7 @@ from app.core.security import get_password_hash
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def test_user(db):
@@ -60,14 +52,16 @@ def test_profile(db, test_user):
     db.add(profile)
     db.flush()
 
-    db.add(Experience(
-        profile_id=profile.id,
-        title="Software Engineer",
-        company="Acme Corp",
-        start_date=date(2020, 1, 1),
-        end_date=date(2023, 12, 31),
-        description="Built things",
-    ))
+    db.add(
+        Experience(
+            profile_id=profile.id,
+            title="Software Engineer",
+            company="Acme Corp",
+            start_date=date(2020, 1, 1),
+            end_date=date(2023, 12, 31),
+            description="Built things",
+        )
+    )
     db.add(Skill(profile_id=profile.id, name="Python", category="Languages"))
     db.add(Skill(profile_id=profile.id, name="React", category="Frameworks"))
     db.commit()
@@ -79,13 +73,21 @@ def test_profile(db, test_user):
 # Validation Tests
 # ---------------------------------------------------------------------------
 
+
 class TestProfileValidation:
     def test_valid_profile_passes(self):
         data = {
             "first_name": "Jane",
             "last_name": "Doe",
             "headline": "Engineer",
-            "experiences": [{"title": "Dev", "company": "Acme", "start_date": "2020-01-01", "end_date": "2023-12-31"}],
+            "experiences": [
+                {
+                    "title": "Dev",
+                    "company": "Acme",
+                    "start_date": "2020-01-01",
+                    "end_date": "2023-12-31",
+                }
+            ],
             "skills": [{"name": "Python"}],
         }
         errors = validate_profile(data)
@@ -116,12 +118,14 @@ class TestProfileValidation:
     def test_experience_end_before_start(self):
         data = {
             "first_name": "Jane",
-            "experiences": [{
-                "title": "Dev",
-                "company": "Acme",
-                "start_date": "2023-01-01",
-                "end_date": "2020-01-01",
-            }],
+            "experiences": [
+                {
+                    "title": "Dev",
+                    "company": "Acme",
+                    "start_date": "2023-01-01",
+                    "end_date": "2020-01-01",
+                }
+            ],
         }
         errors = validate_profile(data)
         assert any("end date" in e.lower() and "precedes" in e.lower() for e in errors)
@@ -129,13 +133,15 @@ class TestProfileValidation:
     def test_current_role_with_end_date(self):
         data = {
             "first_name": "Jane",
-            "experiences": [{
-                "title": "Dev",
-                "company": "Acme",
-                "start_date": "2020-01-01",
-                "end_date": "2023-12-31",
-                "is_current": True,
-            }],
+            "experiences": [
+                {
+                    "title": "Dev",
+                    "company": "Acme",
+                    "start_date": "2020-01-01",
+                    "end_date": "2023-12-31",
+                    "is_current": True,
+                }
+            ],
         }
         errors = validate_profile(data)
         assert any("current" in e.lower() for e in errors)
@@ -151,11 +157,13 @@ class TestProfileValidation:
     def test_education_end_before_start(self):
         data = {
             "first_name": "Jane",
-            "educations": [{
-                "institution": "MIT",
-                "start_date": "2020-01-01",
-                "end_date": "2018-01-01",
-            }],
+            "educations": [
+                {
+                    "institution": "MIT",
+                    "start_date": "2020-01-01",
+                    "end_date": "2018-01-01",
+                }
+            ],
         }
         errors = validate_profile(data)
         assert any("end date" in e.lower() for e in errors)
@@ -171,11 +179,13 @@ class TestProfileValidation:
     def test_project_end_before_start(self):
         data = {
             "first_name": "Jane",
-            "projects": [{
-                "name": "My Project",
-                "start_date": "2023-01-01",
-                "end_date": "2020-01-01",
-            }],
+            "projects": [
+                {
+                    "name": "My Project",
+                    "start_date": "2023-01-01",
+                    "end_date": "2020-01-01",
+                }
+            ],
         }
         errors = validate_profile(data)
         assert any("end date" in e.lower() for e in errors)
@@ -210,6 +220,7 @@ class TestProfileValidation:
 # Versioning Tests
 # ---------------------------------------------------------------------------
 
+
 class TestProfileVersioning:
     def test_create_first_version(self, db, test_user, test_profile):
         version = create_profile_version(test_user.id, test_profile, db)
@@ -226,6 +237,7 @@ class TestProfileVersioning:
 
     def test_create_subsequent_versions(self, db, test_user, test_profile):
         v1 = create_profile_version(test_user.id, test_profile, db)
+        assert v1.version == 1
         db.commit()
         # Mutate profile so it's not a no-op snapshot
         test_profile.headline = "Updated Headline"
@@ -289,6 +301,7 @@ class TestProfileVersioning:
 
     def test_revert_nonexistent_version_raises(self, db, test_user):
         import uuid
+
         with pytest.raises(ValueError, match="not found"):
             revert_to_version(test_user.id, uuid.uuid4(), db)
 
@@ -308,6 +321,7 @@ class TestProfileVersioning:
 # ---------------------------------------------------------------------------
 # API Integration Tests
 # ---------------------------------------------------------------------------
+
 
 class TestProfileAPI:
     def test_get_profile_creates_default(self, client, auth_headers):

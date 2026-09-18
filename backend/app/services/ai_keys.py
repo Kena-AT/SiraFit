@@ -125,7 +125,9 @@ def get_user_stored_keys(db, user_id) -> dict:
                 out[provider] = dec
 
     # Stash the configured fallback order for callers that want it.
-    prefs._ai_fallback_order = _parse_fallback_order(getattr(prefs, "ai_fallback_order", None))
+    prefs._ai_fallback_order = _parse_fallback_order(
+        getattr(prefs, "ai_fallback_order", None)
+    )
     return out
 
 
@@ -227,6 +229,4 @@ def available_providers(db=None, user_id=None) -> dict:
     """
     env_keys = get_env_provider_keys()
     user_keys = get_user_stored_keys(db, user_id) if db is not None and user_id else {}
-    return {
-        p: {"ui": p in user_keys, "env": p in env_keys} for p in _PROVIDERS
-    }
+    return {p: {"ui": p in user_keys, "env": p in env_keys} for p in _PROVIDERS}

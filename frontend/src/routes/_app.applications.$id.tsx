@@ -197,34 +197,45 @@ function AppDetails() {
           </Panel>
 
           {/* Notes */}
-          <Panel title="Notes" action={
-            <button
-              onClick={async () => {
-                if (!notes.length) {
-                  toast.error("No notes to export");
-                  return;
-                }
-                const toastId = toast.loading("Generating PDF...");
-                try {
-                  const { generateReportPDF } = await import("@/lib/api/reports");
-                  const content = notes.map((n: any) => `**${n.author || 'Me'}** (${new Date(n.created_at).toLocaleDateString()}):\\n\\n${n.body}`).join("\\n\\n---\\n\\n");
-                  const blob = await generateReportPDF({ title: `${application.role} at ${application.company} - Notes`, markdown_content: content });
-                  const url = window.URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `${application.company}_Notes.pdf`;
-                  a.click();
-                  window.URL.revokeObjectURL(url);
-                  toast.success("PDF downloaded", { id: toastId });
-                } catch (e: any) {
-                  toast.error(e.message || "Failed to generate PDF", { id: toastId });
-                }
-              }}
-              className="text-xs font-medium text-[color:var(--brand)] hover:underline"
-            >
-              Export PDF
-            </button>
-          }>
+          <Panel
+            title="Notes"
+            actions={
+              <button
+                onClick={async () => {
+                  if (!notes.length) {
+                    toast.error("No notes to export");
+                    return;
+                  }
+                  const toastId = toast.loading("Generating PDF...");
+                  try {
+                    const { generateReportPDF } = await import("@/lib/api/reports");
+                    const content = notes
+                      .map(
+                        (n: any) =>
+                          `**${n.author || "Me"}** (${new Date(n.created_at).toLocaleDateString()}):\\n\\n${n.body}`,
+                      )
+                      .join("\\n\\n---\\n\\n");
+                    const blob = await generateReportPDF({
+                      title: `${application.role} at ${application.company} - Notes`,
+                      markdown_content: content,
+                    });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `${application.company}_Notes.pdf`;
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    toast.success("PDF downloaded", { id: toastId });
+                  } catch (e: any) {
+                    toast.error(e.message || "Failed to generate PDF", { id: toastId });
+                  }
+                }}
+                className="text-xs font-medium text-[color:var(--brand)] hover:underline"
+              >
+                Export PDF
+              </button>
+            }
+          >
             <div className="space-y-3 p-5">
               {notes.map((note: any) => (
                 <div

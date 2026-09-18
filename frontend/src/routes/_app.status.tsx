@@ -1,16 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { fetchSystemStatus, SystemHealthState } from "@/lib/api/status";
-import { 
-  Activity, 
-  CheckCircle2, 
-  AlertTriangle, 
-  XCircle, 
-  RefreshCw, 
-  Database, 
-  Server, 
-  Zap, 
-  Cpu 
+import {
+  Activity,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  RefreshCw,
+  Database,
+  Server,
+  Zap,
+  Cpu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -55,7 +55,7 @@ export default function SystemStatusPage() {
   });
 
   const overallBadge = getStatusBadge(
-    isLoading ? "unknown" : isError ? "failed" : data?.overall || "unknown"
+    isLoading ? "unknown" : isError ? "failed" : data?.overall || "unknown",
   );
 
   const components = [
@@ -116,10 +116,10 @@ export default function SystemStatusPage() {
               {data?.overall === "healthy"
                 ? "All Systems Operational"
                 : data?.overall === "degraded"
-                ? "Experiencing Degraded Performance"
-                : isError || data?.overall === "failed"
-                ? "Service Outage Detected"
-                : "Checking System Status..."}
+                  ? "Experiencing Degraded Performance"
+                  : isError || data?.overall === "failed"
+                    ? "Service Outage Detected"
+                    : "Checking System Status..."}
             </h2>
             <p className="text-xs opacity-90">
               {data?.last_checked
@@ -154,11 +154,17 @@ export default function SystemStatusPage() {
               <div className="mt-4 pt-3 border-t flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">Status</span>
                 <div className="flex items-center gap-1.5">
-                  <span className={`inline-block w-2 h-2 rounded-full ${
-                    comp.status === "healthy" ? "bg-emerald-500" :
-                    comp.status === "degraded" ? "bg-amber-500" :
-                    comp.status === "failed" ? "bg-rose-500" : "bg-muted-foreground"
-                  }`} />
+                  <span
+                    className={`inline-block w-2 h-2 rounded-full ${
+                      comp.status === "healthy"
+                        ? "bg-emerald-500"
+                        : comp.status === "degraded"
+                          ? "bg-amber-500"
+                          : comp.status === "failed"
+                            ? "bg-rose-500"
+                            : "bg-muted-foreground"
+                    }`}
+                  />
                   <span className="text-xs font-medium capitalize">{comp.status}</span>
                 </div>
               </div>
@@ -169,7 +175,8 @@ export default function SystemStatusPage() {
 
       {/* Footer Info */}
       <div className="text-xs text-muted-foreground text-center pt-4">
-        Automatic polling every 30 seconds. Metrics and telemetry gathered without sensitive exposure.
+        Automatic polling every 30 seconds. Metrics and telemetry gathered without sensitive
+        exposure.
       </div>
     </div>
   );

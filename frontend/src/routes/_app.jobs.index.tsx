@@ -69,7 +69,17 @@ function JobsExplorer() {
     if (locationFilter) params.location = locationFilter;
     if (sourceFilter) params.source = sourceFilter;
     return ["jobs", params];
-  }, [page, limit, sortBy, sortOrder, activeSearch, searchMode, companyFilter, locationFilter, sourceFilter]);
+  }, [
+    page,
+    limit,
+    sortBy,
+    sortOrder,
+    activeSearch,
+    searchMode,
+    companyFilter,
+    locationFilter,
+    sourceFilter,
+  ]);
 
   const queryParams = queryKey[1];
 
@@ -260,8 +270,8 @@ function JobsExplorer() {
                 searchMode === "semantic"
                   ? "Semantic query (e.g. distributed systems high throughput)..."
                   : searchMode === "hybrid"
-                  ? "Hybrid search role, skills, keywords…"
-                  : "Search role, company, description…"
+                    ? "Hybrid search role, skills, keywords…"
+                    : "Search role, company, description…"
               }
               className="h-9 bg-card"
               value={searchTerm}

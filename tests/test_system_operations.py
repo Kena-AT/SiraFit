@@ -661,7 +661,6 @@ class TestEnqueueCoverLetterPdfRender:
 # FROM FILE: test_notifications.py
 # ========================================
 
-import uuid
 
 from app.services.notification import (
     create_notification,
@@ -795,7 +794,6 @@ Simple script to test email configuration
 Run: python test_email.py
 """
 
-import os
 
 from dotenv import load_dotenv
 from app.services.email import email_service
@@ -806,7 +804,9 @@ load_dotenv()
 
 def test_email():
     """Test sending a verification email"""
-    test_email_address = os.getenv("TEST_EMAIL", "kenakaye11@gmail.com")  # Send to yourself for testing
+    test_email_address = os.getenv(
+        "TEST_EMAIL", "kenakaye11@gmail.com"
+    )  # Send to yourself for testing
     test_token = os.getenv("TEST_TOKEN", "test_token_12345")
 
     print("=" * 60)

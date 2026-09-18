@@ -139,7 +139,9 @@ def _ping(provider: dict, key: str) -> bool:
     Checks Redis cache first with 60 s TTL so the /health/status probe
     doesn't re-dial the same provider on every landing-page poll.
     """
-    cache_key = f"agent_api:{provider['id']}:{hashlib.sha256(key.encode()).hexdigest()[:16]}"
+    cache_key = (
+        f"agent_api:{provider['id']}:{hashlib.sha256(key.encode()).hexdigest()[:16]}"
+    )
     cached = cache_get(cache_key)
     if cached is not None:
         return cached

@@ -17,7 +17,7 @@ import os
 import sys
 import uuid
 from datetime import datetime, timedelta, timezone
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 from celery.exceptions import SoftTimeLimitExceeded
@@ -33,7 +33,6 @@ from app.api.users import get_current_user
 from app.models.job import Job, JobImport, JobImportItem
 from app.models.user import User
 from app.services.job_import import (
-    process_import,
     _scrape_and_import_job_sync,
     enqueue_job_import,
 )
@@ -69,7 +68,9 @@ class TestAsyncImportEndpoints:
         html = _load_fixture("greenhouse_job.html")
 
         # Mock Celery delay to simulate successful task queueing
-        with patch("app.services.job_import.enqueue_job_import", return_value={"queued": True}):
+        with patch(
+            "app.services.job_import.enqueue_job_import", return_value={"queued": True}
+        ):
             resp = client.post(
                 "/api/v1/jobs/import",
                 json={
@@ -136,7 +137,9 @@ class TestAsyncImportEndpoints:
             result = _scrape_and_import_job_sync(import_id, url, source, user_id)
             return {"queued": False, "status": result.get("status", "completed")}
 
-        with patch("app.services.job_import.enqueue_job_import", side_effect=fake_enqueue):
+        with patch(
+            "app.services.job_import.enqueue_job_import", side_effect=fake_enqueue
+        ):
             with patch("app.services.job_import.fetch_job_html", return_value=html):
                 resp = client.post(
                     "/api/v1/jobs/import",
@@ -154,14 +157,22 @@ class TestAsyncImportEndpoints:
 
     def test_enqueue_job_import_handles_broker_down(self, db, test_user):
         """enqueue_job_import catches broker exception and returns queued=False."""
-        import_record = JobImport(user_id=test_user.id, source="url", status="processing")
+        import_record = JobImport(
+            user_id=test_user.id, source="url", status="processing"
+        )
         db.add(import_record)
         db.commit()
 
         html = _load_fixture("greenhouse_job.html")
-        target_task = getattr(scrape_and_import_job, "_get_current_object", lambda: scrape_and_import_job)()
+        target_task = getattr(
+            scrape_and_import_job, "_get_current_object", lambda: scrape_and_import_job
+        )()
 
-        with patch.object(target_task, "apply_async", side_effect=Exception("Redis connection refused")):
+        with patch.object(
+            target_task,
+            "apply_async",
+            side_effect=Exception("Redis connection refused"),
+        ):
             with patch("app.services.job_import.fetch_job_html", return_value=html):
                 outcome = enqueue_job_import(
                     str(import_record.id),
@@ -192,8 +203,13 @@ class TestWorkerTaskExecution:
         db.commit()
 
         # Simulate parse crash
-        with patch("app.services.job_import.fetch_job_html", return_value="<html></html>"):
-            with patch("app.services.job_import.detect_platform", side_effect=ValueError("Corrupt platform data")):
+        with patch(
+            "app.services.job_import.fetch_job_html", return_value="<html></html>"
+        ):
+            with patch(
+                "app.services.job_import.detect_platform",
+                side_effect=ValueError("Corrupt platform data"),
+            ):
                 result = _scrape_and_import_job_sync(
                     str(job_import.id),
                     "https://boards.greenhouse.io/acme/jobs/invalid_parse",
@@ -263,7 +279,9 @@ class TestWorkerTaskExecution:
         assert job_import.error == "Scraping timed out"
         assert job_import.processed_at is not None
 
-    def test_scrape_and_import_retry_does_not_create_duplicate_jobs(self, db, test_user):
+    def test_scrape_and_import_retry_does_not_create_duplicate_jobs(
+        self, db, test_user
+    ):
         """Simulated worker retry does not create duplicate Job records."""
         html = _load_fixture("greenhouse_job.html")
         url = "https://boards.greenhouse.io/acme/jobs/idempotency_test"
@@ -274,7 +292,9 @@ class TestWorkerTaskExecution:
         db.commit()
 
         with patch("app.services.job_import.fetch_job_html", return_value=html):
-            res1 = _scrape_and_import_job_sync(str(import_1.id), url, "url", str(test_user.id))
+            res1 = _scrape_and_import_job_sync(
+                str(import_1.id), url, "url", str(test_user.id)
+            )
         assert res1["status"] == "completed"
 
         jobs_count_1 = db.query(Job).filter(Job.url == url).count()
@@ -286,12 +306,14 @@ class TestWorkerTaskExecution:
         db.commit()
 
         with patch("app.services.job_import.fetch_job_html", return_value=html):
-            res2 = _scrape_and_import_job_sync(str(import_2.id), url, "url", str(test_user.id))
+            _scrape_and_import_job_sync(str(import_2.id), url, "url", str(test_user.id))
 
         jobs_count_2 = db.query(Job).filter(Job.url == url).count()
         assert jobs_count_2 == 1  # Still exactly 1 Job row
 
-        items_2 = db.query(JobImportItem).filter(JobImportItem.import_id == import_2.id).all()
+        items_2 = (
+            db.query(JobImportItem).filter(JobImportItem.import_id == import_2.id).all()
+        )
         assert len(items_2) == 1
         assert items_2[0].status == "duplicate"
 
@@ -304,7 +326,10 @@ class TestWorkerTaskExecution:
         # Job is created and committed, then ScrapeHistory throws
         html = _load_fixture("greenhouse_job.html")
         with patch("app.services.job_import.fetch_job_html", return_value=html):
-            with patch("app.services.job_import.ScrapeHistory", side_effect=IOError("Telemetry failure")):
+            with patch(
+                "app.services.job_import.ScrapeHistory",
+                side_effect=IOError("Telemetry failure"),
+            ):
                 # Should not crash the import because logging failures are caught
                 res = _scrape_and_import_job_sync(
                     str(job_import.id),

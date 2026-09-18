@@ -26,7 +26,9 @@ class UserSession(Base):
         nullable=False,
         index=True,
     )
-    platform = Column(String(50), nullable=False, index=True)  # e.g., "linkedin", "indeed"
+    platform = Column(
+        String(50), nullable=False, index=True
+    )  # e.g., "linkedin", "indeed"
     encrypted_session_data = Column(Text, nullable=False)
     stored_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=True)
@@ -34,10 +36,14 @@ class UserSession(Base):
     is_active = Column(Boolean, default=True, nullable=False)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
-    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
+    )
 
     user = relationship("User", back_populates="user_sessions")
 
     __table_args__ = (
-        Index("ix_user_sessions_user_platform_active", "user_id", "platform", "is_active"),
+        Index(
+            "ix_user_sessions_user_platform_active", "user_id", "platform", "is_active"
+        ),
     )

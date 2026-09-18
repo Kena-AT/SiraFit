@@ -4,14 +4,14 @@ Implements canonical text serialization, source hashing, model loading,
 vector generation, dimension validation, and normalization for:
     sentence-transformers/all-MiniLM-L6-v2 (384-d, cosine distance)
 """
+
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
 import math
 from dataclasses import dataclass
-from typing import Any, List, Optional
+from typing import Any, List
 
 from app.core.config import settings
 
@@ -42,8 +42,14 @@ def get_embedding_model():
     global _model_instance
     if _model_instance is None:
         from sentence_transformers import SentenceTransformer
-        logger.info("Loading embedding model: %s", settings.EMBEDDING_MODEL or EMBEDDING_MODEL_NAME)
-        _model_instance = SentenceTransformer(settings.EMBEDDING_MODEL or EMBEDDING_MODEL_NAME)
+
+        logger.info(
+            "Loading embedding model: %s",
+            settings.EMBEDDING_MODEL or EMBEDDING_MODEL_NAME,
+        )
+        _model_instance = SentenceTransformer(
+            settings.EMBEDDING_MODEL or EMBEDDING_MODEL_NAME
+        )
     return _model_instance
 
 

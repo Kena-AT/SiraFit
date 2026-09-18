@@ -6,7 +6,6 @@ and audit logging for platform session credentials.
 """
 
 from datetime import datetime, timezone, timedelta
-import pytest
 from app.models.user_session import UserSession
 from app.models.session_access_log import SessionAccessLog
 from app.services.session_management import (
@@ -14,14 +13,15 @@ from app.services.session_management import (
     get_user_session,
     delete_user_session,
     list_user_sessions,
-    record_session_audit,
 )
 from app.core.security import decrypt_value
 
 
 def test_store_user_session_encrypts_data(db, test_user):
     """Verify session data is encrypted at rest and audit log is created."""
-    session_data = {"cookies": {"li_at": "AQED_TEST_COOKIE_12345", "JSESSIONID": "ajax:998877"}}
+    session_data = {
+        "cookies": {"li_at": "AQED_TEST_COOKIE_12345", "JSESSIONID": "ajax:998877"}
+    }
 
     session = store_user_session(
         db=db,
@@ -78,9 +78,7 @@ def test_get_user_session_decrypts_data(db, test_user):
 
     # Verify retrieval audit log
     logs = (
-        db.query(SessionAccessLog)
-        .filter_by(user_id=test_user.id, action="used")
-        .all()
+        db.query(SessionAccessLog).filter_by(user_id=test_user.id, action="used").all()
     )
     assert len(logs) == 1
     assert logs[0].result == "success"
@@ -187,5 +185,8 @@ def test_audit_logs_contain_no_secrets(db, test_user):
 
     logs = db.query(SessionAccessLog).filter_by(user_id=test_user.id).all()
     for log in logs:
-        assert log.error_code is None or "SUPER_SECRET_COOKIE_VAL_ABCXYZ" not in log.error_code
+        assert (
+            log.error_code is None
+            or "SUPER_SECRET_COOKIE_VAL_ABCXYZ" not in log.error_code
+        )
         assert log.action in ("stored", "used", "deleted", "expired", "failed")

@@ -17,12 +17,10 @@ from app.core import metrics
 from app.models.job import Job, JobImport, JobImportItem
 from app.models.scrape_history import ScrapeHistory
 from app.services.scraping.extraction import (
-    _clean_html_to_text,
     detect_platform,
     extract_job_id_from_url,
     extract_tags_from_text,
     normalize_url,
-    parse_salary_from_text,
 )
 from app.services.scraping.scrapling_fetcher import fetch_job_html, parse_job_html
 
@@ -58,14 +56,24 @@ def parse_job_from_url(url: str) -> Dict[str, Any]:
         company = company_hints.get(platform, platform.title())
     else:
         hostname = parsed_url.hostname or ""
-        parts = [p for p in hostname.split(".") if p not in ("www", "com", "io", "co", "org", "net", "gov", "edu")]
+        parts = [
+            p
+            for p in hostname.split(".")
+            if p not in ("www", "com", "io", "co", "org", "net", "gov", "edu")
+        ]
         if parts:
             company = parts[0].title()
 
     title = "Unknown Position"
     for seg in reversed(path_segments):
         seg_clean = seg.replace("-", " ").replace("_", " ").title()
-        if seg_clean and seg_clean.lower() not in ("jobs", "job", "view", "listing", "apply"):
+        if seg_clean and seg_clean.lower() not in (
+            "jobs",
+            "job",
+            "view",
+            "listing",
+            "apply",
+        ):
             title = seg_clean
             break
 
@@ -224,7 +232,11 @@ def parse_job_csv(csv_content: str) -> List[Dict[str, Any]]:
                 f.seek(0)
                 for line in f:
                     line = line.strip()
-                    if line and not line.lower().startswith("url") and not line.lower().startswith("link"):
+                    if (
+                        line
+                        and not line.lower().startswith("url")
+                        and not line.lower().startswith("link")
+                    ):
                         if line.startswith("http://") or line.startswith("https://"):
                             jobs.append(parse_job_from_url(line))
                         else:
@@ -233,11 +245,31 @@ def parse_job_csv(csv_content: str) -> List[Dict[str, Any]]:
 
             for row in reader:
                 row_lower = {k.lower().strip(): v for k, v in row.items() if k}
-                url = row_lower.get("url") or row_lower.get("link") or row_lower.get("job_url")
-                title = row_lower.get("title") or row_lower.get("job_title") or row_lower.get("position")
-                company = row_lower.get("company") or row_lower.get("employer") or row_lower.get("organization")
-                location = row_lower.get("location") or row_lower.get("place") or row_lower.get("office")
-                description = row_lower.get("description") or row_lower.get("desc") or row_lower.get("details")
+                url = (
+                    row_lower.get("url")
+                    or row_lower.get("link")
+                    or row_lower.get("job_url")
+                )
+                title = (
+                    row_lower.get("title")
+                    or row_lower.get("job_title")
+                    or row_lower.get("position")
+                )
+                company = (
+                    row_lower.get("company")
+                    or row_lower.get("employer")
+                    or row_lower.get("organization")
+                )
+                location = (
+                    row_lower.get("location")
+                    or row_lower.get("place")
+                    or row_lower.get("office")
+                )
+                description = (
+                    row_lower.get("description")
+                    or row_lower.get("desc")
+                    or row_lower.get("details")
+                )
 
                 if url and not title:
                     parsed_url_job = parse_job_from_url(url)
@@ -247,19 +279,26 @@ def parse_job_csv(csv_content: str) -> List[Dict[str, Any]]:
                         parsed_url_job["location"] = location
                     jobs.append(parsed_url_job)
                 elif title or description:
-                    jobs.append({
-                        "title": title or "Unknown Position",
-                        "company": company or "Unknown Company",
-                        "location": location,
-                        "description": description or (f"Position: {title} at {company}" if title and company else "Imported from CSV"),
-                        "salary_min": None,
-                        "salary_max": None,
-                        "currency": "USD",
-                        "tags": extract_tags_from_text(description or title or ""),
-                        "url": url,
-                        "source": "csv",
-                        "external_id": str(uuid.uuid4()),
-                    })
+                    jobs.append(
+                        {
+                            "title": title or "Unknown Position",
+                            "company": company or "Unknown Company",
+                            "location": location,
+                            "description": description
+                            or (
+                                f"Position: {title} at {company}"
+                                if title and company
+                                else "Imported from CSV"
+                            ),
+                            "salary_min": None,
+                            "salary_max": None,
+                            "currency": "USD",
+                            "tags": extract_tags_from_text(description or title or ""),
+                            "url": url,
+                            "source": "csv",
+                            "external_id": str(uuid.uuid4()),
+                        }
+                    )
                 elif url:
                     jobs.append(parse_job_from_url(url))
         else:
@@ -271,7 +310,7 @@ def parse_job_csv(csv_content: str) -> List[Dict[str, Any]]:
                         jobs.append(parse_job_from_url(line))
                     else:
                         jobs.append(parse_job_from_description(line))
-    except Exception as e:
+    except Exception:
         for line in csv_content.split("\n"):
             line = line.strip()
             if line:
@@ -455,15 +494,17 @@ def process_import(
 
             # ── Log to ScrapeHistory ─────────────────────────────────────────
             try:
-                db.add(ScrapeHistory(
-                    user_id=user_id,
-                    url=data,
-                    source_platform=platform,
-                    method_used=method,
-                    success="true" if method == "scrapling" else "partial",
-                    fields_extracted=fields_count,
-                    duration_ms=duration_ms,
-                ))
+                db.add(
+                    ScrapeHistory(
+                        user_id=user_id,
+                        url=data,
+                        source_platform=platform,
+                        method_used=method,
+                        success="true" if method == "scrapling" else "partial",
+                        fields_extracted=fields_count,
+                        duration_ms=duration_ms,
+                    )
+                )
                 db.commit()
             except Exception:
                 # Never let logging failure break the import
@@ -494,12 +535,14 @@ def process_import(
                 errors.append(
                     f"Duplicate job: {normalized['title']} at {normalized['company']}"
                 )
-                db.add(JobImportItem(
-                    import_id=job_import.id,
-                    job_id=existing_job.id,
-                    status="duplicate",
-                    title_guess=normalized["title"],
-                ))
+                db.add(
+                    JobImportItem(
+                        import_id=job_import.id,
+                        job_id=existing_job.id,
+                        status="duplicate",
+                        title_guess=normalized["title"],
+                    )
+                )
             else:
                 job = Job(
                     external_id=normalized["external_id"],
@@ -522,18 +565,23 @@ def process_import(
                 normalized["id"] = str(job.id)
                 normalized["import_status"] = "imported"
                 jobs_data.append(normalized)
-                db.add(JobImportItem(
-                    import_id=job_import.id,
-                    job_id=job.id,
-                    status="imported",
-                    title_guess=normalized["title"],
-                ))
+                db.add(
+                    JobImportItem(
+                        import_id=job_import.id,
+                        job_id=job.id,
+                        status="imported",
+                        title_guess=normalized["title"],
+                    )
+                )
                 # Trigger async embedding generation (Sprint 8)
                 try:
                     from app.worker.tasks.embeddings import enqueue_job_embedding
+
                     enqueue_job_embedding(job.id)
                 except Exception as emb_err:
-                    logger.warning("Failed to enqueue embedding for job %s: %s", job.id, emb_err)
+                    logger.warning(
+                        "Failed to enqueue embedding for job %s: %s", job.id, emb_err
+                    )
 
         job_import.total_found = job_import.ok_count + job_import.fail_count
         job_import.status = "completed"
@@ -542,7 +590,9 @@ def process_import(
         # Mark partial if heuristic-only URL imports had no real description
         if source_type == "url" and scrape_meta.get("method_used") == "heuristic":
             has_real_desc = any(
-                j.get("description") and "Imported from URL:" not in j.get("description") for j in jobs_data
+                j.get("description")
+                and "Imported from URL:" not in j.get("description")
+                for j in jobs_data
             )
             if not has_real_desc:
                 job_import.partial = True
@@ -556,13 +606,15 @@ def process_import(
         title_guess = None
         if parsed_list and isinstance(parsed_list[0], dict):
             title_guess = parsed_list[0].get("title")
-        db.add(JobImportItem(
-            import_id=job_import.id,
-            job_id=None,
-            status="failed",
-            error_message=str(e),
-            title_guess=title_guess,
-        ))
+        db.add(
+            JobImportItem(
+                import_id=job_import.id,
+                job_id=None,
+                status="failed",
+                error_message=str(e),
+                title_guess=title_guess,
+            )
+        )
 
     db.commit()
     db.refresh(job_import)
@@ -570,7 +622,9 @@ def process_import(
     return job_import, jobs_data, errors, scrape_meta
 
 
-def enqueue_job_import(import_id: str, url: str, source: str, user_id: str) -> Dict[str, Any]:
+def enqueue_job_import(
+    import_id: str, url: str, source: str, user_id: str
+) -> Dict[str, Any]:
     """Dispatch a job import to the Celery scraping queue.
 
     Returns ``{"queued": True}`` on successful dispatch. If the broker is
@@ -596,7 +650,9 @@ def enqueue_job_import(import_id: str, url: str, source: str, user_id: str) -> D
         return {"queued": False, "status": result.get("status", "failed")}
 
 
-def _scrape_and_import_job_sync(import_id: str, url: str, source: str, user_id: str) -> Dict[str, Any]:
+def _scrape_and_import_job_sync(
+    import_id: str, url: str, source: str, user_id: str
+) -> Dict[str, Any]:
     """Run the import pipeline synchronously for a pre-created ``JobImport``.
 
     Delegates to the single authoritative pipeline (``process_import``) rather
@@ -604,7 +660,9 @@ def _scrape_and_import_job_sync(import_id: str, url: str, source: str, user_id: 
     """
     db = SessionLocal()
     try:
-        job_import = db.query(JobImport).filter(JobImport.id == uuid.UUID(import_id)).first()
+        job_import = (
+            db.query(JobImport).filter(JobImport.id == uuid.UUID(import_id)).first()
+        )
         if not job_import:
             return {"status": "failed", "error": "JobImport not found"}
 
@@ -617,7 +675,8 @@ def _scrape_and_import_job_sync(import_id: str, url: str, source: str, user_id: 
             job_import.error = f"No jobs imported. Details: {errors}"
         elif errors:
             logger.warning(
-                "partial_import_success", extra={"errors": errors, "import_id": import_id}
+                "partial_import_success",
+                extra={"errors": errors, "import_id": import_id},
             )
 
         job_import.processed_at = datetime.now(timezone.utc)
@@ -628,7 +687,11 @@ def _scrape_and_import_job_sync(import_id: str, url: str, source: str, user_id: 
         db.rollback()
         db2 = SessionLocal()
         try:
-            ji = db2.query(JobImport).filter(JobImport.id == uuid.UUID(import_id)).first()
+            ji = (
+                db2.query(JobImport)
+                .filter(JobImport.id == uuid.UUID(import_id))
+                .first()
+            )
             if ji:
                 ji.status = "failed"
                 ji.error = str(exc)[:500]

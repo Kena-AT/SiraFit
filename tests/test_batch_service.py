@@ -1,8 +1,9 @@
 """
 Tests for batch job service.
 """
+
 import uuid
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock
 import pytest
 from sqlalchemy.orm import Session
 from app.models.batch import BatchJob
@@ -12,8 +13,20 @@ from app.services.batch import _run_batch_job, enqueue_batch_job
 
 @pytest.fixture
 def mock_batch_job(db: Session) -> BatchJob:
-    job1 = Job(id=uuid.uuid4(), title="Job 1", company="Company 1", source="linkedin", external_id="1")
-    job2 = Job(id=uuid.uuid4(), title="Job 2", company="Company 2", source="linkedin", external_id="2")
+    job1 = Job(
+        id=uuid.uuid4(),
+        title="Job 1",
+        company="Company 1",
+        source="linkedin",
+        external_id="1",
+    )
+    job2 = Job(
+        id=uuid.uuid4(),
+        title="Job 2",
+        company="Company 2",
+        source="linkedin",
+        external_id="2",
+    )
     db.add_all([job1, job2])
     db.commit()
 
@@ -41,9 +54,12 @@ def test_run_batch_job_success(db: Session, mock_batch_job: BatchJob):
     async def mock_analyze(*args, **kwargs):
         return {"score": 85, "status": "done"}
 
-    with patch("app.core.database.SessionLocal", return_value=db), \
-         patch("app.services.batch_operations.batch_analyze_item", side_effect=mock_analyze):
-
+    with (
+        patch("app.core.database.SessionLocal", return_value=db),
+        patch(
+            "app.services.batch_operations.batch_analyze_item", side_effect=mock_analyze
+        ),
+    ):
         result = _run_batch_job(batch_job_id)
 
         assert result["status"] == "completed"
@@ -68,11 +84,15 @@ def test_run_batch_job_partial_failure(db: Session, mock_batch_job: BatchJob):
             raise Exception("Failed")
         mock_analyze.calls += 1
         return {"score": 85}
+
     mock_analyze.calls = 0
 
-    with patch("app.core.database.SessionLocal", return_value=db), \
-         patch("app.services.batch_operations.batch_analyze_item", side_effect=mock_analyze):
-
+    with (
+        patch("app.core.database.SessionLocal", return_value=db),
+        patch(
+            "app.services.batch_operations.batch_analyze_item", side_effect=mock_analyze
+        ),
+    ):
         result = _run_batch_job(batch_job_id)
 
         assert result["status"] == "partial"
@@ -116,10 +136,14 @@ def test_enqueue_batch_job_success(db: Session, mock_batch_job: BatchJob):
 
 
 def test_enqueue_batch_job_fallback(db: Session, mock_batch_job: BatchJob):
-    with patch("app.worker.celery_app.celery_app.send_task", side_effect=Exception("Celery unavailable")), \
-         patch("app.core.database.SessionLocal", return_value=db), \
-         patch("app.services.batch._run_batch_job") as mock_run:
-
+    with (
+        patch(
+            "app.worker.celery_app.celery_app.send_task",
+            side_effect=Exception("Celery unavailable"),
+        ),
+        patch("app.core.database.SessionLocal", return_value=db),
+        patch("app.services.batch._run_batch_job") as mock_run,
+    ):
         enqueue_batch_job(mock_batch_job.id)
 
         mock_run.assert_called_once_with(mock_batch_job.id)

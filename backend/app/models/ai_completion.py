@@ -29,7 +29,9 @@ class AICompletion(Base):
     provider = Column(String(64), nullable=False)
     model = Column(String(128), nullable=False)
     response_model = Column(String(128), nullable=False)
-    status = Column(String(32), nullable=False, default="success")  # success, failed, fallback
+    status = Column(
+        String(32), nullable=False, default="success"
+    )  # success, failed, fallback
     attempt_count = Column(Integer, nullable=False, default=1)
     duration_ms = Column(Integer, nullable=False, default=0)
     total_tokens = Column(Integer, nullable=True)
@@ -62,7 +64,9 @@ class AICompletionAttempt(Base):
     provider = Column(String(64), nullable=False)
     model = Column(String(128), nullable=False)
     status = Column(String(32), nullable=False)  # success, failed
-    failure_code = Column(String(64), nullable=True)  # validation_error, rate_limit, timeout, auth_error, schema_error, unknown
+    failure_code = Column(
+        String(64), nullable=True
+    )  # validation_error, rate_limit, timeout, auth_error, schema_error, unknown
     validation_errors = Column(JSON, nullable=True)
     duration_ms = Column(Integer, nullable=False, default=0)
 

@@ -61,7 +61,13 @@ def _looks_empty_or_blocked(html: str) -> bool:
     low = html.lower()
     return any(
         marker in low
-        for marker in ("enable javascript", "cloudflare", "cf-chl", "captcha", "access denied")
+        for marker in (
+            "enable javascript",
+            "cloudflare",
+            "cf-chl",
+            "captcha",
+            "access denied",
+        )
     )
 
 

@@ -13,6 +13,8 @@ export interface JobData {
   source: string;
   is_duplicate: boolean;
   import_status?: "imported" | "duplicate" | "failed";
+  status?: "imported" | "duplicate" | "failed";
+  error?: string | null;
 }
 
 export interface Job {
@@ -58,7 +60,7 @@ export interface ImportResult {
   import_record: JobImportRecord;
   jobs: JobData[];
   errors: string[];
-  scrape_method?: "scrapling" | "heuristic";
+  scrape_method?: "scrapling" | "heuristic" | "async";
   scrape_duration_ms?: number;
   fields_extracted?: number;
   source_platform?: string;

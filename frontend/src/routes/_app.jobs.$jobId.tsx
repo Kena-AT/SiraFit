@@ -585,9 +585,7 @@ function JobDetails() {
                 ))}
               </div>
             ) : (
-              <div className="p-4 text-xs text-muted-foreground">
-                No similar jobs found yet.
-              </div>
+              <div className="p-4 text-xs text-muted-foreground">No similar jobs found yet.</div>
             )}
           </Panel>
         </div>

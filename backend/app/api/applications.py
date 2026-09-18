@@ -158,7 +158,10 @@ def update_application(
         raise HTTPException(status_code=404, detail="Application not found")
 
     update_data = app_in.model_dump(exclude_unset=True)
-    if "resume_version_id" in update_data and update_data["resume_version_id"] is not None:
+    if (
+        "resume_version_id" in update_data
+        and update_data["resume_version_id"] is not None
+    ):
         v_check = (
             db.query(ResumeVersion)
             .join(Resume, ResumeVersion.resume_id == Resume.id)
@@ -231,10 +234,7 @@ def list_followups(
         query = query.filter(JobApplication.follow_up_at >= datetime.now(timezone.utc))
 
     applications = (
-        query.order_by(asc(JobApplication.follow_up_at))
-        .offset(skip)
-        .limit(limit)
-        .all()
+        query.order_by(asc(JobApplication.follow_up_at)).offset(skip).limit(limit).all()
     )
 
     return [

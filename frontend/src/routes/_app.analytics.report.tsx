@@ -47,7 +47,11 @@ function AnalyticsReportView() {
   if (isLoading) {
     return (
       <PageBody>
-        <PageHeader eyebrow="Intelligence" title="Analytics Report" description="Loading report..." />
+        <PageHeader
+          eyebrow="Intelligence"
+          title="Analytics Report"
+          description="Loading report..."
+        />
         <div className="grid place-items-center py-20 text-muted-foreground">Loading report...</div>
       </PageBody>
     );
@@ -56,7 +60,11 @@ function AnalyticsReportView() {
   if (error) {
     return (
       <PageBody>
-        <PageHeader eyebrow="Intelligence" title="Analytics Report" description="Failed to load report" />
+        <PageHeader
+          eyebrow="Intelligence"
+          title="Analytics Report"
+          description="Failed to load report"
+        />
         <div className="px-4 py-8 text-center text-sm text-destructive">{error.message}</div>
       </PageBody>
     );
@@ -103,11 +111,21 @@ function AnalyticsReportView() {
       <div className="mb-6 rounded-lg border border-border bg-card p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border pb-4">
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">SiraFit Career Analytics & Market Report</h1>
-            <p className="text-xs text-muted-foreground">Deterministic insights derived from your pipeline status events and imported job metadata.</p>
+            <h1 className="text-xl font-bold tracking-tight text-foreground">
+              SiraFit Career Analytics & Market Report
+            </h1>
+            <p className="text-xs text-muted-foreground">
+              Deterministic insights derived from your pipeline status events and imported job
+              metadata.
+            </p>
           </div>
           <div className="text-xs font-mono text-muted-foreground sm:text-right">
-            <div>Report Date: {metrics?.generated_at ? new Date(metrics.generated_at).toLocaleDateString() : "Current"}</div>
+            <div>
+              Report Date:{" "}
+              {metrics?.generated_at
+                ? new Date(metrics.generated_at).toLocaleDateString()
+                : "Current"}
+            </div>
             <div>Source: SiraFit Unified Engine</div>
           </div>
         </div>
@@ -115,20 +133,36 @@ function AnalyticsReportView() {
         {/* Executive Summary Metrics */}
         <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="rounded border border-border/60 bg-muted/20 p-3">
-            <div className="text-[11px] font-medium text-muted-foreground uppercase">Total Applications</div>
-            <div className="text-2xl font-bold font-mono mt-1">{metrics?.total_applications ?? 0}</div>
+            <div className="text-[11px] font-medium text-muted-foreground uppercase">
+              Total Applications
+            </div>
+            <div className="text-2xl font-bold font-mono mt-1">
+              {metrics?.total_applications ?? 0}
+            </div>
           </div>
           <div className="rounded border border-border/60 bg-muted/20 p-3">
-            <div className="text-[11px] font-medium text-muted-foreground uppercase">Interview Rate</div>
-            <div className="text-2xl font-bold font-mono mt-1">{metrics?.interview_rate?.toFixed(1) ?? 0}%</div>
+            <div className="text-[11px] font-medium text-muted-foreground uppercase">
+              Interview Rate
+            </div>
+            <div className="text-2xl font-bold font-mono mt-1">
+              {metrics?.interview_rate?.toFixed(1) ?? 0}%
+            </div>
           </div>
           <div className="rounded border border-border/60 bg-muted/20 p-3">
-            <div className="text-[11px] font-medium text-muted-foreground uppercase">Offer Rate</div>
-            <div className="text-2xl font-bold font-mono mt-1">{metrics?.offer_rate?.toFixed(1) ?? 0}%</div>
+            <div className="text-[11px] font-medium text-muted-foreground uppercase">
+              Offer Rate
+            </div>
+            <div className="text-2xl font-bold font-mono mt-1">
+              {metrics?.offer_rate?.toFixed(1) ?? 0}%
+            </div>
           </div>
           <div className="rounded border border-border/60 bg-muted/20 p-3">
-            <div className="text-[11px] font-medium text-muted-foreground uppercase">Avg Response Time</div>
-            <div className="text-2xl font-bold font-mono mt-1">{metrics?.avg_response_time_days?.toFixed(1) ?? 0}d</div>
+            <div className="text-[11px] font-medium text-muted-foreground uppercase">
+              Avg Response Time
+            </div>
+            <div className="text-2xl font-bold font-mono mt-1">
+              {metrics?.avg_response_time_days?.toFixed(1) ?? 0}d
+            </div>
           </div>
         </div>
       </div>
@@ -137,7 +171,9 @@ function AnalyticsReportView() {
       <Panel title="1. Stage Duration & Drop-Off Analysis">
         <div className="p-4">
           <p className="text-xs text-muted-foreground mb-3">
-            Stage dwell times and drop-off rates are calculated exclusively from verified transitions in the application timeline. Dwell medians require at least 3 completed observations.
+            Stage dwell times and drop-off rates are calculated exclusively from verified
+            transitions in the application timeline. Dwell medians require at least 3 completed
+            observations.
           </p>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -154,7 +190,9 @@ function AnalyticsReportView() {
               <tbody className="divide-y divide-border font-mono text-xs">
                 {stallStages.map((st) => (
                   <tr key={st.stage} className="hover:bg-muted/30">
-                    <td className="py-2.5 font-sans font-medium capitalize">{st.stage.replace("_", " ")}</td>
+                    <td className="py-2.5 font-sans font-medium capitalize">
+                      {st.stage.replace("_", " ")}
+                    </td>
                     <td className="py-2.5">{st.entered_count}</td>
                     <td className="py-2.5 text-[color:var(--brand)]">{st.progressed_count}</td>
                     <td className="py-2.5 text-destructive">{st.dropped_count}</td>
@@ -162,7 +200,9 @@ function AnalyticsReportView() {
                       {st.drop_off_rate !== null ? `${Math.round(st.drop_off_rate * 100)}%` : "0%"}
                     </td>
                     <td className="py-2.5 font-semibold">
-                      {st.median_duration_hours !== null ? `${Math.round(st.median_duration_hours)} hrs` : "—"}
+                      {st.median_duration_hours !== null
+                        ? `${Math.round(st.median_duration_hours)} hrs`
+                        : "—"}
                     </td>
                   </tr>
                 ))}
@@ -176,7 +216,8 @@ function AnalyticsReportView() {
       <Panel title="2. Market Salary Distributions">
         <div className="p-4">
           <p className="text-xs text-muted-foreground mb-3">
-            Percentile compensation estimates segregated by canonical role and currency. A minimum cohort threshold of 5 observations is strictly enforced.
+            Percentile compensation estimates segregated by canonical role and currency. A minimum
+            cohort threshold of 5 observations is strictly enforced.
           </p>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -193,7 +234,9 @@ function AnalyticsReportView() {
                 {salaryBenchmarks.map((b) => (
                   <tr key={`${b.role}-${b.currency}`} className="hover:bg-muted/30">
                     <td className="py-2.5 font-medium">{b.role}</td>
-                    <td className="py-2.5 font-mono text-muted-foreground">{b.currency} · {b.period}</td>
+                    <td className="py-2.5 font-mono text-muted-foreground">
+                      {b.currency} · {b.period}
+                    </td>
                     <td className="py-2.5 font-mono">{b.sample_size} jobs</td>
                     <td className="py-2.5 font-mono font-semibold">
                       {b.min_p50 !== null && b.max_p50 !== null
@@ -217,7 +260,8 @@ function AnalyticsReportView() {
       <Panel title="3. Target Skills Gap & Readiness Roadmap">
         <div className="p-4">
           <p className="text-xs text-muted-foreground mb-3">
-            Canonical skills requested in job descriptions that are absent from candidate profile, evaluated through taxonomy normalization.
+            Canonical skills requested in job descriptions that are absent from candidate profile,
+            evaluated through taxonomy normalization.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             {skillsGapItems.map((s) => (

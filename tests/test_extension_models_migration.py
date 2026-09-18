@@ -57,7 +57,9 @@ def test_extension_token_model_and_hash_lookup(db):
     db.delete(user)
     db.commit()
 
-    orphaned = db.query(ExtensionToken).filter(ExtensionToken.token_hash == t_hash).first()
+    orphaned = (
+        db.query(ExtensionToken).filter(ExtensionToken.token_hash == t_hash).first()
+    )
     assert orphaned is None
 
 

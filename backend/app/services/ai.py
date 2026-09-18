@@ -177,7 +177,11 @@ DEFAULT_MODELS: dict[str, str] = {
 
 # OpenAI-compatible providers share one chat-completions client; keyed by id.
 _OPENAI_COMPATIBLE: dict[str, dict] = {
-    "openrouter": {"base_url": "https://openrouter.ai/api/v1", "name": "OpenRouter", "extra": {"HTTP-Referer": "https://sirafit.com", "X-Title": "SiraFit"}},
+    "openrouter": {
+        "base_url": "https://openrouter.ai/api/v1",
+        "name": "OpenRouter",
+        "extra": {"HTTP-Referer": "https://sirafit.com", "X-Title": "SiraFit"},
+    },
     "openai": {"base_url": "https://api.openai.com/v1", "name": "OpenAI"},
     "grok": {"base_url": "https://api.x.ai/v1", "name": "Grok"},
     "mistral": {"base_url": "https://api.mistral.ai/v1", "name": "Mistral"},
@@ -212,15 +216,25 @@ async def complete(
     if provider in _OPENAI_COMPATIBLE:
         cfg = _OPENAI_COMPATIBLE[provider]
         return await _complete_openai_compatible(
-            prompt, api_key, cfg["base_url"], model, system, cfg["name"], cfg.get("extra")
+            prompt,
+            api_key,
+            cfg["base_url"],
+            model,
+            system,
+            cfg["name"],
+            cfg.get("extra"),
         )
     raise ValueError(f"Unknown AI provider: {provider!r}")
 
 
-async def _complete_gemini(prompt: str, api_key: str, model: str, system: Optional[str]) -> str:
+async def _complete_gemini(
+    prompt: str, api_key: str, model: str, system: Optional[str]
+) -> str:
     import google.generativeai as genai
 
-    model_name = "models/gemini-1.5-pro" if "pro" in model.lower() else "models/gemini-1.5-flash"
+    model_name = (
+        "models/gemini-1.5-pro" if "pro" in model.lower() else "models/gemini-1.5-flash"
+    )
     full_prompt = f"{system}\n\n{prompt}" if system else prompt
     genai.configure(api_key=api_key)
     gen_model = genai.GenerativeModel(model_name)
@@ -271,7 +285,9 @@ async def _complete_openai_compatible(
             json={"model": model, "messages": messages, "temperature": 0.1},
         )
         if response.status_code != 200:
-            logger.error(f"{provider_name} error ({response.status_code}): {response.text}")
+            logger.error(
+                f"{provider_name} error ({response.status_code}): {response.text}"
+            )
         response.raise_for_status()
         data = response.json()
     return data["choices"][0]["message"]["content"]
@@ -298,7 +314,9 @@ async def analyze_job(
     """
     provider = (provider or "").lower()
     if provider not in DEFAULT_MODELS:
-        logger.warning(f"Unknown provider: {provider}, falling back to keyword analysis")
+        logger.warning(
+            f"Unknown provider: {provider}, falling back to keyword analysis"
+        )
         return keyword_fallback("Job", "Unknown provider requested")
 
     candidates = [(provider, model or DEFAULT_MODELS.get(provider, ""), api_key)]
@@ -402,7 +420,9 @@ async def analyze_job_anthropic(
     system_prompt = PROMPTS.get(prompt_version, PROMPTS[CURRENT_PROMPT_VERSION])
 
     async def _call():
-        text = await _complete_anthropic(prompt_context, api_key, model, system_prompt, 1024)
+        text = await _complete_anthropic(
+            prompt_context, api_key, model, system_prompt, 1024
+        )
         return _parse_and_validate(text)
 
     return await _with_retry(_call)
@@ -436,11 +456,12 @@ async def analyze_job_openrouter(
 ) -> AnalysisOutput:
     """Legacy wrapper for OpenRouter."""
     return await analyze_job_openai_compatible(
-        prompt_context, api_key, 
+        prompt_context,
+        api_key,
         base_url="https://openrouter.ai/api/v1",
         model=model,
         prompt_version=prompt_version,
-        provider_name="OpenRouter"
+        provider_name="OpenRouter",
     )
 
 

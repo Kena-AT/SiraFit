@@ -13,6 +13,7 @@ from app.services.interview_prep import generate_prep_questions, RateLimitExceed
 
 router = APIRouter()
 
+
 @router.post("/{job_id}", response_model=Dict[str, Any])
 async def create_interview_prep(
     job_id: uuid.UUID,

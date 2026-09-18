@@ -4,13 +4,13 @@ Resume Versioning Service.
 Handles resume version lineage, immutability, revert snapshots, and base versions.
 All database sessions are injected; never creates rogue sessions.
 """
-from typing import Optional
+
 import json
 import logging
 import uuid
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
-from app.models.job import Job, Resume, ResumeVersion
+from app.models.job import Resume, ResumeVersion
 from app.models.profile import Profile
 from app.schemas.resume import ResumeDiffResponse
 from app.services.resume_diff import compute_resume_diff
@@ -31,7 +31,9 @@ def create_base_version_from_profile(
     """
     existing_base = (
         db.query(ResumeVersion)
-        .filter(ResumeVersion.resume_id == resume.id, ResumeVersion.source_type == "base")
+        .filter(
+            ResumeVersion.resume_id == resume.id, ResumeVersion.source_type == "base"
+        )
         .first()
     )
     if existing_base:
@@ -39,34 +41,44 @@ def create_base_version_from_profile(
 
     # Build base content JSON from Profile
     experience_list = []
-    for exp in (profile.experiences or []):
+    for exp in profile.experiences or []:
         bullets = [b.strip() for b in (exp.description or "").split("\n") if b.strip()]
-        period = f"{exp.start_date.strftime('%b %Y') if exp.start_date else ''} - {exp.end_date.strftime('%b %Y') if exp.end_date else ('Present' if exp.is_current else '')}".strip(" -")
-        experience_list.append({
-            "title": exp.title,
-            "company": exp.company,
-            "location": exp.location,
-            "period": period or None,
-            "bullets": bullets,
-        })
+        period = f"{exp.start_date.strftime('%b %Y') if exp.start_date else ''} - {exp.end_date.strftime('%b %Y') if exp.end_date else ('Present' if exp.is_current else '')}".strip(
+            " -"
+        )
+        experience_list.append(
+            {
+                "title": exp.title,
+                "company": exp.company,
+                "location": exp.location,
+                "period": period or None,
+                "bullets": bullets,
+            }
+        )
 
     education_list = []
-    for edu in (profile.educations or []):
-        period = f"{edu.start_date.strftime('%Y') if edu.start_date else ''} - {edu.end_date.strftime('%Y') if edu.end_date else ''}".strip(" -")
-        education_list.append({
-            "institution": edu.institution,
-            "degree": edu.degree,
-            "field_of_study": edu.field_of_study,
-            "period": period or None,
-        })
+    for edu in profile.educations or []:
+        period = f"{edu.start_date.strftime('%Y') if edu.start_date else ''} - {edu.end_date.strftime('%Y') if edu.end_date else ''}".strip(
+            " -"
+        )
+        education_list.append(
+            {
+                "institution": edu.institution,
+                "degree": edu.degree,
+                "field_of_study": edu.field_of_study,
+                "period": period or None,
+            }
+        )
 
     projects_list = []
-    for proj in (profile.projects or []):
-        projects_list.append({
-            "name": proj.name,
-            "description": proj.description,
-            "url": proj.url,
-        })
+    for proj in profile.projects or []:
+        projects_list.append(
+            {
+                "name": proj.name,
+                "description": proj.description,
+                "url": proj.url,
+            }
+        )
 
     skills_list = [s.name for s in (profile.skills or [])]
 
@@ -136,7 +148,9 @@ def revert_to_version(
 
     target_version = (
         db.query(ResumeVersion)
-        .filter(ResumeVersion.id == target_version_id, ResumeVersion.resume_id == resume_id)
+        .filter(
+            ResumeVersion.id == target_version_id, ResumeVersion.resume_id == resume_id
+        )
         .first()
     )
     if not target_version:
@@ -200,7 +214,8 @@ def compare_resume_versions(
     )
     if not v_a:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Version A not found on this resume"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Version A not found on this resume",
         )
 
     v_b = (
@@ -210,7 +225,8 @@ def compare_resume_versions(
     )
     if not v_b:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Version B not found on this resume"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Version B not found on this resume",
         )
 
     return compute_resume_diff(

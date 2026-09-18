@@ -241,7 +241,6 @@ async def structured_completion_with_fallback(
 
     for attempt_idx, (provider, model, api_key) in enumerate(candidates, start=1):
         attempt_start = time.perf_counter()
-        attempt_status = "failed"
         failure_code = None
         val_errors = None
 
@@ -270,15 +269,17 @@ async def structured_completion_with_fallback(
             total_duration_ms = int((time.perf_counter() - start_total) * 1000)
 
             # Record attempt success
-            attempts_data.append({
-                "attempt_number": attempt_idx,
-                "provider": provider,
-                "model": model,
-                "status": "success",
-                "failure_code": None,
-                "validation_errors": None,
-                "duration_ms": attempt_duration_ms,
-            })
+            attempts_data.append(
+                {
+                    "attempt_number": attempt_idx,
+                    "provider": provider,
+                    "model": model,
+                    "status": "success",
+                    "failure_code": None,
+                    "validation_errors": None,
+                    "duration_ms": attempt_duration_ms,
+                }
+            )
 
             # Record metrics
             status_label = "success" if attempt_idx == 1 else "fallback"
@@ -310,7 +311,11 @@ async def structured_completion_with_fallback(
             total_tokens = None
             prompt_tokens = None
             completion_tokens = None
-            if raw_completion and hasattr(raw_completion, "usage") and raw_completion.usage:
+            if (
+                raw_completion
+                and hasattr(raw_completion, "usage")
+                and raw_completion.usage
+            ):
                 usage = raw_completion.usage
                 total_tokens = getattr(usage, "total_tokens", None)
                 prompt_tokens = getattr(usage, "prompt_tokens", None)
@@ -370,15 +375,17 @@ async def structured_completion_with_fallback(
                 failure_code=failure_code,
             ).inc()
 
-            attempts_data.append({
-                "attempt_number": attempt_idx,
-                "provider": provider,
-                "model": model,
-                "status": "failed",
-                "failure_code": failure_code,
-                "validation_errors": val_errors,
-                "duration_ms": attempt_duration_ms,
-            })
+            attempts_data.append(
+                {
+                    "attempt_number": attempt_idx,
+                    "provider": provider,
+                    "model": model,
+                    "status": "failed",
+                    "failure_code": failure_code,
+                    "validation_errors": val_errors,
+                    "duration_ms": attempt_duration_ms,
+                }
+            )
 
     # All candidates exhausted
     total_duration_ms = int((time.perf_counter() - start_total) * 1000)

@@ -9,7 +9,6 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.models.job import Job, JobAnalysis
-from app.models.user import UserPreference
 from app.services.ai import (
     analyze_job_with_fallback,
     keyword_fallback,
@@ -100,9 +99,7 @@ async def run_job_analysis(
 
         # Resolve the ordered candidate list (header -> user UI key -> env ->
         # fallback providers). See app.services.ai_keys for the full policy.
-        fallback_order = (
-            get_user_fallback_order(db, user_id) if user_id else None
-        )
+        fallback_order = get_user_fallback_order(db, user_id) if user_id else None
         candidates = build_candidates(
             db=db,
             user_id=user_id,

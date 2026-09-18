@@ -228,8 +228,12 @@ function SettingsIndex() {
 }
 
 function ExtensionTokenPanel() {
-  const [tokenInfo, setTokenInfo] = useState<{ token: string; name: string; expires_at: string } | null>(null);
-  
+  const [tokenInfo, setTokenInfo] = useState<{
+    token: string;
+    name: string;
+    expires_at: string;
+  } | null>(null);
+
   const tokenMutation = useMutation({
     mutationFn: async () => {
       const { issueExtensionToken } = await import("@/lib/api/agent");
@@ -247,9 +251,10 @@ function ExtensionTokenPanel() {
   return (
     <div className="p-4 space-y-4">
       <p className="text-sm text-muted-foreground">
-        Generate a token to connect the SiraFit Browser Extension to your account. This token will grant the extension access to capture and import jobs on your behalf.
+        Generate a token to connect the SiraFit Browser Extension to your account. This token will
+        grant the extension access to capture and import jobs on your behalf.
       </p>
-      
+
       {!tokenInfo ? (
         <Button onClick={() => tokenMutation.mutate()} disabled={tokenMutation.isPending}>
           {tokenMutation.isPending ? "Generating..." : "Generate Connection Token"}
@@ -260,10 +265,13 @@ function ExtensionTokenPanel() {
             <Label>Your Extension Token</Label>
             <div className="mt-1 flex items-center gap-2">
               <Input value={tokenInfo.token} readOnly className="font-mono text-sm bg-background" />
-              <Button variant="outline" onClick={() => {
-                navigator.clipboard.writeText(tokenInfo.token);
-                toast.success("Token copied to clipboard");
-              }}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  navigator.clipboard.writeText(tokenInfo.token);
+                  toast.success("Token copied to clipboard");
+                }}
+              >
                 Copy
               </Button>
             </div>

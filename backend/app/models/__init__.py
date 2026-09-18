@@ -90,4 +90,5 @@ __all__ = [
     "LearningResource",
     "ProjectTemplate",
     "UserLearningProgress",
+    "WSConnectionLog",
 ]

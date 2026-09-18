@@ -23,7 +23,7 @@ def create_notification(
         kind=kind,
         status="unread",
     )
-    
+
     db.add(notification)
     db.commit()
     db.refresh(notification)
@@ -31,21 +31,21 @@ def create_notification(
     # Publish realtime event
     import asyncio
     from app.services.realtime import publish_event
-    
+
     # We use asyncio.create_task to not block the main request flow
     payload = {
         "id": str(notification.id),
         "title": notification.title,
         "message": notification.body,
         "kind": notification.kind,
-        "created_at": notification.created_at.isoformat()
+        "created_at": notification.created_at.isoformat(),
     }
-    
+
     try:
         loop = asyncio.get_running_loop()
         loop.create_task(publish_event(str(user_id), "notification.created", payload))
     except RuntimeError:
-        pass # If called from synchronous context without a running loop
+        pass  # If called from synchronous context without a running loop
 
     return notification
 
@@ -63,10 +63,7 @@ def get_notifications(
         query = query.filter(Notification.status == status)
     total = query.count()
     notifications = (
-        query.order_by(Notification.created_at.desc())
-        .offset(skip)
-        .limit(limit)
-        .all()
+        query.order_by(Notification.created_at.desc()).offset(skip).limit(limit).all()
     )
     return notifications, total
 

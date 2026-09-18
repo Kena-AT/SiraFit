@@ -65,10 +65,10 @@ jobs:
           pip install -r requirements.txt ruff mypy
 
       - name: Ruff Lint Check
-        run: ruff check app/ ../tests/
+        run: ruff check app/ tests/ ../tests/
 
       - name: Ruff Format Check
-        run: ruff format --check app/ ../tests/
+        run: ruff format --check app/ tests/ ../tests/
 
       - name: MyPy Type Check (Baseline / Non-blocking)
         continue-on-error: true
@@ -116,7 +116,7 @@ jobs:
           ERROR_TRACKING_ENABLED: "False"
           PYTHONPATH: .
         run: |
-          pytest tests/ test_observability.py test_metrics_hardening.py test_health_system.py ../tests/ -v --tb=short -k "not integration and not slow" --cov=app --cov-report=xml
+          pytest tests/ ../tests/ -v --tb=short -k "not integration and not slow" --cov=app --cov-report=xml
 
       - name: Upload Test Coverage
         uses: actions/upload-artifact@v4
@@ -163,6 +163,14 @@ jobs:
       - name: Verify Live Alembic Migration on PostgreSQL
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/sirafit_test
+          SECRET_KEY: ci_mock_secret_key_minimum_32_characters_long_for_tests
+          ALGORITHM: HS256
+          CORS_ORIGINS: http://localhost:8080,http://localhost:5173
+          SMTP_HOST: smtp.example.com
+          SMTP_PORT: "587"
+          SMTP_USER: test@example.com
+          SMTP_PASSWORD: test_password
+          SMTP_FROM: noreply@sirafit.com
           PYTHONPATH: .
         run: |
           alembic upgrade head
@@ -310,6 +318,14 @@ jobs:
       - name: Apply Alembic Migrations
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/sirafit_integration
+          SECRET_KEY: ci_integration_secret_key_minimum_32_characters_long
+          ALGORITHM: HS256
+          CORS_ORIGINS: http://localhost:8080,http://localhost:5173
+          SMTP_HOST: smtp.example.com
+          SMTP_PORT: "587"
+          SMTP_USER: test@example.com
+          SMTP_PASSWORD: test_password
+          SMTP_FROM: noreply@sirafit.com
           PYTHONPATH: backend
         run: |
           cd backend
@@ -323,6 +339,12 @@ jobs:
           CELERY_RESULT_BACKEND: redis://localhost:6379/0
           SECRET_KEY: ci_integration_secret_key_minimum_32_characters_long
           ALGORITHM: HS256
+          CORS_ORIGINS: http://localhost:8080,http://localhost:5173
+          SMTP_HOST: smtp.example.com
+          SMTP_PORT: "587"
+          SMTP_USER: test@example.com
+          SMTP_PASSWORD: test_password
+          SMTP_FROM: noreply@sirafit.com
           ENVIRONMENT: testing
           PYTHONPATH: backend
         run: |

@@ -36,6 +36,8 @@ dist/
 .nitro/
 .tanstack/
 *.tsbuildinfo
+.plasmo/
+frontend/extension/build/
 
 # ---------------------------------------------------------------------------
 # Next.js (legacy — project has migrated to Vite/TanStack Start)

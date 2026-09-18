@@ -1,18 +1,14 @@
 import io
 import uuid
 from datetime import datetime, timedelta, timezone
-import pytest
 import openpyxl
 
 from app.models.job import ApplicationEvent, Job, JobApplication
 from app.models.profile import Profile, Skill
-from app.models.skill_taxonomy import SkillTaxonomy
 from app.services.analytics import (
     compute_salary_benchmarks,
     compute_skills_gap,
     compute_stall_insights,
-    generate_analytics_excel,
-    generate_analytics_metrics,
     normalize_job_role,
 )
 from app.services.skill_taxonomy import seed_skill_taxonomy
@@ -31,6 +27,7 @@ def _create_user(client, db):
 
     # Mark verified in db
     from app.models.user import User
+
     u = db.query(User).filter(User.id == user_id).first()
     if u:
         u.is_verified = True
@@ -48,7 +45,9 @@ def _create_user(client, db):
 
 class TestSalaryBenchmarks:
     def test_normalize_job_role(self):
-        assert normalize_job_role("Senior Backend Software Engineer") == "Backend Engineer"
+        assert (
+            normalize_job_role("Senior Backend Software Engineer") == "Backend Engineer"
+        )
         assert normalize_job_role("Junior Frontend Developer") == "Frontend Engineer"
         assert normalize_job_role("Staff Full Stack Engineer") == "Full Stack Engineer"
         assert normalize_job_role("DevOps / SRE Lead") == "DevOps Engineer"
@@ -344,7 +343,10 @@ class TestAnalyticsEndpointsAndExport:
         assert resp.headers["content-type"] == (
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-        assert 'attachment; filename="sirafit_analytics_export.xlsx"' in resp.headers["content-disposition"]
+        assert (
+            'attachment; filename="sirafit_analytics_export.xlsx"'
+            in resp.headers["content-disposition"]
+        )
 
         # Validate excel structure with openpyxl
         wb = openpyxl.load_workbook(io.BytesIO(resp.content))

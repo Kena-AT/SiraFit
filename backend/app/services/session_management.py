@@ -28,7 +28,9 @@ def validate_session_data(platform: str, session_data: Dict[str, Any]) -> None:
 
     cookies = session_data.get("cookies")
     if not isinstance(cookies, dict) or not cookies:
-        raise ValueError("Cookies must be a non-empty dictionary of string key-value pairs")
+        raise ValueError(
+            "Cookies must be a non-empty dictionary of string key-value pairs"
+        )
 
     for k, v in cookies.items():
         if not isinstance(k, str) or not isinstance(v, str):
@@ -94,9 +96,16 @@ def store_user_session(
     encrypted = encrypt_value(payload_json)
     if not encrypted:
         record_session_audit(
-            db, user_id, platform, action="stored", result="failure", error_code="encryption_failed"
+            db,
+            user_id,
+            platform,
+            action="stored",
+            result="failure",
+            error_code="encryption_failed",
         )
-        raise RuntimeError("Failed to encrypt session credentials. Encryption service unavailable.")
+        raise RuntimeError(
+            "Failed to encrypt session credentials. Encryption service unavailable."
+        )
 
     # Check if active session already exists for this user and platform
     session = (
@@ -167,7 +176,12 @@ def get_user_session(
             exp = exp.replace(tzinfo=timezone.utc)
         if exp < _utcnow():
             record_session_audit(
-                db, user_id, platform, action="expired", result="failure", error_code="session_expired"
+                db,
+                user_id,
+                platform,
+                action="expired",
+                result="failure",
+                error_code="session_expired",
             )
             return session, None
 
@@ -178,7 +192,12 @@ def get_user_session(
     decrypted_str = decrypt_value(session.encrypted_session_data)
     if not decrypted_str:
         record_session_audit(
-            db, user_id, platform, action="failed", result="failure", error_code="decryption_failed"
+            db,
+            user_id,
+            platform,
+            action="failed",
+            result="failure",
+            error_code="decryption_failed",
         )
         return session, None
 
@@ -186,7 +205,12 @@ def get_user_session(
         data = json.loads(decrypted_str)
     except Exception:
         record_session_audit(
-            db, user_id, platform, action="failed", result="failure", error_code="invalid_payload_json"
+            db,
+            user_id,
+            platform,
+            action="failed",
+            result="failure",
+            error_code="invalid_payload_json",
         )
         return session, None
 
@@ -212,7 +236,12 @@ def delete_user_session(db: Session, user_id: uuid.UUID, platform: str) -> bool:
 
     if not session:
         record_session_audit(
-            db, user_id, platform, action="deleted", result="failure", error_code="session_not_found"
+            db,
+            user_id,
+            platform,
+            action="deleted",
+            result="failure",
+            error_code="session_not_found",
         )
         return False
 
@@ -247,7 +276,9 @@ def list_user_sessions(db: Session, user_id: uuid.UUID) -> List[Dict[str, Any]]:
     ]
 
 
-def enqueue_session_import(import_id: str, platform: str, user_id: str) -> Dict[str, Any]:
+def enqueue_session_import(
+    import_id: str, platform: str, user_id: str
+) -> Dict[str, Any]:
     """Dispatch a saved jobs discovery to the Celery scraping queue."""
     try:
         from app.worker.tasks.session_import import import_saved_jobs_task
@@ -275,4 +306,3 @@ def enqueue_session_import(import_id: str, platform: str, user_id: str) -> Dict[
                 "sync_fallback_session_import_failed", extra={"error": str(sync_exc)}
             )
         return {"queued": False}
-

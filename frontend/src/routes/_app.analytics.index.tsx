@@ -44,7 +44,9 @@ function AnalyticsDashboard() {
     return (
       <PageBody>
         <PageHeader eyebrow="Intelligence" title="Analytics dashboard" description="Loading..." />
-        <div className="grid place-items-center py-20 text-muted-foreground">Loading analytics...</div>
+        <div className="grid place-items-center py-20 text-muted-foreground">
+          Loading analytics...
+        </div>
       </PageBody>
     );
   }
@@ -135,7 +137,8 @@ function AnalyticsDashboard() {
       <Panel title="Market Salary Benchmarks">
         <div className="p-4">
           <div className="mb-3 text-[11px] text-muted-foreground">
-            P50 posted minimum to P50 posted maximum from comparable jobs with verified salary metadata (min 5 samples required for percentiles).
+            P50 posted minimum to P50 posted maximum from comparable jobs with verified salary
+            metadata (min 5 samples required for percentiles).
           </div>
           {salaryBenchmarks.length > 0 ? (
             <div className="overflow-x-auto">
@@ -153,14 +156,20 @@ function AnalyticsDashboard() {
                   {salaryBenchmarks.map((b) => (
                     <tr key={`${b.role}-${b.currency}-${b.period}`} className="hover:bg-muted/30">
                       <td className="py-2.5 font-medium">{b.role}</td>
-                      <td className="py-2.5 font-mono text-xs text-muted-foreground">{b.currency} ({b.period})</td>
+                      <td className="py-2.5 font-mono text-xs text-muted-foreground">
+                        {b.currency} ({b.period})
+                      </td>
                       <td className="py-2.5 font-mono text-xs">{b.sample_size} jobs</td>
                       <td className="py-2.5 font-mono font-semibold text-xs">
-                        {b.min_p50 !== null && b.max_p50 !== null
-                          ? `${b.currency} ${Math.round(b.min_p50).toLocaleString()} – ${Math.round(b.max_p50).toLocaleString()}`
-                          : b.sample_size < 5
-                            ? <span className="text-muted-foreground font-normal italic">Insufficient sample (need 5+)</span>
-                            : "N/A"}
+                        {b.min_p50 !== null && b.max_p50 !== null ? (
+                          `${b.currency} ${Math.round(b.min_p50).toLocaleString()} – ${Math.round(b.max_p50).toLocaleString()}`
+                        ) : b.sample_size < 5 ? (
+                          <span className="text-muted-foreground font-normal italic">
+                            Insufficient sample (need 5+)
+                          </span>
+                        ) : (
+                          "N/A"
+                        )}
                       </td>
                       <td className="py-2.5 font-mono text-xs text-muted-foreground">
                         {b.min_p25 !== null && b.max_p75 !== null
@@ -186,7 +195,8 @@ function AnalyticsDashboard() {
         <Panel title="Priority Skills Gap Analysis">
           <div className="p-4">
             <div className="mb-3 text-[11px] text-muted-foreground">
-              Missing skills from candidate profile with highest demand across analyzed job postings.
+              Missing skills from candidate profile with highest demand across analyzed job
+              postings.
             </div>
             {skillsGapItems.length > 0 ? (
               <div className="space-y-3">
@@ -227,7 +237,10 @@ function AnalyticsDashboard() {
             {stallStages.length > 0 ? (
               <div className="space-y-2.5">
                 {stallStages.map((st) => (
-                  <div key={st.stage} className="flex items-center justify-between border-b border-border/50 pb-2 text-xs">
+                  <div
+                    key={st.stage}
+                    className="flex items-center justify-between border-b border-border/50 pb-2 text-xs"
+                  >
                     <div>
                       <span className="font-medium capitalize">{st.stage.replace("_", " ")}</span>
                       <span className="ml-2 font-mono text-[10px] text-muted-foreground">
@@ -236,16 +249,28 @@ function AnalyticsDashboard() {
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="font-mono text-[11px]">
-                        {st.drop_off_rate !== null
-                          ? <span className={st.drop_off_rate > 0.4 ? "text-destructive font-semibold" : "text-muted-foreground"}>
-                              {Math.round(st.drop_off_rate * 100)}% drop
-                            </span>
-                          : "0% drop"}
+                        {st.drop_off_rate !== null ? (
+                          <span
+                            className={
+                              st.drop_off_rate > 0.4
+                                ? "text-destructive font-semibold"
+                                : "text-muted-foreground"
+                            }
+                          >
+                            {Math.round(st.drop_off_rate * 100)}% drop
+                          </span>
+                        ) : (
+                          "0% drop"
+                        )}
                       </div>
                       <div className="w-20 text-right font-mono text-[11px] font-medium text-foreground">
-                        {st.median_duration_hours !== null
-                          ? `${Math.round(st.median_duration_hours)}h median`
-                          : <span className="text-muted-foreground font-normal text-[10px]">(&lt;3 events)</span>}
+                        {st.median_duration_hours !== null ? (
+                          `${Math.round(st.median_duration_hours)}h median`
+                        ) : (
+                          <span className="text-muted-foreground font-normal text-[10px]">
+                            (&lt;3 events)
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>

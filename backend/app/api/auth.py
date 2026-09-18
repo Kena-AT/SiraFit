@@ -1,6 +1,15 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Response, Request, Path, Body
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+    Response,
+    Request,
+    Path,
+    Body,
+)
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 import jwt
@@ -20,11 +29,6 @@ from app.schemas.user import (
     Token,
     UserCreate,
     UserResponse,
-    TwoFactorChallengeResponse,
-    TwoFactorConfirmRequest,
-    TwoFactorLoginVerifyRequest,
-    TwoFactorDisableRequest,
-    RegenerateRecoveryCodesRequest,
 )
 from app.api.users import get_current_user
 from app.schemas.auth import (
@@ -164,10 +168,12 @@ def login_access_token(
     ip_address = request.client.host if request.client else None
     try:
         from app.api.users import _create_device_session
+
         _create_device_session(db, user.id, user_agent, ip_address)
     except Exception as e:
         # Device registration should not block login
         import logging
+
         logging.getLogger(__name__).warning(f"Failed to create device session: {e}")
 
     db.commit()
@@ -211,6 +217,7 @@ def register_user(
     # Create profile with name and email from signup
     name_parts = user.full_name.split(" ", 1) if user.full_name else ["", ""]
     from app.models.profile import Profile
+
     profile = Profile(
         user_id=user.id,
         first_name=name_parts[0] if name_parts[0] else None,
@@ -249,8 +256,10 @@ def resend_verification(
     """
     user = db.query(User).filter(User.email == body.email).first()
     if not user:
-        return {"detail": "If the email is registered and not verified, a verification link has been sent."}
-        
+        return {
+            "detail": "If the email is registered and not verified, a verification link has been sent."
+        }
+
     if user.is_verified:
         return {"detail": "Email is already verified."}
 
@@ -258,7 +267,9 @@ def resend_verification(
     _email_executor.submit(
         email_service.send_verification_email, user.email, verification_token
     )
-    return {"detail": "If the email is registered and not verified, a verification link has been sent."}
+    return {
+        "detail": "If the email is registered and not verified, a verification link has been sent."
+    }
 
 
 @router.post("/verify-email")
@@ -592,7 +603,13 @@ def oauth_authorize(
     from app.services.oauth import get_oauth_redirect_url, generate_oauth_state
 
     state = generate_oauth_state(link_user_id=link_user_id)
-    redirect_url = get_oauth_redirect_url(provider, state)
+    try:
+        redirect_url = get_oauth_redirect_url(provider, state)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
     return RedirectResponse(url=redirect_url)
 
 
@@ -696,9 +713,11 @@ async def oauth_callback(
     ip_address = request.client.host if request.client else None
     try:
         from app.api.users import _create_device_session
+
         _create_device_session(db, user.id, user_agent, ip_address)
     except Exception as e:
         import logging
+
         logging.getLogger(__name__).warning(f"Failed to create device session: {e}")
 
     db.commit()
@@ -762,7 +781,9 @@ async def link_oauth_account(
 
     code_verifier = state_record.code_verifier if state_record else None
 
-    token_data = await exchange_code_for_token(provider, code, code_verifier=code_verifier)
+    token_data = await exchange_code_for_token(
+        provider, code, code_verifier=code_verifier
+    )
     access_token = token_data.get("access_token")
     refresh_token = token_data.get("refresh_token")
     user_info = await get_user_info_from_provider(provider, access_token)
@@ -1005,7 +1026,10 @@ def verify_2fa_login(
         )
         token_type = payload.get("type")
         token_purpose = payload.get("purpose")
-        if token_type not in ("2fa_pending", "2fa_temp") and token_purpose != "2fa_pending":
+        if (
+            token_type not in ("2fa_pending", "2fa_temp")
+            and token_purpose != "2fa_pending"
+        ):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid token type",
@@ -1060,9 +1084,11 @@ def verify_2fa_login(
     ip_address = request.client.host if request.client else None
     try:
         from app.api.users import _create_device_session
+
         _create_device_session(db, user.id, user_agent, ip_address)
     except Exception as e:
         import logging
+
         logging.getLogger(__name__).warning(f"Failed to create device session: {e}")
 
     db.commit()

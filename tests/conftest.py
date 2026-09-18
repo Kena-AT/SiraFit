@@ -76,31 +76,37 @@ engine = create_engine(
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 import app.core.database
+
 app.core.database.SessionLocal = TestingSessionLocal
 
 import app.services.job_import
+
 app.services.job_import.SessionLocal = TestingSessionLocal
 
 try:
     import app.worker.tasks.scraping
+
     app.worker.tasks.scraping.SessionLocal = TestingSessionLocal
 except Exception:
     pass
 
 try:
     import app.worker.tasks.monitoring
+
     app.worker.tasks.monitoring.SessionLocal = TestingSessionLocal
 except Exception:
     pass
 
 try:
     import app.worker.tasks
+
     app.worker.tasks.SessionLocal = TestingSessionLocal
 except Exception:
     pass
 
 try:
     import app.worker.tasks.session_import
+
     app.worker.tasks.session_import.SessionLocal = TestingSessionLocal
 except Exception:
     pass

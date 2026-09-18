@@ -8,9 +8,7 @@ Mocks the network layer to test the full import pipeline:
 
 import os
 import sys
-import uuid
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 _backend = os.path.abspath(os.path.join(os.path.dirname(__file__), "../backend"))
 if _backend not in sys.path:
@@ -38,7 +36,10 @@ class TestDetectPlatform:
         assert detect_platform("https://www.linkedin.com/jobs/view/123") == "linkedin"
 
     def test_greenhouse(self):
-        assert detect_platform("https://boards.greenhouse.io/acme/jobs/123") == "greenhouse"
+        assert (
+            detect_platform("https://boards.greenhouse.io/acme/jobs/123")
+            == "greenhouse"
+        )
 
     def test_lever(self):
         assert detect_platform("https://jobs.lever.co/acme/abc") == "lever"
@@ -102,7 +103,10 @@ class TestScrapeHistoryLogging:
 
     def test_scrape_exception_records_history(self, db, test_user):
         """When Scrapling throws an exception, heuristic fallback is used."""
-        with patch("app.services.job_import.fetch_job_html", side_effect=Exception("Network error")):
+        with patch(
+            "app.services.job_import.fetch_job_html",
+            side_effect=Exception("Network error"),
+        ):
             import_record, jobs_data, errors, scrape_meta = process_import(
                 db,
                 test_user.id,
@@ -168,7 +172,9 @@ class TestGracefulDegradation:
 
     def test_heuristic_fallback_on_network_error(self, db, test_user):
         """Network error → heuristic parse → still returns a result."""
-        with patch("app.services.job_import.fetch_job_html", side_effect=Exception("timeout")):
+        with patch(
+            "app.services.job_import.fetch_job_html", side_effect=Exception("timeout")
+        ):
             import_record, jobs_data, errors, scrape_meta = process_import(
                 db,
                 test_user.id,

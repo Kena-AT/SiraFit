@@ -8,6 +8,7 @@ Runs before persistence to catch invalid data:
 - Syntax validation for URLs
 - Structured field-level errors (code, path, message)
 """
+
 from datetime import date
 import re
 from typing import Any
@@ -18,6 +19,7 @@ class ProfileValidationError(str):
     Validation error item that inherits from str for full backward compatibility
     with existing tests while exposing structured attributes (code, path, message).
     """
+
     code: str
     path: str
     message: str
@@ -138,9 +140,19 @@ def validate_required_fields(profile_data: dict) -> list[ProfileValidationError]
     if not any(k in profile_data for k in name_keys):
         return errors
 
-    first_name = profile_data.get("first_name", "").strip() if profile_data.get("first_name") else ""
-    last_name = profile_data.get("last_name", "").strip() if profile_data.get("last_name") else ""
-    headline = profile_data.get("headline", "").strip() if profile_data.get("headline") else ""
+    first_name = (
+        profile_data.get("first_name", "").strip()
+        if profile_data.get("first_name")
+        else ""
+    )
+    last_name = (
+        profile_data.get("last_name", "").strip()
+        if profile_data.get("last_name")
+        else ""
+    )
+    headline = (
+        profile_data.get("headline", "").strip() if profile_data.get("headline") else ""
+    )
 
     if not first_name and not last_name and not headline:
         errors.append(

@@ -62,22 +62,50 @@ def normalize_job_role(title: str) -> str:
     cleaned = re.sub(r"[\s\-_/]+", " ", cleaned).strip().lower()
 
     # Domain role matching (specific data roles prioritized over generic platform)
-    if any(k in cleaned for k in ["data engineer", "data platform", "data pipeline", "etl"]):
+    if any(
+        k in cleaned for k in ["data engineer", "data platform", "data pipeline", "etl"]
+    ):
         return "Data Engineer"
-    if any(k in cleaned for k in ["data scientist", "machine learning", "ml engineer", "ai engineer", "deep learning"]):
+    if any(
+        k in cleaned
+        for k in [
+            "data scientist",
+            "machine learning",
+            "ml engineer",
+            "ai engineer",
+            "deep learning",
+        ]
+    ):
         return "AI / ML Engineer"
     if any(k in cleaned for k in ["backend", "back-end", "back end", "server"]):
         return "Backend Engineer"
-    if any(k in cleaned for k in ["frontend", "front-end", "front end", "ui/ux engineer", "ui engineer"]):
+    if any(
+        k in cleaned
+        for k in ["frontend", "front-end", "front end", "ui/ux engineer", "ui engineer"]
+    ):
         return "Frontend Engineer"
     if any(k in cleaned for k in ["fullstack", "full stack", "full-stack"]):
         return "Full Stack Engineer"
-    if any(k in cleaned for k in ["devops", "site reliability", "sre", "platform engineer", "infrastructure", "cloud engineer"]):
+    if any(
+        k in cleaned
+        for k in [
+            "devops",
+            "site reliability",
+            "sre",
+            "platform engineer",
+            "infrastructure",
+            "cloud engineer",
+        ]
+    ):
         return "DevOps Engineer"
         return "AI / ML Engineer"
-    if any(k in cleaned for k in ["qa", "test", "quality assurance", "automation engineer"]):
+    if any(
+        k in cleaned for k in ["qa", "test", "quality assurance", "automation engineer"]
+    ):
         return "QA Engineer"
-    if any(k in cleaned for k in ["mobile", "ios", "android", "flutter", "react native"]):
+    if any(
+        k in cleaned for k in ["mobile", "ios", "android", "flutter", "react native"]
+    ):
         return "Mobile Engineer"
     if any(k in cleaned for k in ["product manager", "product owner", "pm"]):
         return "Product Manager"
@@ -85,7 +113,10 @@ def normalize_job_role(title: str) -> str:
         return "Security Engineer"
     if any(k in cleaned for k in ["designer", "ui/ux", "product designer"]):
         return "Product Designer"
-    if any(k in cleaned for k in ["engineering manager", "technical manager", "dev manager"]):
+    if any(
+        k in cleaned
+        for k in ["engineering manager", "technical manager", "dev manager"]
+    ):
         return "Engineering Manager"
 
     # Fallback to normalized title
@@ -218,7 +249,9 @@ def compute_skills_gap(
         # Source 2: JobAnalysis key_requirements & key required skills
         analysis = analysis_by_job_id.get(job.id)
         if analysis:
-            if analysis.key_requirements and isinstance(analysis.key_requirements, list):
+            if analysis.key_requirements and isinstance(
+                analysis.key_requirements, list
+            ):
                 raw_skills.extend(analysis.key_requirements)
 
         for raw_s in raw_skills:
@@ -262,13 +295,11 @@ def compute_skills_gap(
     top_n = getattr(settings, "SKILLS_GAP_TOP_N", 15)
     for (c_key, c_name, c_category), freq in sorted_skills[:top_n]:
         pct = (freq / analyzed_jobs_count * 100.0) if analyzed_jobs_count > 0 else 0.0
-        priority = (pct >= (threshold * 100.0))
+        priority = pct >= (threshold * 100.0)
 
         # Look up taxonomy ID if it exists
         tax = (
-            db.query(SkillTaxonomy)
-            .filter(SkillTaxonomy.canonical_key == c_key)
-            .first()
+            db.query(SkillTaxonomy).filter(SkillTaxonomy.canonical_key == c_key).first()
         )
         skill_id = str(tax.id) if tax else None
 
@@ -353,7 +384,9 @@ def compute_stall_insights(
             to_st = meta.get("to_status")
             if not to_st:
                 # Fallback: check event description or title
-                m = re.search(r"(?:to|changed to)\s+([a-zA-Z_]+)", ev.title or "", re.IGNORECASE)
+                m = re.search(
+                    r"(?:to|changed to)\s+([a-zA-Z_]+)", ev.title or "", re.IGNORECASE
+                )
                 to_st = m.group(1).lower() if m else None
             if to_st:
                 transitions.append((to_st.lower(), ev.occurred_at))
@@ -418,7 +451,11 @@ def compute_stall_insights(
             longest_hours = median_hours
             longest_stage = stage
 
-        if drop_off_rate is not None and drop_off_rate > highest_drop_rate and entered > 0:
+        if (
+            drop_off_rate is not None
+            and drop_off_rate > highest_drop_rate
+            and entered > 0
+        ):
             highest_drop_rate = drop_off_rate
             highest_drop_stage = stage
 
@@ -428,8 +465,12 @@ def compute_stall_insights(
                 "entered_count": entered,
                 "progressed_count": progressed,
                 "dropped_count": dropped,
-                "drop_off_rate": round(drop_off_rate, 3) if drop_off_rate is not None else None,
-                "median_duration_hours": round(median_hours, 1) if median_hours is not None else None,
+                "drop_off_rate": round(drop_off_rate, 3)
+                if drop_off_rate is not None
+                else None,
+                "median_duration_hours": round(median_hours, 1)
+                if median_hours is not None
+                else None,
                 "duration_sample_size": sample_size,
             }
         )
@@ -660,13 +701,17 @@ def generate_analytics_excel(metrics: Dict[str, Any]) -> bytes:
     wb.remove(wb.active)
 
     # Styles
-    header_fill = PatternFill(start_color="1E293B", end_color="1E293B", fill_type="solid")
+    header_fill = PatternFill(
+        start_color="1E293B", end_color="1E293B", fill_type="solid"
+    )
     header_font = Font(name="Segoe UI", size=11, bold=True, color="FFFFFF")
     cell_font = Font(name="Segoe UI", size=10)
     title_font = Font(name="Segoe UI", size=14, bold=True, color="0F172A")
     subtitle_font = Font(name="Segoe UI", size=9, italic=True, color="64748B")
     border_side = Side(style="thin", color="E2E8F0")
-    cell_border = Border(left=border_side, right=border_side, top=border_side, bottom=border_side)
+    cell_border = Border(
+        left=border_side, right=border_side, top=border_side, bottom=border_side
+    )
 
     # Helper for formatting header row
     def style_header(ws, row_idx, headers):
@@ -679,17 +724,35 @@ def generate_analytics_excel(metrics: Dict[str, Any]) -> bytes:
 
     # 1. Overview Sheet
     ws_overview = wb.create_sheet("Overview")
-    ws_overview.cell(row=1, column=1, value="SiraFit Analytics Report").font = title_font
+    ws_overview.cell(
+        row=1, column=1, value="SiraFit Analytics Report"
+    ).font = title_font
     ws_overview.cell(
         row=2, column=1, value=f"Generated: {metrics.get('generated_at', '')}"
     ).font = subtitle_font
 
     style_header(ws_overview, 4, ["Metric", "Value", "Unit / Context"])
     overview_rows = [
-        ("Total Applications", metrics.get("total_applications", 0), "Tracked applications"),
-        ("Interview Rate", f"{metrics.get('interview_rate', 0)}%", "Applications reaching screening/interview"),
-        ("Offer Rate", f"{metrics.get('offer_rate', 0)}%", "Applications receiving an offer"),
-        ("Average Response Time", f"{metrics.get('avg_response_time_days', 0)}", "Days from applied to last update"),
+        (
+            "Total Applications",
+            metrics.get("total_applications", 0),
+            "Tracked applications",
+        ),
+        (
+            "Interview Rate",
+            f"{metrics.get('interview_rate', 0)}%",
+            "Applications reaching screening/interview",
+        ),
+        (
+            "Offer Rate",
+            f"{metrics.get('offer_rate', 0)}%",
+            "Applications receiving an offer",
+        ),
+        (
+            "Average Response Time",
+            f"{metrics.get('avg_response_time_days', 0)}",
+            "Days from applied to last update",
+        ),
     ]
     for r_idx, (k, v, desc) in enumerate(overview_rows, 5):
         ws_overview.cell(row=r_idx, column=1, value=k).font = cell_font
@@ -723,13 +786,27 @@ def generate_analytics_excel(metrics: Dict[str, Any]) -> bytes:
     row_idx = 5
     for b in benchmarks:
         ws_salary.cell(row=row_idx, column=1, value=b.get("role", "")).font = cell_font
-        ws_salary.cell(row=row_idx, column=2, value=b.get("currency", "")).font = cell_font
-        ws_salary.cell(row=row_idx, column=3, value=b.get("period", "")).font = cell_font
-        ws_salary.cell(row=row_idx, column=4, value=b.get("sample_size", 0)).font = cell_font
-        ws_salary.cell(row=row_idx, column=5, value=b.get("min_p25") or "N/A").font = cell_font
-        ws_salary.cell(row=row_idx, column=6, value=b.get("min_p50") or "N/A").font = cell_font
-        ws_salary.cell(row=row_idx, column=7, value=b.get("max_p50") or "N/A").font = cell_font
-        ws_salary.cell(row=row_idx, column=8, value=b.get("max_p75") or "N/A").font = cell_font
+        ws_salary.cell(
+            row=row_idx, column=2, value=b.get("currency", "")
+        ).font = cell_font
+        ws_salary.cell(
+            row=row_idx, column=3, value=b.get("period", "")
+        ).font = cell_font
+        ws_salary.cell(
+            row=row_idx, column=4, value=b.get("sample_size", 0)
+        ).font = cell_font
+        ws_salary.cell(
+            row=row_idx, column=5, value=b.get("min_p25") or "N/A"
+        ).font = cell_font
+        ws_salary.cell(
+            row=row_idx, column=6, value=b.get("min_p50") or "N/A"
+        ).font = cell_font
+        ws_salary.cell(
+            row=row_idx, column=7, value=b.get("max_p50") or "N/A"
+        ).font = cell_font
+        ws_salary.cell(
+            row=row_idx, column=8, value=b.get("max_p75") or "N/A"
+        ).font = cell_font
         for c in range(1, 9):
             ws_salary.cell(row=row_idx, column=c).border = cell_border
         row_idx += 1
@@ -743,17 +820,28 @@ def generate_analytics_excel(metrics: Dict[str, Any]) -> bytes:
         value="Skills frequently required in jobs that are absent from candidate canonical profile",
     ).font = subtitle_font
 
-    skills_headers = ["Skill", "Demand Frequency", "Market Percentage", "Priority Target"]
+    skills_headers = [
+        "Skill",
+        "Demand Frequency",
+        "Market Percentage",
+        "Priority Target",
+    ]
     style_header(ws_skills, 4, skills_headers)
 
     skills_data = (metrics.get("skills_gap_analysis") or {}).get("skills", [])
     row_idx = 5
     for s in skills_data:
         ws_skills.cell(row=row_idx, column=1, value=s.get("skill", "")).font = cell_font
-        ws_skills.cell(row=row_idx, column=2, value=s.get("frequency", 0)).font = cell_font
-        ws_skills.cell(row=row_idx, column=3, value=f"{s.get('percentage', 0)}%").font = cell_font
         ws_skills.cell(
-            row=row_idx, column=4, value="HIGH PRIORITY" if s.get("priority") else "Secondary"
+            row=row_idx, column=2, value=s.get("frequency", 0)
+        ).font = cell_font
+        ws_skills.cell(
+            row=row_idx, column=3, value=f"{s.get('percentage', 0)}%"
+        ).font = cell_font
+        ws_skills.cell(
+            row=row_idx,
+            column=4,
+            value="HIGH PRIORITY" if s.get("priority") else "Secondary",
         ).font = cell_font
         for c in range(1, 5):
             ws_skills.cell(row=row_idx, column=c).border = cell_border
@@ -761,7 +849,9 @@ def generate_analytics_excel(metrics: Dict[str, Any]) -> bytes:
 
     # 4. Stall Insights Sheet
     ws_stall = wb.create_sheet("Stall Insights")
-    ws_stall.cell(row=1, column=1, value="Application Stall & Stage Funnel").font = title_font
+    ws_stall.cell(
+        row=1, column=1, value="Application Stall & Stage Funnel"
+    ).font = title_font
     ws_stall.cell(
         row=2,
         column=1,
@@ -787,13 +877,23 @@ def generate_analytics_excel(metrics: Dict[str, Any]) -> bytes:
         med = st.get("median_duration_hours")
         med_str = f"{med} hrs" if med is not None else "N/A"
 
-        ws_stall.cell(row=row_idx, column=1, value=st.get("stage", "").title()).font = cell_font
-        ws_stall.cell(row=row_idx, column=2, value=st.get("entered_count", 0)).font = cell_font
-        ws_stall.cell(row=row_idx, column=3, value=st.get("progressed_count", 0)).font = cell_font
-        ws_stall.cell(row=row_idx, column=4, value=st.get("dropped_count", 0)).font = cell_font
+        ws_stall.cell(
+            row=row_idx, column=1, value=st.get("stage", "").title()
+        ).font = cell_font
+        ws_stall.cell(
+            row=row_idx, column=2, value=st.get("entered_count", 0)
+        ).font = cell_font
+        ws_stall.cell(
+            row=row_idx, column=3, value=st.get("progressed_count", 0)
+        ).font = cell_font
+        ws_stall.cell(
+            row=row_idx, column=4, value=st.get("dropped_count", 0)
+        ).font = cell_font
         ws_stall.cell(row=row_idx, column=5, value=rate_str).font = cell_font
         ws_stall.cell(row=row_idx, column=6, value=med_str).font = cell_font
-        ws_stall.cell(row=row_idx, column=7, value=st.get("duration_sample_size", 0)).font = cell_font
+        ws_stall.cell(
+            row=row_idx, column=7, value=st.get("duration_sample_size", 0)
+        ).font = cell_font
         for c in range(1, 8):
             ws_stall.cell(row=row_idx, column=c).border = cell_border
         row_idx += 1
@@ -804,8 +904,12 @@ def generate_analytics_excel(metrics: Dict[str, Any]) -> bytes:
     style_header(ws_funnel, 3, ["Stage", "Count"])
     row_idx = 4
     for item in metrics.get("conversion_funnel", []):
-        ws_funnel.cell(row=row_idx, column=1, value=item.get("stage", "")).font = cell_font
-        ws_funnel.cell(row=row_idx, column=2, value=item.get("count", 0)).font = cell_font
+        ws_funnel.cell(
+            row=row_idx, column=1, value=item.get("stage", "")
+        ).font = cell_font
+        ws_funnel.cell(
+            row=row_idx, column=2, value=item.get("count", 0)
+        ).font = cell_font
         ws_funnel.cell(row=row_idx, column=1).border = cell_border
         ws_funnel.cell(row=row_idx, column=2).border = cell_border
         row_idx += 1

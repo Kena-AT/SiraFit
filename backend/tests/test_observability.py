@@ -1,11 +1,9 @@
 """Observability and Tracing unit tests (Sprint 15)."""
 
-import pytest
 from app.core.config import settings
 from app.core.logging import (
     add_request_id,
     add_timestamp,
-    add_trace_correlation,
     sanitize_sensitive_data,
 )
 from app.observability.tracing import (

@@ -32,7 +32,7 @@ async def analyze_match_score(
 
     if not actual_key:
         from app.core.config import settings
-        
+
         # Map provider to settings field
         setting_fields = {
             "gemini": "GEMINI_API",
@@ -43,10 +43,10 @@ async def analyze_match_score(
             "mistral": "MISTRAL_API",
             "nvidia": "NVIDIA_API",
         }
-        
+
         if actual_provider in setting_fields:
             actual_key = getattr(settings, setting_fields[actual_provider], None)
-        
+
         # If still no key and no provider was specified, try to find ANY available key
         if not actual_key and not actual_provider:
             for prov, field in setting_fields.items():
@@ -63,10 +63,13 @@ async def analyze_match_score(
         try:
             # Build context for matching
             context = f"Candidate Profile:\n{profile.summary or ''}\n\nJob Title: {job.title}\nJob Description: {job.description or ''}"
-            result = await analyze_job(context, actual_key, actual_provider, model=actual_model)
+            result = await analyze_job(
+                context, actual_key, actual_provider, model=actual_model
+            )
             return result.score, result.summary
         except Exception as e:
             import logging
+
             logging.getLogger(__name__).error(f"AI matching failed: {e}")
             return _keyword_match_score(profile, job)
 

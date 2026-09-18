@@ -25,11 +25,21 @@ export const VersionCard: React.FC<VersionCardProps> = ({
   const getSourceBadge = () => {
     switch (version.source_type) {
       case "base":
-        return <Tag className="bg-blue-500/10 text-blue-500 border-blue-500/20 font-medium">Base</Tag>;
+        return (
+          <Tag className="bg-blue-500/10 text-blue-500 border-blue-500/20 font-medium">Base</Tag>
+        );
       case "tailored":
-        return <Tag className="bg-purple-500/10 text-purple-500 border-purple-500/20 font-medium">Tailored</Tag>;
+        return (
+          <Tag className="bg-purple-500/10 text-purple-500 border-purple-500/20 font-medium">
+            Tailored
+          </Tag>
+        );
       case "revert":
-        return <Tag className="bg-amber-500/10 text-amber-500 border-amber-500/20 font-medium">Reverted</Tag>;
+        return (
+          <Tag className="bg-amber-500/10 text-amber-500 border-amber-500/20 font-medium">
+            Reverted
+          </Tag>
+        );
       default:
         return <Tag>{version.source_type}</Tag>;
     }

@@ -3,21 +3,22 @@
 Handles OAuth flow initiation with PKCE, single-use state CSRF protection,
 code exchange, safe account resolution (anti-takeover), and explicit account linking.
 """
+
 import base64
 import hashlib
 import secrets
 import logging
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Any
+from datetime import datetime, timezone
+from typing import Optional
 
 import httpx
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.security import encrypt_value, decrypt_value
+from app.core.security import encrypt_value
 from app.models.oauth import OAuthAccount
 from app.models.user import User
 
@@ -83,6 +84,7 @@ PROVIDERS = {
 # PKCE and State management for CSRF protection
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class OAuthStateRecord:
     state: str
@@ -99,16 +101,10 @@ STATE_TTL_MINUTES = 10
 def generate_pkce_pair() -> tuple[str, str]:
     """Generate PKCE code_verifier and S256 code_challenge according to RFC 7636."""
     verifier = (
-        base64.urlsafe_b64encode(secrets.token_bytes(32))
-        .decode("utf-8")
-        .rstrip("=")
+        base64.urlsafe_b64encode(secrets.token_bytes(32)).decode("utf-8").rstrip("=")
     )
     digest = hashlib.sha256(verifier.encode("utf-8")).digest()
-    challenge = (
-        base64.urlsafe_b64encode(digest)
-        .decode("utf-8")
-        .rstrip("=")
-    )
+    challenge = base64.urlsafe_b64encode(digest).decode("utf-8").rstrip("=")
     return verifier, challenge
 
 
@@ -162,9 +158,11 @@ def _cleanup_expired_states() -> None:
 # Core OAuth functions
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class OAuthUserInfo:
     """Result from OAuth user info extraction."""
+
     provider_user_id: str
     email: str
     name: str
@@ -243,7 +241,9 @@ async def exchange_code_for_token(
         return response.json()
 
 
-async def get_user_info_from_provider(provider: str, access_token: str) -> OAuthUserInfo:
+async def get_user_info_from_provider(
+    provider: str, access_token: str
+) -> OAuthUserInfo:
     """Fetch user profile info from the OAuth provider."""
     if provider not in PROVIDERS:
         raise ValueError(f"Unsupported provider: {provider}")

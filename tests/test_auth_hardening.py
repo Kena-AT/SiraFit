@@ -11,8 +11,8 @@ Covers:
 - Step-up authentication for disabling 2FA
 - 2FA-required OAuth login returning challenge token
 """
+
 import uuid
-from datetime import datetime, timezone, timedelta
 from unittest.mock import patch, AsyncMock
 import jwt
 import pyotp
@@ -26,9 +26,8 @@ from app.core.security import (
     create_2fa_challenge_token,
     get_password_hash,
     encrypt_value,
-    decrypt_value,
 )
-from app.models.user import User, RefreshToken
+from app.models.user import User
 from app.models.oauth import OAuthAccount
 from app.models.totp import TOTPSecret, RecoveryCode
 from app.services.oauth import (
@@ -37,21 +36,17 @@ from app.services.oauth import (
     get_oauth_redirect_url,
     find_or_create_user_from_oauth,
     OAuthUserInfo,
-    OAuthStateRecord,
 )
 from app.services.totp import (
     setup_totp,
     confirm_totp,
-    verify_totp,
-    get_totp_status,
-    disable_totp,
-    regenerate_recovery_codes,
 )
 
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def auth_user(db: Session) -> User:
@@ -112,6 +107,7 @@ def user_with_2fa(db: Session) -> tuple[User, str, list[str]]:
 # 1. 2FA State Machine & Token Restrictions Tests
 # ---------------------------------------------------------------------------
 
+
 class TestTwoFactorChallengeToken:
     def test_challenge_token_format_and_claims(self, auth_user: User):
         token = create_2fa_challenge_token(auth_user.id)
@@ -134,7 +130,10 @@ class TestTwoFactorChallengeToken:
             headers={"Authorization": f"Bearer {challenge_token}"},
         )
         assert response.status_code == 401
-        assert "Invalid token type" in response.text or "Could not validate" in response.text
+        assert (
+            "Invalid token type" in response.text
+            or "Could not validate" in response.text
+        )
 
     def test_login_returns_challenge_token_when_2fa_enabled(
         self, client: TestClient, user_with_2fa: tuple[User, str, list[str]]
@@ -156,6 +155,7 @@ class TestTwoFactorChallengeToken:
 # ---------------------------------------------------------------------------
 # 2. Two-Phase TOTP Enrollment Tests
 # ---------------------------------------------------------------------------
+
 
 class TestTwoPhaseTOTPEnrollment:
     def test_setup_does_not_enable_2fa(self, db: Session, auth_user: User):
@@ -242,6 +242,7 @@ class TestTwoPhaseTOTPEnrollment:
 # 3. 2FA Verification & Recovery Codes Tests
 # ---------------------------------------------------------------------------
 
+
 class TestTwoFactorVerificationAndRecovery:
     def test_complete_login_with_totp_code(
         self, client: TestClient, user_with_2fa: tuple[User, str, list[str]]
@@ -313,7 +314,10 @@ class TestTwoFactorVerificationAndRecovery:
         assert old_codes[0] not in new_codes
 
     def test_disable_2fa_requires_step_up_password(
-        self, client: TestClient, db: Session, user_with_2fa: tuple[User, str, list[str]]
+        self,
+        client: TestClient,
+        db: Session,
+        user_with_2fa: tuple[User, str, list[str]],
     ):
         user, _, _ = user_with_2fa
         token = create_access_token(user.id)
@@ -342,6 +346,7 @@ class TestTwoFactorVerificationAndRecovery:
 # 4. OAuth PKCE & Safe Account Resolution Tests
 # ---------------------------------------------------------------------------
 
+
 class TestOAuthSecurity:
     def test_oauth_state_pkce_generation_and_consumption(self):
         state = generate_oauth_state()
@@ -358,8 +363,12 @@ class TestOAuthSecurity:
 
     def test_oauth_redirect_url_includes_pkce(self):
         state = generate_oauth_state()
-        with patch.object(settings, "GOOGLE_CLIENT_ID", "mock_google_client_id"), \
-             patch.object(settings, "GOOGLE_REDIRECT_URI", "https://app.sirafit.com/auth/callback"):
+        with (
+            patch.object(settings, "GOOGLE_CLIENT_ID", "mock_google_client_id"),
+            patch.object(
+                settings, "GOOGLE_REDIRECT_URI", "https://app.sirafit.com/auth/callback"
+            ),
+        ):
             url = get_oauth_redirect_url("google", state)
             assert "code_challenge=" in url
             assert "code_challenge_method=S256" in url
@@ -433,7 +442,10 @@ class TestOAuthSecurity:
 
     @pytest.mark.asyncio
     async def test_oauth_callback_with_2fa_enabled_returns_challenge(
-        self, client: TestClient, db: Session, user_with_2fa: tuple[User, str, list[str]]
+        self,
+        client: TestClient,
+        db: Session,
+        user_with_2fa: tuple[User, str, list[str]],
     ):
         """When a user linked to OAuth has 2FA enabled, callback returns challenge token."""
         user, _, _ = user_with_2fa
@@ -449,9 +461,18 @@ class TestOAuthSecurity:
 
         state = generate_oauth_state()
 
-        with patch("app.services.oauth.exchange_code_for_token", new_callable=AsyncMock) as mock_exchange, \
-             patch("app.services.oauth.get_user_info_from_provider", new_callable=AsyncMock) as mock_user_info:
-            mock_exchange.return_value = {"access_token": "token_abc", "refresh_token": None}
+        with (
+            patch(
+                "app.services.oauth.exchange_code_for_token", new_callable=AsyncMock
+            ) as mock_exchange,
+            patch(
+                "app.services.oauth.get_user_info_from_provider", new_callable=AsyncMock
+            ) as mock_user_info,
+        ):
+            mock_exchange.return_value = {
+                "access_token": "token_abc",
+                "refresh_token": None,
+            }
             mock_user_info.return_value = OAuthUserInfo(
                 provider_user_id="gh_2fa_user",
                 email=user.email,

@@ -15,7 +15,6 @@ from app.models.profile import (
     Project,
     Certification,
 )
-from app.models.profile_version import ProfileVersion
 from app.schemas.profile import (
     ProfileResponse,
     ProfileUpdate,
@@ -102,7 +101,9 @@ def get_my_profile(
 
     if not profile:
         # Create profile from user signup data
-        name_parts = current_user.full_name.split(" ", 1) if current_user.full_name else ["", ""]
+        name_parts = (
+            current_user.full_name.split(" ", 1) if current_user.full_name else ["", ""]
+        )
         profile = Profile(
             user_id=current_user.id,
             first_name=name_parts[0] if name_parts[0] else None,
@@ -230,6 +231,7 @@ class ProfileVersionResponse(BaseModel):
 
 # ── Canonical Sprint 2 Version Endpoints ──────────────────────────────────────
 
+
 @router.get("/me/versions", response_model=List[ProfileVersionSummaryResponse])
 def list_my_profile_versions(
     db: Session = Depends(get_db),
@@ -272,6 +274,7 @@ def revert_my_profile_version(
 
 
 # ── Backward-Compatible Aliases ───────────────────────────────────────────────
+
 
 @router.get("/me/history", response_model=List[ProfileVersionResponse])
 def get_my_profile_history(

@@ -10,8 +10,6 @@ Sprint 3 requirement:
 
 import os
 import sys
-import uuid
-import pytest
 from unittest.mock import patch
 
 _backend = os.path.abspath(os.path.join(os.path.dirname(__file__), "../backend"))
@@ -19,7 +17,7 @@ if _backend not in sys.path:
     sys.path.insert(0, _backend)
 
 from app.services.job_import import process_import
-from app.models.job import Job, JobImport, JobImportItem
+from app.models.job import Job, JobImportItem
 
 FIXTURES_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
 
@@ -45,7 +43,11 @@ class TestJobImportItems:
                 "https://boards.greenhouse.io/acme/jobs/12345",
             )
 
-        items = db.query(JobImportItem).filter(JobImportItem.import_id == import_record.id).all()
+        items = (
+            db.query(JobImportItem)
+            .filter(JobImportItem.import_id == import_record.id)
+            .all()
+        )
         assert len(items) == 1
         assert items[0].status == "imported"
         assert items[0].job_id is not None
@@ -80,14 +82,19 @@ class TestJobImportItems:
                 "https://boards.greenhouse.io/acme/jobs/12345",
             )
 
-        items_2 = db.query(JobImportItem).filter(JobImportItem.import_id == import_2.id).all()
+        items_2 = (
+            db.query(JobImportItem).filter(JobImportItem.import_id == import_2.id).all()
+        )
         assert len(items_2) == 1
         assert items_2[0].status == "duplicate"
         assert items_2[0].job_id == existing_job.id
 
     def test_failed_import_creates_failed_item(self, db, test_user):
         """A failed import creates JobImportItem with status='failed' and error_message."""
-        with patch("app.services.job_import.detect_platform", side_effect=RuntimeError("Parsing crash")):
+        with patch(
+            "app.services.job_import.detect_platform",
+            side_effect=RuntimeError("Parsing crash"),
+        ):
             import_record, _, errors, _ = process_import(
                 db,
                 test_user.id,
@@ -96,7 +103,11 @@ class TestJobImportItems:
             )
 
         assert import_record.status == "failed"
-        items = db.query(JobImportItem).filter(JobImportItem.import_id == import_record.id).all()
+        items = (
+            db.query(JobImportItem)
+            .filter(JobImportItem.import_id == import_record.id)
+            .all()
+        )
         assert len(items) == 1
         assert items[0].status == "failed"
         assert "Parsing crash" in items[0].error_message
@@ -108,7 +119,9 @@ class TestJobImportItems:
         html_lever = _load_fixture("lever_job.html")
 
         # Import A
-        with patch("app.services.job_import.fetch_job_html", return_value=html_greenhouse):
+        with patch(
+            "app.services.job_import.fetch_job_html", return_value=html_greenhouse
+        ):
             import_a, _, _, _ = process_import(
                 db,
                 test_user.id,
@@ -126,9 +139,13 @@ class TestJobImportItems:
             )
 
         # Query items for A
-        items_a = db.query(JobImportItem).filter(JobImportItem.import_id == import_a.id).all()
+        items_a = (
+            db.query(JobImportItem).filter(JobImportItem.import_id == import_a.id).all()
+        )
         # Query items for B
-        items_b = db.query(JobImportItem).filter(JobImportItem.import_id == import_b.id).all()
+        items_b = (
+            db.query(JobImportItem).filter(JobImportItem.import_id == import_b.id).all()
+        )
 
         assert len(items_a) == 1
         assert len(items_b) == 1
@@ -137,6 +154,7 @@ class TestJobImportItems:
 
         # Verify API detail response for A does not contain B's jobs
         from app.api.jobs import _import_detail_response
+
         detail_a = _import_detail_response(db, import_a)
         detail_b = _import_detail_response(db, import_b)
 

@@ -64,6 +64,7 @@ def get_agent_user(
         user_id = payload.get("sub")
         if user_id:
             import uuid
+
             user = db.query(User).filter(User.id == uuid.UUID(user_id)).first()
             if user and user.is_active:
                 return user

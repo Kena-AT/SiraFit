@@ -226,7 +226,9 @@ export const importSessionJobs = async (
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
-    const err = await response.json().catch(() => ({ detail: "Failed to initiate session import" }));
+    const err = await response
+      .json()
+      .catch(() => ({ detail: "Failed to initiate session import" }));
     throw new Error(err.detail || "Failed to initiate session import");
   }
   return response.json();
@@ -248,4 +250,3 @@ export const getUserSessions = async (): Promise<import("@/types/job").UserSessi
   }
   return response.json();
 };
-

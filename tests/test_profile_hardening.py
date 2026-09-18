@@ -2,13 +2,11 @@
 Sprint 2 Hardening Tests: Optimistic Concurrency, Taxonomy, Structured Errors,
 Version Detail, and Canonical API Endpoints.
 """
+
 import pytest
-from datetime import date
-from sqlalchemy.orm import Session
 
 from app.models.user import User
 from app.models.profile import Profile, Skill
-from app.models.profile_version import ProfileVersion
 from app.core.security import get_password_hash
 from app.services.profile_versioning import (
     create_profile_version,
@@ -32,6 +30,7 @@ from app.services.profile_validation import (
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def seeded_db(db):
@@ -76,6 +75,7 @@ def test_profile2(db, test_user2):
 # Taxonomy Tests
 # ---------------------------------------------------------------------------
 
+
 class TestSkillNormalization:
     def test_normalizes_whitespace(self):
         assert normalize_skill_key("  Python  ") == "python"
@@ -107,6 +107,7 @@ class TestTaxonomySeed:
 
     def test_seed_is_idempotent(self, db):
         count1 = seed_skill_taxonomy(db)
+        assert count1 >= 0
         count2 = seed_skill_taxonomy(db)
         assert count2 == 0  # nothing new on re-seed
 
@@ -156,14 +157,21 @@ class TestTaxonomySeed:
 # Structured Validation Errors
 # ---------------------------------------------------------------------------
 
+
 class TestStructuredValidationErrors:
     def test_error_is_string_compatible(self):
-        err = ProfileValidationError("Experience #1: title is required", code="REQUIRED_FIELD", path="experiences[0].title")
+        err = ProfileValidationError(
+            "Experience #1: title is required",
+            code="REQUIRED_FIELD",
+            path="experiences[0].title",
+        )
         assert str(err) == "Experience #1: title is required"
         assert "Experience" in err
 
     def test_error_has_structured_dict(self):
-        err = ProfileValidationError("bad date", code="INVALID_DATE_RANGE", path="experiences[0].end_date")
+        err = ProfileValidationError(
+            "bad date", code="INVALID_DATE_RANGE", path="experiences[0].end_date"
+        )
         d = err.to_dict()
         assert d["code"] == "INVALID_DATE_RANGE"
         assert d["path"] == "experiences[0].end_date"
@@ -206,7 +214,14 @@ class TestStructuredValidationErrors:
     def test_date_error_has_path(self):
         data = {
             "first_name": "Jane",
-            "experiences": [{"title": "Dev", "company": "Acme", "start_date": "2023-01-01", "end_date": "2020-01-01"}],
+            "experiences": [
+                {
+                    "title": "Dev",
+                    "company": "Acme",
+                    "start_date": "2023-01-01",
+                    "end_date": "2020-01-01",
+                }
+            ],
         }
         errors = validate_profile(data)
         date_errors = [e for e in errors if e.code == "INVALID_DATE_RANGE"]
@@ -217,6 +232,7 @@ class TestStructuredValidationErrors:
 # ---------------------------------------------------------------------------
 # Optimistic Concurrency
 # ---------------------------------------------------------------------------
+
 
 class TestOptimisticConcurrency:
     def test_stale_revision_returns_409(self, client, auth_headers, test_user2):
@@ -240,7 +256,11 @@ class TestOptimisticConcurrency:
 
         resp = client.put(
             "/api/v1/profiles/me",
-            json={"first_name": "Good", "headline": "Test", "expected_revision": current_revision},
+            json={
+                "first_name": "Good",
+                "headline": "Test",
+                "expected_revision": current_revision,
+            },
             headers=auth_headers,
         )
         assert resp.status_code == 200
@@ -260,6 +280,7 @@ class TestOptimisticConcurrency:
 # ---------------------------------------------------------------------------
 # Version History API
 # ---------------------------------------------------------------------------
+
 
 class TestVersionHistoryAPI:
     def test_get_versions_empty_before_any_update(self, client, auth_headers):
@@ -288,9 +309,13 @@ class TestVersionHistoryAPI:
             json={"first_name": "VersionDetail", "headline": "Test"},
             headers=auth_headers,
         )
-        history = client.get("/api/v1/profiles/me/versions", headers=auth_headers).json()
+        history = client.get(
+            "/api/v1/profiles/me/versions", headers=auth_headers
+        ).json()
         version_id = history[0]["id"]
-        detail_resp = client.get(f"/api/v1/profiles/me/versions/{version_id}", headers=auth_headers)
+        detail_resp = client.get(
+            f"/api/v1/profiles/me/versions/{version_id}", headers=auth_headers
+        )
         assert detail_resp.status_code == 200
         body = detail_resp.json()
         assert "profile" in body
@@ -299,16 +324,30 @@ class TestVersionHistoryAPI:
 
     def test_version_detail_404_not_found(self, client, auth_headers):
         import uuid
+
         fake_id = str(uuid.uuid4())
-        resp = client.get(f"/api/v1/profiles/me/versions/{fake_id}", headers=auth_headers)
+        resp = client.get(
+            f"/api/v1/profiles/me/versions/{fake_id}", headers=auth_headers
+        )
         assert resp.status_code == 404
 
     def test_version_detail_isolation_other_user(self, client, db):
         """User A cannot access User B's version."""
         from app.core.security import get_password_hash, create_access_token
+
         # Create two users
-        user_a = User(email="usera_sprint2@example.com", full_name="A", hashed_password=get_password_hash("pw"), is_verified=True)
-        user_b = User(email="userb_sprint2@example.com", full_name="B", hashed_password=get_password_hash("pw"), is_verified=True)
+        user_a = User(
+            email="usera_sprint2@example.com",
+            full_name="A",
+            hashed_password=get_password_hash("pw"),
+            is_verified=True,
+        )
+        user_b = User(
+            email="userb_sprint2@example.com",
+            full_name="B",
+            hashed_password=get_password_hash("pw"),
+            is_verified=True,
+        )
         db.add_all([user_a, user_b])
         db.commit()
         db.refresh(user_a)
@@ -319,13 +358,19 @@ class TestVersionHistoryAPI:
 
         # User A creates a version
         client.get("/api/v1/profiles/me", headers=headers_a)
-        client.put("/api/v1/profiles/me", json={"first_name": "Alice", "headline": "X"}, headers=headers_a)
+        client.put(
+            "/api/v1/profiles/me",
+            json={"first_name": "Alice", "headline": "X"},
+            headers=headers_a,
+        )
         history_a = client.get("/api/v1/profiles/me/versions", headers=headers_a).json()
         assert len(history_a) >= 1
         version_id = history_a[0]["id"]
 
         # User B cannot access User A's version
-        resp = client.get(f"/api/v1/profiles/me/versions/{version_id}", headers=headers_b)
+        resp = client.get(
+            f"/api/v1/profiles/me/versions/{version_id}", headers=headers_b
+        )
         assert resp.status_code == 404
 
 
@@ -333,21 +378,38 @@ class TestVersionRevertAPI:
     def test_post_revert_creates_new_version(self, client, auth_headers):
         client.get("/api/v1/profiles/me", headers=auth_headers)
         # First PUT: snapshots empty state -> result has first_name="V1"
-        client.put("/api/v1/profiles/me", json={"first_name": "V1", "headline": "H1"}, headers=auth_headers)
+        client.put(
+            "/api/v1/profiles/me",
+            json={"first_name": "V1", "headline": "H1"},
+            headers=auth_headers,
+        )
         # Second PUT: snapshots "V1" state -> result has first_name="V2"
-        client.put("/api/v1/profiles/me", json={"first_name": "V2", "headline": "H2"}, headers=auth_headers)
+        client.put(
+            "/api/v1/profiles/me",
+            json={"first_name": "V2", "headline": "H2"},
+            headers=auth_headers,
+        )
 
         # The newest version in history (index 0) captured the "V1" state
-        history = client.get("/api/v1/profiles/me/versions", headers=auth_headers).json()
-        v1_snapshot_id = history[0]["id"]  # newest snapshot = captured state before last PUT
+        history = client.get(
+            "/api/v1/profiles/me/versions", headers=auth_headers
+        ).json()
+        v1_snapshot_id = history[0][
+            "id"
+        ]  # newest snapshot = captured state before last PUT
 
         # Revert to the V1 snapshot via POST endpoint
-        resp = client.post(f"/api/v1/profiles/me/versions/{v1_snapshot_id}/revert", headers=auth_headers)
+        resp = client.post(
+            f"/api/v1/profiles/me/versions/{v1_snapshot_id}/revert",
+            headers=auth_headers,
+        )
         assert resp.status_code == 200
         assert resp.json()["first_name"] == "V1"
 
         # A new revert version should appear in history
-        history2 = client.get("/api/v1/profiles/me/versions", headers=auth_headers).json()
+        history2 = client.get(
+            "/api/v1/profiles/me/versions", headers=auth_headers
+        ).json()
         revert_entry = next((h for h in history2 if h["source"] == "revert"), None)
         assert revert_entry is not None
 
@@ -356,8 +418,11 @@ class TestVersionRevertAPI:
 # No-op Detection
 # ---------------------------------------------------------------------------
 
+
 class TestNoOpVersion:
-    def test_identical_save_does_not_increment_version(self, db, test_user2, test_profile2):
+    def test_identical_save_does_not_increment_version(
+        self, db, test_user2, test_profile2
+    ):
         # Create initial version
         v1 = create_profile_version(test_user2.id, test_profile2, db, source="update")
         db.commit()
@@ -383,8 +448,11 @@ class TestNoOpVersion:
 # Version Detail Service
 # ---------------------------------------------------------------------------
 
+
 class TestVersionDetailService:
-    def test_get_version_detail_returns_schema_version(self, db, test_user2, test_profile2):
+    def test_get_version_detail_returns_schema_version(
+        self, db, test_user2, test_profile2
+    ):
         v = create_profile_version(test_user2.id, test_profile2, db, source="baseline")
         db.commit()
         detail = get_profile_version_detail(test_user2.id, v.id, db)
@@ -409,5 +477,6 @@ class TestVersionDetailService:
 
     def test_version_detail_not_found_raises(self, db, test_user2):
         import uuid
+
         with pytest.raises(ValueError, match="not found"):
             get_profile_version_detail(test_user2.id, uuid.uuid4(), db)

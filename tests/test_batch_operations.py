@@ -6,13 +6,13 @@ The positive-path batch-operation tests live in
 ``backend/tests`` suite). This file preserves the error-path coverage that had
 no equivalent in the canonical suite.
 """
+
 import uuid
 from unittest.mock import AsyncMock, patch
 import pytest
 from sqlalchemy.orm import Session
-from app.models.job import Job, JobApplication
+from app.models.job import Job
 from app.models.profile import Profile
-from app.models.score import JobMatchScore
 from app.services.batch_operations import (
     batch_analyze_item,
     batch_score_item,
@@ -24,6 +24,7 @@ from app.services.batch_operations import (
 @pytest.fixture
 def mock_user(db: Session) -> uuid.UUID:
     from app.models.user import User
+
     user = User(
         id=uuid.uuid4(),
         email="test@example.com",
@@ -67,13 +68,21 @@ def mock_profile(db: Session, mock_user: uuid.UUID) -> Profile:
 
 
 @pytest.mark.asyncio
-async def test_batch_analyze_item_success(db: Session, mock_job: Job, mock_user: uuid.UUID):
-    with patch("app.services.batch_operations.run_job_analysis", new_callable=AsyncMock) as mock_analysis:
-        mock_analysis.return_value = type("AnalysisResult", (), {
-            "score": 85,
-            "status": "done",
-            "summary": "Great match for your skills.",
-        })()
+async def test_batch_analyze_item_success(
+    db: Session, mock_job: Job, mock_user: uuid.UUID
+):
+    with patch(
+        "app.services.batch_operations.run_job_analysis", new_callable=AsyncMock
+    ) as mock_analysis:
+        mock_analysis.return_value = type(
+            "AnalysisResult",
+            (),
+            {
+                "score": 85,
+                "status": "done",
+                "summary": "Great match for your skills.",
+            },
+        )()
 
         result = await batch_analyze_item(
             job_id=mock_job.id,
@@ -108,7 +117,9 @@ def test_batch_score_item_job_not_found(db: Session):
         )
 
 
-def test_batch_score_item_profile_not_found(db: Session, mock_job: Job, mock_user: uuid.UUID):
+def test_batch_score_item_profile_not_found(
+    db: Session, mock_job: Job, mock_user: uuid.UUID
+):
     with pytest.raises(ValueError, match="Profile for user .* not found"):
         batch_score_item(
             job_id=mock_job.id,
@@ -118,7 +129,9 @@ def test_batch_score_item_profile_not_found(db: Session, mock_job: Job, mock_use
         )
 
 
-def test_batch_tag_item_invalid_action(db: Session, mock_job: Job, mock_user: uuid.UUID):
+def test_batch_tag_item_invalid_action(
+    db: Session, mock_job: Job, mock_user: uuid.UUID
+):
     with pytest.raises(ValueError, match="Invalid action: invalid"):
         batch_tag_item(
             job_id=mock_job.id,
@@ -128,7 +141,9 @@ def test_batch_tag_item_invalid_action(db: Session, mock_job: Job, mock_user: uu
         )
 
 
-def test_batch_archive_item_invalid_target(db: Session, mock_job: Job, mock_user: uuid.UUID):
+def test_batch_archive_item_invalid_target(
+    db: Session, mock_job: Job, mock_user: uuid.UUID
+):
     with pytest.raises(ValueError, match="Invalid target: invalid"):
         batch_archive_item(
             job_id=mock_job.id,

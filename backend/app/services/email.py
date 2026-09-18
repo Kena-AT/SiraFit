@@ -49,12 +49,17 @@ class EmailService:
 
         try:
             from email.utils import formatdate, make_msgid
+
             msg = MIMEMultipart("alternative")
             msg["Subject"] = subject
             msg["From"] = f"SiraFit Team <{self.from_email}>"
             msg["To"] = to
             msg["Date"] = formatdate(localtime=True)
-            msg["Message-ID"] = make_msgid(domain=self.from_email.split('@')[-1] if '@' in self.from_email else 'sirafit.com')
+            msg["Message-ID"] = make_msgid(
+                domain=self.from_email.split("@")[-1]
+                if "@" in self.from_email
+                else "sirafit.com"
+            )
 
             if text_content:
                 part1 = MIMEText(text_content, "plain")
@@ -299,7 +304,7 @@ def send_email(
     text_content: Optional[str] = None,
 ) -> bool:
     """Send an email. Wrapper function for email_service.send_email.
-    
+
     Args:
         to: Recipient email address
         subject: Email subject line

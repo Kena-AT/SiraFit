@@ -5,8 +5,7 @@ Verifies validation probe, import submission, session deletion, platform discove
 and user session listing, ensuring credentials never leak into response bodies.
 """
 
-from unittest.mock import patch, MagicMock
-import pytest
+from unittest.mock import patch
 from app.services.session_management import store_user_session
 
 
@@ -23,7 +22,9 @@ def test_get_supported_platforms(client, auth_headers):
 
 def test_validate_session_endpoint_valid(client, auth_headers):
     """Verify POST /api/v1/jobs/import/session/{platform}/validate with valid cookies."""
-    with patch("app.services.scraping.session_importer.SavedJobsImporter.validate_session") as mock_val:
+    with patch(
+        "app.services.scraping.session_importer.SavedJobsImporter.validate_session"
+    ) as mock_val:
         mock_val.return_value = (True, "Session is valid")
 
         res = client.post(
@@ -83,7 +84,9 @@ def test_import_session_fails_without_cookies(client, auth_headers):
 
 def test_import_session_success_returns_202(client, auth_headers, db, test_user):
     """Verify POST /api/v1/jobs/import/session/{platform} queues task and returns 202."""
-    with patch("app.api.jobs.enqueue_session_import", return_value={"queued": True}) as mock_enqueue:
+    with patch(
+        "app.api.jobs.enqueue_session_import", return_value={"queued": True}
+    ) as mock_enqueue:
         res = client.post(
             "/api/v1/jobs/import/session/linkedin",
             headers=auth_headers,
@@ -123,7 +126,9 @@ def test_delete_session_endpoint(client, auth_headers, db, test_user):
     assert res.status_code == 204
 
 
-def test_get_user_sessions_endpoint_never_leaks_secrets(client, auth_headers, db, test_user):
+def test_get_user_sessions_endpoint_never_leaks_secrets(
+    client, auth_headers, db, test_user
+):
     """Verify GET /api/v1/users/me/sessions returns metadata and no cookies/tokens."""
     secret_cookie = "SUPER_SECRET_COOKIE_VAL_777"
     store_user_session(

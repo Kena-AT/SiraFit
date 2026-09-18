@@ -10,7 +10,6 @@ import asyncio
 import html as _html_lib
 from typing import Optional
 
-from app.core.config import settings
 from app.models.profile import Profile
 from app.models.job import Job
 

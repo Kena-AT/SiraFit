@@ -5,10 +5,10 @@ Verifies JSON-LD extraction, meta fallbacks, DOM heuristics, and error handling.
 """
 
 import os
-import pytest
 
 # Ensure backend is on path
 import sys
+
 _backend = os.path.abspath(os.path.join(os.path.dirname(__file__), "../backend"))
 if _backend not in sys.path:
     sys.path.insert(0, _backend)
@@ -144,7 +144,9 @@ class TestEdgeCases:
         assert result is None
 
     def test_unknown_url_returns_defaults(self):
-        result = parse_job_html("<html><body><h1>Test</h1></body></html>", "https://unknown.xyz/job")
+        result = parse_job_html(
+            "<html><body><h1>Test</h1></body></html>", "https://unknown.xyz/job"
+        )
         assert result is not None
         assert result["title"] == "Test"
 
@@ -152,9 +154,17 @@ class TestEdgeCases:
         html = _load_fixture("greenhouse_job.html")
         result = parse_job_html(html, "https://boards.greenhouse.io/acme/jobs/12345")
         expected_keys = {
-            "title", "company", "location", "description",
-            "salary_min", "salary_max", "currency", "tags",
-            "url", "source", "external_id",
+            "title",
+            "company",
+            "location",
+            "description",
+            "salary_min",
+            "salary_max",
+            "currency",
+            "tags",
+            "url",
+            "source",
+            "external_id",
         }
         assert set(result.keys()) == expected_keys
 

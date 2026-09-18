@@ -84,8 +84,8 @@ export function TwoFactorSetup({ onComplete, onCancel }: TwoFactorSetupProps) {
         </div>
         <div className="bg-muted p-4 rounded-md text-sm">
           <p>
-            Once enabled, you will need to enter a code from your authenticator app each time you log
-            in.
+            Once enabled, you will need to enter a code from your authenticator app each time you
+            log in.
           </p>
         </div>
         <div className="flex gap-2">
@@ -177,8 +177,8 @@ export function TwoFactorSetup({ onComplete, onCancel }: TwoFactorSetupProps) {
         <div>
           <h3 className="text-lg font-medium">2FA Enabled Successfully!</h3>
           <p className="text-sm text-muted-foreground">
-            Save these single-use recovery codes in a safe place. You can use them to access your account if
-            you lose your authenticator device.
+            Save these single-use recovery codes in a safe place. You can use them to access your
+            account if you lose your authenticator device.
           </p>
         </div>
         <div className="bg-muted p-4 rounded-md">
@@ -416,7 +416,8 @@ export function TwoFactorStatus({
           ) : (
             <div className="space-y-3">
               <p className="text-xs text-muted-foreground">
-                Confirm your password to generate new single-use recovery codes. This invalidates old codes.
+                Confirm your password to generate new single-use recovery codes. This invalidates
+                old codes.
               </p>
               <Input
                 type="password"

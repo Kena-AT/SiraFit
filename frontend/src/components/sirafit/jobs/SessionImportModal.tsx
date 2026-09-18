@@ -16,11 +16,7 @@ interface SessionImportModalProps {
   onImportStarted: (importId: string) => void;
 }
 
-export function SessionImportModal({
-  isOpen,
-  onClose,
-  onImportStarted,
-}: SessionImportModalProps) {
+export function SessionImportModal({ isOpen, onClose, onImportStarted }: SessionImportModalProps) {
   const [platform, setPlatform] = useState<"linkedin" | "indeed">("linkedin");
   const [cookieInput, setCookieInput] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -267,9 +263,18 @@ export function SessionImportModal({
               <span>Security & Consent Notice</span>
             </div>
             <ul className="list-disc pl-4 space-y-1 text-[11px] text-amber-800 dark:text-amber-300">
-              <li>Credentials are encrypted using AES-128-CBC at rest and decrypted only in worker memory.</li>
-              <li>SiraFit accesses only your authorized saved jobs; credentials are never exposed in API responses.</li>
-              <li>Platform Terms of Service may regulate automated access; use only with your own personal account.</li>
+              <li>
+                Credentials are encrypted using AES-128-CBC at rest and decrypted only in worker
+                memory.
+              </li>
+              <li>
+                SiraFit accesses only your authorized saved jobs; credentials are never exposed in
+                API responses.
+              </li>
+              <li>
+                Platform Terms of Service may regulate automated access; use only with your own
+                personal account.
+              </li>
             </ul>
           </div>
 
@@ -316,7 +321,8 @@ export function SessionImportModal({
               className="mt-0.5 h-4 w-4 rounded border-border"
             />
             <span>
-              I confirm that I am authorized to access this account and consent to SiraFit discovering my saved jobs.
+              I confirm that I am authorized to access this account and consent to SiraFit
+              discovering my saved jobs.
             </span>
           </label>
 
@@ -360,7 +366,12 @@ export function SessionImportModal({
           <Button
             size="sm"
             onClick={handleImport}
-            disabled={importing || validating || !consentConfirmed || (!cookieInput.trim() && !currentStoredSession)}
+            disabled={
+              importing ||
+              validating ||
+              !consentConfirmed ||
+              (!cookieInput.trim() && !currentStoredSession)
+            }
           >
             {importing ? "Queueing..." : "Start Saved-Jobs Import"}
           </Button>

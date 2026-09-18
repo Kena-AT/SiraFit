@@ -14,10 +14,16 @@ from app.core.config import settings
 from app.core.cache import cache_get, cache_set, cache_delete, invalidate_user_profile
 from app.models.user import User, UserPreference, DeviceSession, RefreshToken
 from app.schemas.user import (
-    UserCreate, UserResponse, TokenPayload, PasswordChangeRequest,
-    NotificationPreferencesBase, NotificationPreferences,
-    ResumeDefaultsBase, ResumeDefaults,
-    AIProviderKeysWrite, AIProviderKeysRead,
+    UserCreate,
+    UserResponse,
+    TokenPayload,
+    PasswordChangeRequest,
+    NotificationPreferencesBase,
+    NotificationPreferences,
+    ResumeDefaultsBase,
+    ResumeDefaults,
+    AIProviderKeysWrite,
+    AIProviderKeysRead,
 )
 from app.schemas.job import UserSessionResponse
 from app.services.session_management import list_user_sessions
@@ -68,6 +74,7 @@ def get_current_user(
     cached = cache_get(cache_key)
     if cached:
         import uuid as _uuid_mod
+
         user_uuid = _uuid_mod.UUID(cached)
         user = db.query(User).filter(User.id == user_uuid).first()
         if user and user.is_active:
@@ -263,7 +270,7 @@ def export_user_data(
     from app.models.job import JobApplication
     from app.models.resume import Resume
     from app.models.cover_letter import CoverLetter
-    
+
     # Gather all user data
     user_data = {
         "profile": {
@@ -272,8 +279,12 @@ def export_user_data(
             "full_name": current_user.full_name,
             "is_active": current_user.is_active,
             "is_verified": current_user.is_verified,
-            "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
-            "updated_at": current_user.updated_at.isoformat() if current_user.updated_at else None,
+            "created_at": current_user.created_at.isoformat()
+            if current_user.created_at
+            else None,
+            "updated_at": current_user.updated_at.isoformat()
+            if current_user.updated_at
+            else None,
         },
         "applications": [
             {
@@ -283,31 +294,45 @@ def export_user_data(
                 "created_at": app.created_at.isoformat() if app.created_at else None,
                 "updated_at": app.updated_at.isoformat() if app.updated_at else None,
             }
-            for app in db.query(JobApplication).filter(JobApplication.user_id == current_user.id).all()
+            for app in db.query(JobApplication)
+            .filter(JobApplication.user_id == current_user.id)
+            .all()
         ],
         "resumes": [
             {
                 "id": str(resume.id),
                 "title": resume.title,
-                "created_at": resume.created_at.isoformat() if resume.created_at else None,
+                "created_at": resume.created_at.isoformat()
+                if resume.created_at
+                else None,
             }
-            for resume in db.query(Resume).filter(Resume.user_id == current_user.id).all()
+            for resume in db.query(Resume)
+            .filter(Resume.user_id == current_user.id)
+            .all()
         ],
         "cover_letters": [
             {
                 "id": str(letter.id),
                 "title": letter.title,
-                "created_at": letter.created_at.isoformat() if letter.created_at else None,
+                "created_at": letter.created_at.isoformat()
+                if letter.created_at
+                else None,
             }
-            for letter in db.query(CoverLetter).filter(CoverLetter.user_id == current_user.id).all()
+            for letter in db.query(CoverLetter)
+            .filter(CoverLetter.user_id == current_user.id)
+            .all()
         ],
         "preferences": {
-            "theme": current_user.preferences.theme if current_user.preferences else "light",
-            "notifications_enabled": current_user.preferences.notifications_enabled if current_user.preferences else True,
+            "theme": current_user.preferences.theme
+            if current_user.preferences
+            else "light",
+            "notifications_enabled": current_user.preferences.notifications_enabled
+            if current_user.preferences
+            else True,
         },
         "exported_at": datetime.utcnow().isoformat(),
     }
-    
+
     return JSONResponse(content=user_data)
 
 
@@ -330,22 +355,18 @@ def delete_account(
 ) -> Any:
     """Delete user account and all associated data."""
     from app.models.user import RefreshToken, AuditLog
-    
+
     # Delete refresh tokens
-    db.query(RefreshToken).filter(
-        RefreshToken.user_id == current_user.id
-    ).delete()
-    
+    db.query(RefreshToken).filter(RefreshToken.user_id == current_user.id).delete()
+
     # Delete audit logs
-    db.query(AuditLog).filter(
-        AuditLog.user_id == current_user.id
-    ).delete()
-    
+    db.query(AuditLog).filter(AuditLog.user_id == current_user.id).delete()
+
     # Cascade delete handles applications, resumes, cover letters, etc.
     # Just delete the user
     db.delete(current_user)
     db.commit()
-    
+
     return {"message": "Account deleted successfully"}
 
 
@@ -592,6 +613,7 @@ def _create_device_session(
 
 # ---------------------------------------------------------------------------
 
+
 @router.get("/me/devices")
 def get_devices(
     current_user: User = Depends(get_current_user),
@@ -664,15 +686,30 @@ def test_ai_provider_key(
 ) -> Any:
     """Test whether a valid API key is configured and resolvable for the given provider."""
     from app.services.ai_keys import build_candidates
-    candidates = build_candidates(db=db, user_id=current_user.id, provider=body.provider)
+
+    candidates = build_candidates(
+        db=db, user_id=current_user.id, provider=body.provider
+    )
     if not candidates:
-        return {"provider": body.provider, "status": "no_key", "message": f"No API key found for {body.provider}."}
-    
+        return {
+            "provider": body.provider,
+            "status": "no_key",
+            "message": f"No API key found for {body.provider}.",
+        }
+
     prov, model, key = candidates[0]
     if not key or len(key.strip()) < 5:
-        return {"provider": body.provider, "status": "invalid_key", "message": f"API key for {body.provider} appears empty or invalid."}
+        return {
+            "provider": body.provider,
+            "status": "invalid_key",
+            "message": f"API key for {body.provider} appears empty or invalid.",
+        }
 
-    return {"provider": body.provider, "status": "ok", "message": f"API key successfully resolved for {body.provider}."}
+    return {
+        "provider": body.provider,
+        "status": "ok",
+        "message": f"API key successfully resolved for {body.provider}.",
+    }
 
 
 @router.get("/me/ai-models")
@@ -683,10 +720,16 @@ def get_dynamic_ai_models(
 ) -> Any:
     """Return available models for the specified provider (or all providers)."""
     from app.services.ai_keys import DEFAULT_MODELS
+
     if provider and provider.lower() in DEFAULT_MODELS:
         p = provider.lower()
-        return [{"id": DEFAULT_MODELS[p], "display_name": f"{p.title()} Default ({DEFAULT_MODELS[p]})"}]
-    
+        return [
+            {
+                "id": DEFAULT_MODELS[p],
+                "display_name": f"{p.title()} Default ({DEFAULT_MODELS[p]})",
+            }
+        ]
+
     return [
         {"provider": p, "id": m, "display_name": f"{p.title()} — {m}"}
         for p, m in DEFAULT_MODELS.items()

@@ -13,7 +13,6 @@ from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.orm import Session
 from app.models.profile import Profile
 from app.models.job import Job
-from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

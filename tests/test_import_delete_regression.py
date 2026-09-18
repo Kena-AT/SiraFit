@@ -12,9 +12,7 @@ Verifies:
 
 import os
 import sys
-import uuid
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 _backend = os.path.abspath(os.path.join(os.path.dirname(__file__), "../backend"))
 if _backend not in sys.path:
@@ -22,8 +20,6 @@ if _backend not in sys.path:
 
 from app.services.job_import import process_import, check_duplicate
 from app.models.job import Job, JobImport, JobImportItem
-from app.models.scrape_history import ScrapeHistory
-from app.api.jobs import router as jobs_router
 
 FIXTURES_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
 
@@ -75,7 +71,11 @@ class TestImportJobLinkage:
                 "https://boards.greenhouse.io/acme/jobs/12345",
             )
 
-        items = db.query(JobImportItem).filter(JobImportItem.import_id == import_record.id).all()
+        items = (
+            db.query(JobImportItem)
+            .filter(JobImportItem.import_id == import_record.id)
+            .all()
+        )
         assert len(items) > 0
         assert all(item.status == "imported" for item in items)
 
@@ -147,7 +147,9 @@ class TestImportDelete:
         db.delete(import_record)
         db.commit()
 
-        items = db.query(JobImportItem).filter(JobImportItem.import_id == import_id).all()
+        items = (
+            db.query(JobImportItem).filter(JobImportItem.import_id == import_id).all()
+        )
         assert len(items) == 0
 
 
@@ -191,7 +193,11 @@ class TestJobDelete:
                 "https://boards.greenhouse.io/acme/jobs/12345",
             )
 
-        item = db.query(JobImportItem).filter(JobImportItem.import_id == import_record.id).first()
+        item = (
+            db.query(JobImportItem)
+            .filter(JobImportItem.import_id == import_record.id)
+            .first()
+        )
         assert item is not None
 
         job_id = item.job_id
@@ -274,7 +280,9 @@ class TestDuplicateDetection:
         from app.models.job import Job as JobModel
 
         existing = db.query(JobModel).first()
-        result = check_duplicate(db, {"title": existing.title, "company": existing.company})
+        result = check_duplicate(
+            db, {"title": existing.title, "company": existing.company}
+        )
         assert result is not None
         assert result.id == existing.id
 

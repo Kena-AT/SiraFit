@@ -1,5 +1,13 @@
 from typing import List, Any, Optional
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Header, Request
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Query,
+    Header,
+    Request,
+)
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
@@ -16,7 +24,6 @@ from app.core.rate_limiting import check_rate_limit
 from app.core.cache import (
     cache_get,
     cache_set,
-    cache_delete_prefix,
     cache_get_or_compute,
     invalidate_job_related,
 )
@@ -89,16 +96,15 @@ def list_ranked_jobs(
         .outerjoin(
             JobMatchScore,
             and_(
-                JobMatchScore.job_id == Job.id,
-                JobMatchScore.user_id == current_user.id
-            )
+                JobMatchScore.job_id == Job.id, JobMatchScore.user_id == current_user.id
+            ),
         )
         .order_by(JobMatchScore.score.desc().nullslast(), Job.created_at.desc())
         .offset(skip)
         .limit(limit)
     )
     results = query.all()
-    
+
     items = [
         RankedJobResponse(
             job=JobResponse.model_validate(job),
@@ -114,12 +120,17 @@ def job_search(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     q: str = Query(..., min_length=1, description="Search query"),
-    mode: str = Query("keyword", regex="^(keyword|semantic|hybrid)$", description="Search mode: keyword, semantic, or hybrid"),
+    mode: str = Query(
+        "keyword",
+        regex="^(keyword|semantic|hybrid)$",
+        description="Search mode: keyword, semantic, or hybrid",
+    ),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
 ) -> Any:
     """Search jobs using keyword, semantic (pgvector), or hybrid (RRF) retrieval."""
     import time
+
     start_time = time.perf_counter()
 
     # If semantic/hybrid requested but embeddings disabled, fall back to keyword
@@ -130,7 +141,9 @@ def job_search(
     try:
         if effective_mode == "semantic":
             query_vector = generate_query_embedding(q)
-            jobs, total = semantic_search_jobs(db, query_vector=query_vector, skip=skip, limit=limit)
+            jobs, total = semantic_search_jobs(
+                db, query_vector=query_vector, skip=skip, limit=limit
+            )
         elif effective_mode == "hybrid":
             query_vector = generate_query_embedding(q)
             jobs, total = hybrid_search_jobs(
@@ -140,12 +153,18 @@ def job_search(
             jobs, total = keyword_search_jobs(db, query_text=q, skip=skip, limit=limit)
 
         duration = time.perf_counter() - start_time
-        metrics.SEMANTIC_SEARCH_TOTAL.labels(mode=effective_mode, status="success").inc()
-        metrics.SEMANTIC_SEARCH_DURATION_SECONDS.labels(mode=effective_mode).observe(duration)
+        metrics.SEMANTIC_SEARCH_TOTAL.labels(
+            mode=effective_mode, status="success"
+        ).inc()
+        metrics.SEMANTIC_SEARCH_DURATION_SECONDS.labels(mode=effective_mode).observe(
+            duration
+        )
         return JobListResponse(jobs=jobs, total=total, skip=skip, limit=limit)
 
     except Exception as exc:
-        metrics.SEMANTIC_SEARCH_TOTAL.labels(mode=effective_mode, status="failure").inc()
+        metrics.SEMANTIC_SEARCH_TOTAL.labels(
+            mode=effective_mode, status="failure"
+        ).inc()
         logger.exception("Search failure in mode %s: %s", effective_mode, exc)
         # Graceful fallback to keyword search if semantic model fails
         jobs, total = keyword_search_jobs(db, query_text=q, skip=skip, limit=limit)
@@ -199,19 +218,31 @@ def list_jobs_with_scores(
 def _build_cache_key(user_id: str, **params) -> str:
     """Build a deterministic cache key from filter parameters."""
     # Sort params for determinism, exclude skip/limit (they don't affect total)
-    cache_params = {k: v for k, v in params.items() if k not in ("skip", "limit") and v is not None}
+    cache_params = {
+        k: v for k, v in params.items() if k not in ("skip", "limit") and v is not None
+    }
     param_str = json.dumps(cache_params, sort_keys=True)
     return f"jobs:list:{user_id}:{hashlib.md5(param_str.encode()).hexdigest()}"
 
 
-def _list_jobs_query(db: Session, current_user: User, skip: int, limit: int,
-                     search: Optional[str], company: Optional[str],
-                     location: Optional[str], source: Optional[str],
-                     tags: Optional[str], min_salary: Optional[int],
-                     max_salary: Optional[int], sort_by: Optional[str],
-                     sort_order: Optional[str], include_archived: bool,
-                     skill_keywords: list[str] | None = None,
-                     mode: str = "keyword") -> JobListResponse:
+def _list_jobs_query(
+    db: Session,
+    current_user: User,
+    skip: int,
+    limit: int,
+    search: Optional[str],
+    company: Optional[str],
+    location: Optional[str],
+    source: Optional[str],
+    tags: Optional[str],
+    min_salary: Optional[int],
+    max_salary: Optional[int],
+    sort_by: Optional[str],
+    sort_order: Optional[str],
+    include_archived: bool,
+    skill_keywords: list[str] | None = None,
+    mode: str = "keyword",
+) -> JobListResponse:
     """Core job-listing query logic with support for keyword, semantic, and hybrid retrieval."""
     effective_mode = mode
     if effective_mode in ("semantic", "hybrid") and not settings.ENABLE_SEMANTIC_SEARCH:
@@ -251,7 +282,10 @@ def _list_jobs_query(db: Session, current_user: User, skip: int, limit: int,
                 )
             return JobListResponse(jobs=jobs, total=total, skip=skip, limit=limit)
         except Exception as exc:
-            logger.warning("Semantic/hybrid retrieval failed in list_jobs, falling back to keyword: %s", exc)
+            logger.warning(
+                "Semantic/hybrid retrieval failed in list_jobs, falling back to keyword: %s",
+                exc,
+            )
 
     query = db.query(Job)
 
@@ -262,17 +296,22 @@ def _list_jobs_query(db: Session, current_user: User, skip: int, limit: int,
     if search:
         term_clean = search.strip()
         from app.repositories.job_search import is_postgres
+
         if is_postgres(db):
             from sqlalchemy import text
+
             fts_cond = text("search_vector @@ websearch_to_tsquery('english', :query)")
             trgm_cond = or_(
-                Job.title.op('%')(term_clean),
-                Job.company.op('%')(term_clean)
+                Job.title.op("%")(term_clean), Job.company.op("%")(term_clean)
             )
             query = query.filter(or_(fts_cond, trgm_cond)).params(query=term_clean)
-            
-            fts_rank = text("ts_rank_cd(search_vector, websearch_to_tsquery('english', :query))")
-            trgm_rank = text("GREATEST(word_similarity(:query, title), word_similarity(:query, company))")
+
+            fts_rank = text(
+                "ts_rank_cd(search_vector, websearch_to_tsquery('english', :query))"
+            )
+            trgm_rank = text(
+                "GREATEST(word_similarity(:query, title), word_similarity(:query, company))"
+            )
             relevance_col = (fts_rank + trgm_rank).desc()
         else:
             term = f"%{term_clean}%"
@@ -311,11 +350,10 @@ def _list_jobs_query(db: Session, current_user: User, skip: int, limit: int,
         # We wrap each in cast(...) so it works on both SQLite and PostgreSQL.
         keyword_conditions = []
         for kw in skill_keywords:
-            keyword_conditions.append(
-                cast(Job.tags, String).ilike(f'%"{kw}"%')
-            )
+            keyword_conditions.append(cast(Job.tags, String).ilike(f'%"{kw}"%'))
         # Combine with OR — if multiple keywords, match any one of them.
         from sqlalchemy import or_ as _or
+
         query = query.filter(_or(*keyword_conditions))
 
     total = query.with_entities(func.count(Job.id)).order_by(None).scalar() or 0
@@ -347,11 +385,15 @@ async def list_jobs(
     sort_by: Optional[str] = Query("created_at"),
     sort_order: Optional[str] = Query("desc"),
     include_archived: bool = Query(False, description="Include archived jobs"),
-    mode: str = Query("keyword", regex="^(keyword|semantic|hybrid)$", description="Search mode"),
+    mode: str = Query(
+        "keyword", regex="^(keyword|semantic|hybrid)$", description="Search mode"
+    ),
     # Profiling: if a user profile exists, we pre-filter jobs by skill overlap
     # so the returned list is immediately relevant. This is a best-effort filter —
     # if no profile is found we fall back to the full list unchanged.
-    profile_id: Optional[uuid.UUID] = Query(None, description="Filter by user profile ID"),
+    profile_id: Optional[uuid.UUID] = Query(
+        None, description="Filter by user profile ID"
+    ),
 ) -> Any:
     """List jobs with search, filtering, sorting, and pagination.
 
@@ -501,14 +543,18 @@ def delete_job(
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     if job.import_id:
-        import_record = db.query(JobImport).filter(JobImport.id == job.import_id).first()
+        import_record = (
+            db.query(JobImport).filter(JobImport.id == job.import_id).first()
+        )
         if import_record and import_record.user_id != current_user.id:
             raise HTTPException(status_code=403, detail="Not authorized")
 
     # Clean up related records explicitly to prevent FK constraint errors
     db.query(JobAnalysis).filter(JobAnalysis.job_id == job_id).delete()
     db.query(JobMatchScore).filter(JobMatchScore.job_id == job_id).delete()
-    db.query(JobImportItem).filter(JobImportItem.job_id == job_id).update({JobImportItem.job_id: None})
+    db.query(JobImportItem).filter(JobImportItem.job_id == job_id).update(
+        {JobImportItem.job_id: None}
+    )
 
     db.delete(job)
     db.commit()
@@ -527,7 +573,9 @@ def archive_job(
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     if job.import_id:
-        import_record = db.query(JobImport).filter(JobImport.id == job.import_id).first()
+        import_record = (
+            db.query(JobImport).filter(JobImport.id == job.import_id).first()
+        )
         if import_record and import_record.user_id != current_user.id:
             raise HTTPException(status_code=403, detail="Not authorized")
     job.is_archived = body.archived
@@ -588,7 +636,9 @@ def get_match_score(
         existing_score.explanation = score_data["explanation"]
         db.commit()
         db.refresh(existing_score)
-        resp_data = JobMatchScoreResponse.model_validate(existing_score).model_dump(mode="json")
+        resp_data = JobMatchScoreResponse.model_validate(existing_score).model_dump(
+            mode="json"
+        )
         resp_data["status"] = "done"
         cache_set(cache_key, resp_data, ttl=300)
         return existing_score
@@ -603,7 +653,9 @@ def get_match_score(
         db.add(new_score)
         db.commit()
         db.refresh(new_score)
-        resp_data = JobMatchScoreResponse.model_validate(new_score).model_dump(mode="json")
+        resp_data = JobMatchScoreResponse.model_validate(new_score).model_dump(
+            mode="json"
+        )
         resp_data["status"] = "done"
         cache_set(cache_key, resp_data, ttl=300)
         return new_score
@@ -667,7 +719,9 @@ def get_similar_jobs(
 
     Excludes the source job, jobs without ready embeddings, and archived jobs.
     """
-    source_job = db.query(Job).filter(Job.id == job_id, Job.is_archived == False).first()  # noqa: E712
+    source_job = (
+        db.query(Job).filter(Job.id == job_id, Job.is_archived == False).first()
+    )  # noqa: E712
     if not source_job:
         raise HTTPException(status_code=404, detail="Job not found")
 
@@ -881,7 +935,9 @@ def get_supported_session_platforms() -> Any:
     return SupportedPlatformsResponse(platforms=sorted(list(SUPPORTED_PLATFORMS)))
 
 
-@router.post("/import/session/{platform}/validate", response_model=SessionValidationResponse)
+@router.post(
+    "/import/session/{platform}/validate", response_model=SessionValidationResponse
+)
 def validate_platform_session(
     platform: str,
     body: SessionImportIn,
@@ -895,7 +951,9 @@ def validate_platform_session(
     check_rate_limit(request, "session_validate", str(current_user.id))
 
     if platform not in SUPPORTED_PLATFORMS:
-        raise HTTPException(status_code=400, detail=f"Platform '{platform}' is not supported")
+        raise HTTPException(
+            status_code=400, detail=f"Platform '{platform}' is not supported"
+        )
 
     importer = SavedJobsImporter()
     valid, message = importer.validate_session(platform, body.model_dump())
@@ -917,10 +975,14 @@ def import_saved_jobs_from_session(
     check_rate_limit(request, "session_import", str(current_user.id))
 
     if platform not in SUPPORTED_PLATFORMS:
-        raise HTTPException(status_code=400, detail=f"Platform '{platform}' is not supported")
+        raise HTTPException(
+            status_code=400, detail=f"Platform '{platform}' is not supported"
+        )
 
     if not body.consent_confirmed:
-        raise HTTPException(status_code=422, detail="Consent must be confirmed to import saved jobs")
+        raise HTTPException(
+            status_code=422, detail="Consent must be confirmed to import saved jobs"
+        )
 
     # 1. Validate & store encrypted session
     try:
@@ -933,8 +995,10 @@ def import_saved_jobs_from_session(
         )
     except ValueError as val_err:
         raise HTTPException(status_code=422, detail=str(val_err))
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail="Failed to securely store session credentials")
+    except Exception:
+        raise HTTPException(
+            status_code=500, detail="Failed to securely store session credentials"
+        )
 
     # 2. Create JobImport tracking record
     job_import = JobImport(
@@ -976,15 +1040,18 @@ def delete_stored_platform_session(
 ) -> None:
     """Delete a stored platform session."""
     if platform not in SUPPORTED_PLATFORMS:
-        raise HTTPException(status_code=400, detail=f"Platform '{platform}' is not supported")
+        raise HTTPException(
+            status_code=400, detail=f"Platform '{platform}' is not supported"
+        )
 
     deleted = delete_user_session(db, current_user.id, platform)
     if not deleted:
         raise HTTPException(status_code=404, detail="Stored session not found")
 
 
-
-def _import_detail_response(db: Session, import_record: JobImport) -> ImportResultResponse:
+def _import_detail_response(
+    db: Session, import_record: JobImport
+) -> ImportResultResponse:
     """Build an ``ImportResultResponse`` from a ``JobImport`` (items joined with jobs).
 
     Queries ``JobImportItem LEFT JOIN Job`` as the authoritative source of truth.
@@ -1007,37 +1074,41 @@ def _import_detail_response(db: Session, import_record: JobImport) -> ImportResu
     if items_with_jobs:
         for item, job in items_with_jobs:
             if job:
-                jobs_data.append({
-                    "id": str(job.id),
-                    "external_id": job.external_id,
-                    "title": job.title,
-                    "company": job.company,
-                    "location": job.location,
-                    "salary_min": job.salary_min,
-                    "salary_max": job.salary_max,
-                    "currency": job.currency,
-                    "tags": job.tags or [],
-                    "url": job.url,
-                    "source": job.source,
-                    "is_duplicate": item.status == "duplicate",
-                    "import_status": item.status,
-                })
+                jobs_data.append(
+                    {
+                        "id": str(job.id),
+                        "external_id": job.external_id,
+                        "title": job.title,
+                        "company": job.company,
+                        "location": job.location,
+                        "salary_min": job.salary_min,
+                        "salary_max": job.salary_max,
+                        "currency": job.currency,
+                        "tags": job.tags or [],
+                        "url": job.url,
+                        "source": job.source,
+                        "is_duplicate": item.status == "duplicate",
+                        "import_status": item.status,
+                    }
+                )
             else:
-                jobs_data.append({
-                    "id": None,
-                    "external_id": item.title_guess or "unknown",
-                    "title": item.title_guess or "Unknown",
-                    "company": "Unknown",
-                    "location": None,
-                    "salary_min": None,
-                    "salary_max": None,
-                    "currency": None,
-                    "tags": [],
-                    "url": None,
-                    "source": import_record.source,
-                    "is_duplicate": item.status == "duplicate",
-                    "import_status": item.status,
-                })
+                jobs_data.append(
+                    {
+                        "id": None,
+                        "external_id": item.title_guess or "unknown",
+                        "title": item.title_guess or "Unknown",
+                        "company": "Unknown",
+                        "location": None,
+                        "salary_min": None,
+                        "salary_max": None,
+                        "currency": None,
+                        "tags": [],
+                        "url": None,
+                        "source": import_record.source,
+                        "is_duplicate": item.status == "duplicate",
+                        "import_status": item.status,
+                    }
+                )
     else:
         # Legacy fallback for historical imports created before JobImportItem existed
         jobs = (
@@ -1048,6 +1119,7 @@ def _import_detail_response(db: Session, import_record: JobImport) -> ImportResu
         )
         if not jobs:
             from datetime import timedelta
+
             window_start = import_record.created_at - timedelta(minutes=5)
             window_end = import_record.created_at + timedelta(minutes=5)
             jobs = (

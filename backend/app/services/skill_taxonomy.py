@@ -4,6 +4,7 @@ Skill Taxonomy & Normalization Service (Sprint 2).
 Provides canonical skill resolution, normalization, and taxonomy seeding.
 Ensures skills stored in profiles resolve to controlled taxonomy identities.
 """
+
 import re
 from typing import Any, Optional
 from sqlalchemy.orm import Session
@@ -23,11 +24,11 @@ def normalize_skill_key(text: str) -> str:
 
     # Common symbol replacements (order matters: apply before generic cleanup)
     # Use re.sub without \b anchors since +, # are not word characters
-    cleaned = re.sub(r"c\+\+", "cpp", cleaned)     # C++ -> cpp
-    cleaned = re.sub(r"c#", "csharp", cleaned)       # C# -> csharp
+    cleaned = re.sub(r"c\+\+", "cpp", cleaned)  # C++ -> cpp
+    cleaned = re.sub(r"c#", "csharp", cleaned)  # C# -> csharp
     cleaned = re.sub(r"^\.net$", "dotnet", cleaned)  # .NET standalone -> dotnet
     cleaned = re.sub(r"\.net\b", "dotnet", cleaned)  # .NET prefix forms
-    cleaned = re.sub(r"\.js\b", "js", cleaned)       # React.js -> Reactjs
+    cleaned = re.sub(r"\.js\b", "js", cleaned)  # React.js -> Reactjs
 
     # Collapse spaces, hyphens, underscores, slashes
     cleaned = re.sub(r"[\s\-_/]+", "", cleaned)
@@ -37,58 +38,239 @@ def normalize_skill_key(text: str) -> str:
 # Deterministic seed data for standard industry skills
 DEFAULT_TAXONOMY = [
     # Languages
-    {"key": "python", "name": "Python", "category": "Languages", "aliases": ["py", "python3", "python 3"]},
-    {"key": "javascript", "name": "JavaScript", "category": "Languages", "aliases": ["js", "ecmascript", "es6"]},
-    {"key": "typescript", "name": "TypeScript", "category": "Languages", "aliases": ["ts"]},
+    {
+        "key": "python",
+        "name": "Python",
+        "category": "Languages",
+        "aliases": ["py", "python3", "python 3"],
+    },
+    {
+        "key": "javascript",
+        "name": "JavaScript",
+        "category": "Languages",
+        "aliases": ["js", "ecmascript", "es6"],
+    },
+    {
+        "key": "typescript",
+        "name": "TypeScript",
+        "category": "Languages",
+        "aliases": ["ts"],
+    },
     {"key": "golang", "name": "Go", "category": "Languages", "aliases": ["golang"]},
     {"key": "rust", "name": "Rust", "category": "Languages", "aliases": ["rustlang"]},
-    {"key": "java", "name": "Java", "category": "Languages", "aliases": ["java 11", "java 17", "java 21"]},
-    {"key": "cpp", "name": "C++", "category": "Languages", "aliases": ["cplusplus", "cpp"]},
-    {"key": "csharp", "name": "C#", "category": "Languages", "aliases": ["c-sharp", "c#", "csharp"]},
-    {"key": "sql", "name": "SQL", "category": "Languages", "aliases": ["ansi sql", "structured query language"]},
-    {"key": "html", "name": "HTML5", "category": "Languages", "aliases": ["html", "html 5"]},
-    {"key": "css", "name": "CSS3", "category": "Languages", "aliases": ["css", "css 3", "stylesheets"]},
+    {
+        "key": "java",
+        "name": "Java",
+        "category": "Languages",
+        "aliases": ["java 11", "java 17", "java 21"],
+    },
+    {
+        "key": "cpp",
+        "name": "C++",
+        "category": "Languages",
+        "aliases": ["cplusplus", "cpp"],
+    },
+    {
+        "key": "csharp",
+        "name": "C#",
+        "category": "Languages",
+        "aliases": ["c-sharp", "c#", "csharp"],
+    },
+    {
+        "key": "sql",
+        "name": "SQL",
+        "category": "Languages",
+        "aliases": ["ansi sql", "structured query language"],
+    },
+    {
+        "key": "html",
+        "name": "HTML5",
+        "category": "Languages",
+        "aliases": ["html", "html 5"],
+    },
+    {
+        "key": "css",
+        "name": "CSS3",
+        "category": "Languages",
+        "aliases": ["css", "css 3", "stylesheets"],
+    },
     {"key": "php", "name": "PHP", "category": "Languages", "aliases": ["php7", "php8"]},
-    {"key": "ruby", "name": "Ruby", "category": "Languages", "aliases": ["ruby on rails language"]},
-
+    {
+        "key": "ruby",
+        "name": "Ruby",
+        "category": "Languages",
+        "aliases": ["ruby on rails language"],
+    },
     # Frameworks & Libraries
-    {"key": "react", "name": "React", "category": "Frameworks", "aliases": ["reactjs", "react.js"]},
-    {"key": "nextjs", "name": "Next.js", "category": "Frameworks", "aliases": ["next", "next.js"]},
-    {"key": "vuejs", "name": "Vue.js", "category": "Frameworks", "aliases": ["vue", "vuejs", "vue 3"]},
-    {"key": "angular", "name": "Angular", "category": "Frameworks", "aliases": ["angularjs", "angular 2+"]},
-    {"key": "django", "name": "Django", "category": "Frameworks", "aliases": ["django rest framework", "drf"]},
-    {"key": "fastapi", "name": "FastAPI", "category": "Frameworks", "aliases": ["fast-api"]},
+    {
+        "key": "react",
+        "name": "React",
+        "category": "Frameworks",
+        "aliases": ["reactjs", "react.js"],
+    },
+    {
+        "key": "nextjs",
+        "name": "Next.js",
+        "category": "Frameworks",
+        "aliases": ["next", "next.js"],
+    },
+    {
+        "key": "vuejs",
+        "name": "Vue.js",
+        "category": "Frameworks",
+        "aliases": ["vue", "vuejs", "vue 3"],
+    },
+    {
+        "key": "angular",
+        "name": "Angular",
+        "category": "Frameworks",
+        "aliases": ["angularjs", "angular 2+"],
+    },
+    {
+        "key": "django",
+        "name": "Django",
+        "category": "Frameworks",
+        "aliases": ["django rest framework", "drf"],
+    },
+    {
+        "key": "fastapi",
+        "name": "FastAPI",
+        "category": "Frameworks",
+        "aliases": ["fast-api"],
+    },
     {"key": "flask", "name": "Flask", "category": "Frameworks", "aliases": []},
-    {"key": "expressjs", "name": "Express.js", "category": "Frameworks", "aliases": ["express", "expressjs"]},
-    {"key": "nodejs", "name": "Node.js", "category": "Frameworks", "aliases": ["node", "nodejs"]},
-    {"key": "springboot", "name": "Spring Boot", "category": "Frameworks", "aliases": ["spring", "spring framework"]},
-    {"key": "tailwind", "name": "Tailwind CSS", "category": "Frameworks", "aliases": ["tailwind", "tailwindcss"]},
-
+    {
+        "key": "expressjs",
+        "name": "Express.js",
+        "category": "Frameworks",
+        "aliases": ["express", "expressjs"],
+    },
+    {
+        "key": "nodejs",
+        "name": "Node.js",
+        "category": "Frameworks",
+        "aliases": ["node", "nodejs"],
+    },
+    {
+        "key": "springboot",
+        "name": "Spring Boot",
+        "category": "Frameworks",
+        "aliases": ["spring", "spring framework"],
+    },
+    {
+        "key": "tailwind",
+        "name": "Tailwind CSS",
+        "category": "Frameworks",
+        "aliases": ["tailwind", "tailwindcss"],
+    },
     # Databases
-    {"key": "postgresql", "name": "PostgreSQL", "category": "Databases", "aliases": ["postgres", "psql"]},
+    {
+        "key": "postgresql",
+        "name": "PostgreSQL",
+        "category": "Databases",
+        "aliases": ["postgres", "psql"],
+    },
     {"key": "mysql", "name": "MySQL", "category": "Databases", "aliases": []},
-    {"key": "sqlite", "name": "SQLite", "category": "Databases", "aliases": ["sqlite3"]},
-    {"key": "mongodb", "name": "MongoDB", "category": "Databases", "aliases": ["mongo"]},
+    {
+        "key": "sqlite",
+        "name": "SQLite",
+        "category": "Databases",
+        "aliases": ["sqlite3"],
+    },
+    {
+        "key": "mongodb",
+        "name": "MongoDB",
+        "category": "Databases",
+        "aliases": ["mongo"],
+    },
     {"key": "redis", "name": "Redis", "category": "Databases", "aliases": []},
-    {"key": "elasticsearch", "name": "Elasticsearch", "category": "Databases", "aliases": ["elastic", "es"]},
-
+    {
+        "key": "elasticsearch",
+        "name": "Elasticsearch",
+        "category": "Databases",
+        "aliases": ["elastic", "es"],
+    },
     # Cloud & DevOps
-    {"key": "docker", "name": "Docker", "category": "DevOps", "aliases": ["containerization", "containers"]},
-    {"key": "kubernetes", "name": "Kubernetes", "category": "DevOps", "aliases": ["k8s"]},
-    {"key": "aws", "name": "AWS", "category": "DevOps", "aliases": ["amazon web services"]},
-    {"key": "gcp", "name": "Google Cloud", "category": "DevOps", "aliases": ["gcp", "google cloud platform"]},
-    {"key": "azure", "name": "Microsoft Azure", "category": "DevOps", "aliases": ["azure"]},
-    {"key": "git", "name": "Git", "category": "DevOps", "aliases": ["github", "gitlab"]},
-    {"key": "cicd", "name": "CI/CD", "category": "DevOps", "aliases": ["continuous integration", "github actions", "jenkins"]},
-    {"key": "terraform", "name": "Terraform", "category": "DevOps", "aliases": ["tf", "iac"]},
-    {"key": "linux", "name": "Linux", "category": "DevOps", "aliases": ["bash", "unix", "shell scripting"]},
-
+    {
+        "key": "docker",
+        "name": "Docker",
+        "category": "DevOps",
+        "aliases": ["containerization", "containers"],
+    },
+    {
+        "key": "kubernetes",
+        "name": "Kubernetes",
+        "category": "DevOps",
+        "aliases": ["k8s"],
+    },
+    {
+        "key": "aws",
+        "name": "AWS",
+        "category": "DevOps",
+        "aliases": ["amazon web services"],
+    },
+    {
+        "key": "gcp",
+        "name": "Google Cloud",
+        "category": "DevOps",
+        "aliases": ["gcp", "google cloud platform"],
+    },
+    {
+        "key": "azure",
+        "name": "Microsoft Azure",
+        "category": "DevOps",
+        "aliases": ["azure"],
+    },
+    {
+        "key": "git",
+        "name": "Git",
+        "category": "DevOps",
+        "aliases": ["github", "gitlab"],
+    },
+    {
+        "key": "cicd",
+        "name": "CI/CD",
+        "category": "DevOps",
+        "aliases": ["continuous integration", "github actions", "jenkins"],
+    },
+    {
+        "key": "terraform",
+        "name": "Terraform",
+        "category": "DevOps",
+        "aliases": ["tf", "iac"],
+    },
+    {
+        "key": "linux",
+        "name": "Linux",
+        "category": "DevOps",
+        "aliases": ["bash", "unix", "shell scripting"],
+    },
     # Practices & Methodologies
-    {"key": "restapi", "name": "RESTful APIs", "category": "Methodologies", "aliases": ["rest", "rest api", "restful api"]},
+    {
+        "key": "restapi",
+        "name": "RESTful APIs",
+        "category": "Methodologies",
+        "aliases": ["rest", "rest api", "restful api"],
+    },
     {"key": "graphql", "name": "GraphQL", "category": "Methodologies", "aliases": []},
-    {"key": "agile", "name": "Agile", "category": "Methodologies", "aliases": ["scrum", "kanban"]},
-    {"key": "systemdesign", "name": "System Design", "category": "Methodologies", "aliases": ["software architecture", "distributed systems"]},
-    {"key": "testing", "name": "Unit Testing", "category": "Methodologies", "aliases": ["tdd", "pytest", "jest", "automated testing"]},
+    {
+        "key": "agile",
+        "name": "Agile",
+        "category": "Methodologies",
+        "aliases": ["scrum", "kanban"],
+    },
+    {
+        "key": "systemdesign",
+        "name": "System Design",
+        "category": "Methodologies",
+        "aliases": ["software architecture", "distributed systems"],
+    },
+    {
+        "key": "testing",
+        "name": "Unit Testing",
+        "category": "Methodologies",
+        "aliases": ["tdd", "pytest", "jest", "automated testing"],
+    },
 ]
 
 
@@ -164,7 +346,10 @@ def resolve_skill(name: str, db: Session) -> Optional[dict[str, Any]]:
     for t in all_taxonomies:
         aliases = t.aliases or []
         for alias in aliases:
-            if alias.lower() == raw_name.lower() or normalize_skill_key(alias) == norm_key:
+            if (
+                alias.lower() == raw_name.lower()
+                or normalize_skill_key(alias) == norm_key
+            ):
                 return {
                     "name": t.name,
                     "canonical_key": t.canonical_key,
@@ -174,7 +359,9 @@ def resolve_skill(name: str, db: Session) -> Optional[dict[str, Any]]:
     return None
 
 
-def canonicalize_profile_skills(skills: list[dict[str, Any]], db: Session) -> list[dict[str, Any]]:
+def canonicalize_profile_skills(
+    skills: list[dict[str, Any]], db: Session
+) -> list[dict[str, Any]]:
     """
     Normalize and canonicalize a list of skills before persisting.
     - Resolves known skills to canonical taxonomy name and category.
@@ -195,20 +382,24 @@ def canonicalize_profile_skills(skills: list[dict[str, Any]], db: Session) -> li
             if key in seen_keys:
                 continue
             seen_keys.add(key)
-            result.append({
-                "name": resolved["name"],
-                "category": s.get("category") or resolved["category"],
-                "proficiency": s.get("proficiency"),
-            })
+            result.append(
+                {
+                    "name": resolved["name"],
+                    "category": s.get("category") or resolved["category"],
+                    "proficiency": s.get("proficiency"),
+                }
+            )
         else:
             raw_key = normalize_skill_key(raw_name)
             if raw_key in seen_keys:
                 continue
             seen_keys.add(raw_key)
-            result.append({
-                "name": raw_name,
-                "category": s.get("category"),
-                "proficiency": s.get("proficiency"),
-            })
+            result.append(
+                {
+                    "name": raw_name,
+                    "category": s.get("category"),
+                    "proficiency": s.get("proficiency"),
+                }
+            )
 
     return result

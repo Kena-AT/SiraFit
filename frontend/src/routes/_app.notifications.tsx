@@ -33,7 +33,7 @@ function Notifications() {
 
   const lastMessage = useWebSocket(
     `ws://${window.location.host}/api/v1/ws/notifications`,
-    fallbackPoll
+    fallbackPoll,
   );
 
   useEffect(() => {

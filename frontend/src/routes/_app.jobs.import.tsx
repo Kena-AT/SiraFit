@@ -132,7 +132,11 @@ function Import() {
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      setResult({ import_record: null as unknown as import("@/types/job").JobImportRecord, jobs: [], errors: [msg] });
+      setResult({
+        import_record: null as unknown as import("@/types/job").JobImportRecord,
+        jobs: [],
+        errors: [msg],
+      });
     } finally {
       setLoading(false);
     }
@@ -160,7 +164,11 @@ function Import() {
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      setResult({ import_record: null as unknown as import("@/types/job").JobImportRecord, jobs: [], errors: [msg] });
+      setResult({
+        import_record: null as unknown as import("@/types/job").JobImportRecord,
+        jobs: [],
+        errors: [msg],
+      });
     } finally {
       setLoading(false);
     }
@@ -184,7 +192,11 @@ function Import() {
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      setResult({ import_record: null as unknown as import("@/types/job").JobImportRecord, jobs: [], errors: [msg] });
+      setResult({
+        import_record: null as unknown as import("@/types/job").JobImportRecord,
+        jobs: [],
+        errors: [msg],
+      });
     } finally {
       setLoading(false);
     }
@@ -401,7 +413,8 @@ function Import() {
           <div className="space-y-1">
             <p className="text-sm font-medium text-foreground">Authenticated session scraping</p>
             <p className="text-xs text-muted-foreground">
-              Provide your session cookie to securely discover and queue your saved jobs asynchronously.
+              Provide your session cookie to securely discover and queue your saved jobs
+              asynchronously.
             </p>
             <div className="flex gap-1.5 pt-1">
               <Tag>LinkedIn</Tag>

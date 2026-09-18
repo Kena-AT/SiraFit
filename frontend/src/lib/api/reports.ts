@@ -11,11 +11,11 @@ export async function generateReportPDF(data: ReportCreate): Promise<Blob> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  
+
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
     throw new Error(err.detail || "Failed to generate report PDF");
   }
-  
+
   return await response.blob();
 }

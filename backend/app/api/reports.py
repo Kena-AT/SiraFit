@@ -8,14 +8,15 @@ from app.services.pdf_report import generate_report_pdf
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
+
 class ReportRequest(BaseModel):
     title: str
     markdown_content: str
 
+
 @router.post("/generate")
 async def generate_report(
-    req: ReportRequest,
-    current_user: User = Depends(get_current_user)
+    req: ReportRequest, current_user: User = Depends(get_current_user)
 ):
     """Generate a PDF report from markdown content."""
     try:
@@ -24,8 +25,10 @@ async def generate_report(
             pdf_bytes,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": f"attachment; filename=\"{req.title.replace(' ', '_')}.pdf\""
-            }
+                "Content-Disposition": f'attachment; filename="{req.title.replace(" ", "_")}.pdf"'
+            },
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate report: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to generate report: {str(e)}"
+        )

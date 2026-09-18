@@ -42,9 +42,7 @@ def _compute_stats(db: Session, user: User) -> DashboardStats:
 
     jobs_scored = (
         db.query(func.count(JobApplication.id))
-        .filter(
-            JobApplication.user_id == user.id, JobApplication.score.isnot(None)
-        )
+        .filter(JobApplication.user_id == user.id, JobApplication.score.isnot(None))
         .scalar()
         or 0
     )
@@ -145,12 +143,15 @@ def get_market_pulse(
             if t:
                 counts[t] = counts.get(t, 0) + 1
 
-    top = sorted(counts.items(), key=lambda kv: kv[1], reverse=True)[: max(1, min(top_n, 30))]
+    top = sorted(counts.items(), key=lambda kv: kv[1], reverse=True)[
+        : max(1, min(top_n, 30))
+    ]
     pct_base = analyzed or 1
     result = MarketPulseResponse(
         total_jobs_analyzed=analyzed,
         top_tags=[
-            MarketPulseTag(tag=t, count=c, pct=round(c * 100 / pct_base)) for t, c in top
+            MarketPulseTag(tag=t, count=c, pct=round(c * 100 / pct_base))
+            for t, c in top
         ],
     )
     cache_set(cache_key, result.model_dump(mode="json"), ttl=600)

@@ -7,13 +7,21 @@ Handles:
 - Safe rollback by creating a new version from a previous snapshot.
 - Retrieving version history and full snapshot details.
 """
+
 from datetime import date, datetime
 from typing import Any, Optional
 from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.models.profile_version import ProfileVersion
-from app.models.profile import Profile, Experience, Education, Skill, Project, Certification
+from app.models.profile import (
+    Profile,
+    Experience,
+    Education,
+    Skill,
+    Project,
+    Certification,
+)
 
 
 MAX_VERSIONS = 50  # Retention policy — keep last 50 versions
@@ -94,7 +102,9 @@ def _profile_to_dict(profile: Profile) -> dict[str, Any]:
                 "name": c.name,
                 "issuer": c.issuer,
                 "issue_date": c.issue_date.isoformat() if c.issue_date else None,
-                "expiration_date": c.expiration_date.isoformat() if c.expiration_date else None,
+                "expiration_date": c.expiration_date.isoformat()
+                if c.expiration_date
+                else None,
                 "credential_id": c.credential_id,
                 "credential_url": c.credential_url,
             }
@@ -191,18 +201,22 @@ def get_profile_history(user_id: UUID, db: Session, limit: int = 50) -> list[dic
     for v in versions:
         raw_data = v.data or {}
         profile_data = _extract_profile_data(raw_data)
-        result.append({
-            "id": str(v.id),
-            "version": v.version,
-            "created_at": v.created_at.isoformat() if v.created_at else None,
-            "source": v.source or "update",
-            "summary": _build_version_summary(profile_data),
-        })
+        result.append(
+            {
+                "id": str(v.id),
+                "version": v.version,
+                "created_at": v.created_at.isoformat() if v.created_at else None,
+                "source": v.source or "update",
+                "summary": _build_version_summary(profile_data),
+            }
+        )
 
     return result
 
 
-def get_profile_version_detail(user_id: UUID, version_id: UUID, db: Session) -> dict[str, Any]:
+def get_profile_version_detail(
+    user_id: UUID, version_id: UUID, db: Session
+) -> dict[str, Any]:
     """
     Return full details of a specific profile version snapshot.
     """
@@ -219,7 +233,9 @@ def get_profile_version_detail(user_id: UUID, version_id: UUID, db: Session) -> 
 
     raw_data = v.data or {}
     profile_data = _extract_profile_data(raw_data)
-    schema_version = raw_data.get("schema_version", 1) if isinstance(raw_data, dict) else 1
+    schema_version = (
+        raw_data.get("schema_version", 1) if isinstance(raw_data, dict) else 1
+    )
 
     return {
         "id": str(v.id),
@@ -227,7 +243,9 @@ def get_profile_version_detail(user_id: UUID, version_id: UUID, db: Session) -> 
         "version": v.version,
         "created_at": v.created_at.isoformat() if v.created_at else None,
         "source": v.source or "update",
-        "reverted_from_version_id": str(v.reverted_from_version_id) if v.reverted_from_version_id else None,
+        "reverted_from_version_id": str(v.reverted_from_version_id)
+        if v.reverted_from_version_id
+        else None,
         "schema_version": schema_version,
         "profile": profile_data,
         "summary": _build_version_summary(profile_data),
@@ -288,13 +306,27 @@ def revert_to_version(user_id: UUID, version_id: UUID, db: Session) -> Profile:
         raise ValueError("Profile not found")
 
     # Clear existing nested objects
-    for field_name in ["experiences", "educations", "skills", "projects", "certifications"]:
+    for field_name in [
+        "experiences",
+        "educations",
+        "skills",
+        "projects",
+        "certifications",
+    ]:
         getattr(profile, field_name).clear()
 
     # Restore top-level fields
     for field in [
-        "first_name", "last_name", "headline", "summary",
-        "email", "phone", "location", "website", "linkedin", "github",
+        "first_name",
+        "last_name",
+        "headline",
+        "summary",
+        "email",
+        "phone",
+        "location",
+        "website",
+        "linkedin",
+        "github",
     ]:
         setattr(profile, field, snapshot_data.get(field))
 

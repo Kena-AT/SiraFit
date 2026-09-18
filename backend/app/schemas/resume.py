@@ -162,4 +162,3 @@ class ResumeGenerationResponse(BaseModel):
     version_id: uuid.UUID
     status: str
     message: str
-

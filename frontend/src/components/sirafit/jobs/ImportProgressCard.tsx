@@ -77,7 +77,8 @@ export function ImportProgressCard({
               <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-border border-t-foreground" />
             )}
             <span className="text-sm font-medium capitalize">
-              {sourceType} import: {isTerminal ? status : timedOut ? "Background Processing" : "Processing..."}
+              {sourceType} import:{" "}
+              {isTerminal ? status : timedOut ? "Background Processing" : "Processing..."}
             </span>
           </div>
           <StatusPill status={timedOut && !isTerminal ? "processing" : status} />
@@ -94,9 +95,7 @@ export function ImportProgressCard({
 
         {timedOut && !isTerminal && (
           <div className="rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-            <p>
-              This import is taking longer than usual and is continuing in the background.
-            </p>
+            <p>This import is taking longer than usual and is continuing in the background.</p>
             <Link
               to="/jobs/history"
               className="mt-1.5 inline-block font-medium text-foreground underline"

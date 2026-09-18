@@ -11,7 +11,7 @@ Provides idempotent, environment-aware OpenTelemetry tracing setup:
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Optional
 
 from app.core.config import settings
 
@@ -40,9 +40,7 @@ def init_tracing(app=None) -> bool:
         from opentelemetry.sdk.trace.sampling import TraceIdRatioBased, ParentBased
         from opentelemetry.sdk.resources import Resource
     except ImportError:
-        logger.warning(
-            "opentelemetry packages not installed; tracing disabled."
-        )
+        logger.warning("opentelemetry packages not installed; tracing disabled.")
         return False
 
     resource = Resource.create(

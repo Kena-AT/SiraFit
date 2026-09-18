@@ -8,7 +8,6 @@ from app.services.resume_diff import compute_resume_diff
 from app.services.resume_versioning import (
     create_base_version_from_profile,
     revert_to_version,
-    compare_resume_versions,
 )
 
 
@@ -16,8 +15,7 @@ from app.services.resume_versioning import (
 def test_user(db):
     u = User(
         email=f"user_{uuid.uuid4().hex[:8]}@example.com",
-        first_name="Alice",
-        last_name="Tester",
+        full_name="Alice Tester",
         hashed_password="hash",
     )
     db.add(u)
@@ -30,8 +28,7 @@ def test_user(db):
 def other_user(db):
     u = User(
         email=f"other_{uuid.uuid4().hex[:8]}@example.com",
-        first_name="Bob",
-        last_name="Other",
+        full_name="Bob Other",
         hashed_password="hash",
     )
     db.add(u)
@@ -78,6 +75,7 @@ def test_profile(db, test_user):
 @pytest.fixture
 def test_job(db):
     j = Job(
+        external_id=f"ext_{uuid.uuid4().hex[:8]}",
         title="Backend Engineer",
         company="DreamWorks Inc",
         description="Looking for senior Python developer.",
@@ -122,7 +120,7 @@ def test_create_base_version_from_profile(db, test_resume, test_profile):
     assert content_data["experience"][0]["company"] == "Tech Corp"
 
     # Invariant: Calling again returns the existing base snapshot
-    base_v2 = create_base_version_from_profile(db_session, test_resume, test_profile)
+    base_v2 = create_base_version_from_profile(db, test_resume, test_profile)
     assert base_v2.id == base_v.id
 
 
@@ -181,7 +179,10 @@ def test_resume_diff_semantic_changes():
                 "title": "Dev",
                 "company": "Acme",
                 "period": "2020-2022",  # changed period
-                "bullets": ["Fixed bugs", "Architected cloud infra"],  # -Wrote tests, +Architected...
+                "bullets": [
+                    "Fixed bugs",
+                    "Architected cloud infra",
+                ],  # -Wrote tests, +Architected...
             }
         ],
     }
@@ -223,7 +224,9 @@ def test_revert_version_flow(db, test_user, test_resume, test_profile, test_job)
     tailored_v = ResumeVersion(
         resume_id=test_resume.id,
         version_number=2,
-        content=json.dumps({"summary": "Tailored for DreamWorks", "skills": ["Python", "AI"]}),
+        content=json.dumps(
+            {"summary": "Tailored for DreamWorks", "skills": ["Python", "AI"]}
+        ),
         job_id=test_job.id,
         parent_version_id=base_v.id,
         source_type="tailored",
@@ -265,7 +268,9 @@ def test_revert_version_flow(db, test_user, test_resume, test_profile, test_job)
     assert reverted_v.job_id == tailored_v.job_id
 
     # Verify target was NOT changed
-    reloaded_target = db.query(ResumeVersion).filter(ResumeVersion.id == tailored_v.id).first()
+    reloaded_target = (
+        db.query(ResumeVersion).filter(ResumeVersion.id == tailored_v.id).first()
+    )
     assert reloaded_target.version_number == 2
     assert reloaded_target.source_type == "tailored"
 
@@ -275,7 +280,9 @@ def test_revert_version_flow(db, test_user, test_resume, test_profile, test_job)
 # ---------------------------------------------------------------------------
 
 
-def test_job_application_version_tracking(db, test_user, test_job, test_resume, test_profile):
+def test_job_application_version_tracking(
+    db, test_user, test_job, test_resume, test_profile
+):
     base_v = create_base_version_from_profile(db, test_resume, test_profile)
 
     app = JobApplication(

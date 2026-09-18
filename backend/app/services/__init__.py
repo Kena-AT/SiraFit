@@ -12,6 +12,7 @@ from app.services.analytics import (
     get_latest_snapshot,
     get_snapshots,
 )
+
 __all__ = [
     "email_service",
     "EmailService",

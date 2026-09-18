@@ -90,7 +90,9 @@ def test_invalidate_job_related_keys(cache_recorder):
 
     invalidate_job_related(TEST_USER_ID)
 
-    assert any(k.startswith(f"jobs:list:{TEST_USER_ID}:") for k in cache_recorder["prefix"])
+    assert any(
+        k.startswith(f"jobs:list:{TEST_USER_ID}:") for k in cache_recorder["prefix"]
+    )
     assert f"dashboard:stats:{TEST_USER_ID}" in cache_recorder["delete"]
 
 
@@ -124,7 +126,9 @@ def test_create_application_invalidates(db, mock_job, auth_headers, cache_record
         headers=auth_headers,
     )
     assert response.status_code == 200
-    assert any(k.startswith(f"jobs:list:{TEST_USER_ID}:") for k in cache_recorder["prefix"])
+    assert any(
+        k.startswith(f"jobs:list:{TEST_USER_ID}:") for k in cache_recorder["prefix"]
+    )
     assert f"dashboard:stats:{TEST_USER_ID}" in cache_recorder["delete"]
     assert f"match_score:{TEST_USER_ID}:{mock_job.id}" in cache_recorder["delete"]
 
@@ -145,7 +149,9 @@ def test_transition_status_invalidates(db, mock_job, auth_headers, cache_recorde
         headers=auth_headers,
     )
     assert response.status_code == 200
-    assert any(k.startswith(f"jobs:list:{TEST_USER_ID}:") for k in cache_recorder["prefix"])
+    assert any(
+        k.startswith(f"jobs:list:{TEST_USER_ID}:") for k in cache_recorder["prefix"]
+    )
     assert f"dashboard:stats:{TEST_USER_ID}" in cache_recorder["delete"]
     assert f"match_score:{TEST_USER_ID}:{mock_job.id}" in cache_recorder["delete"]
 
@@ -217,7 +223,10 @@ def test_batch_tag_invalidates_cache(db, mock_job, cache_recorder, monkeypatch):
         processed_items=0,
         succeeded_items=0,
         failed_items=0,
-        payload={"job_ids": [str(mock_job.id)], "params": {"tags": ["urgent"], "action": "add"}},
+        payload={
+            "job_ids": [str(mock_job.id)],
+            "params": {"tags": ["urgent"], "action": "add"},
+        },
         result_summary={},
         cancel_requested=False,
     )
@@ -226,5 +235,7 @@ def test_batch_tag_invalidates_cache(db, mock_job, cache_recorder, monkeypatch):
 
     batch_module._run_batch_job(batch_job.id)
 
-    assert any(k.startswith(f"jobs:list:{TEST_USER_ID}:") for k in cache_recorder["prefix"])
+    assert any(
+        k.startswith(f"jobs:list:{TEST_USER_ID}:") for k in cache_recorder["prefix"]
+    )
     assert f"dashboard:stats:{TEST_USER_ID}" in cache_recorder["delete"]

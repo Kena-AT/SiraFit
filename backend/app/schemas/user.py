@@ -83,14 +83,10 @@ class NotificationPreferences(NotificationPreferencesBase):
 
 class ResumeDefaultsBase(BaseModel):
     default_template: str = Field(
-        default="modern",
-        pattern=r"^(modern|classic|minimal|ats)$"
+        default="modern", pattern=r"^(modern|classic|minimal|ats)$"
     )
     auto_tailor_enabled: bool = True
-    export_format: str = Field(
-        default="pdf",
-        pattern=r"^(pdf|docx|txt)$"
-    )
+    export_format: str = Field(default="pdf", pattern=r"^(pdf|docx|txt)$")
 
 
 class ResumeDefaults(ResumeDefaultsBase):

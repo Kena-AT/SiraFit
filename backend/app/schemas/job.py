@@ -325,4 +325,3 @@ class UserSessionResponse(BaseModel):
 
 class SupportedPlatformsResponse(BaseModel):
     platforms: List[str]
-

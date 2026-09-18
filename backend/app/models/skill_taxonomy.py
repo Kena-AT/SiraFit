@@ -15,8 +15,12 @@ class SkillTaxonomy(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     canonical_key = Column(String(100), nullable=False, unique=True, index=True)
     name = Column(String(100), nullable=False, unique=True)
-    category = Column(String(50), nullable=False)  # e.g., "Languages", "Frameworks", "Databases", "DevOps", "Soft Skills"
-    aliases = Column(JSON, default=list)  # alternative names, e.g., ["JS"] for "JavaScript"
+    category = Column(
+        String(50), nullable=False
+    )  # e.g., "Languages", "Frameworks", "Databases", "DevOps", "Soft Skills"
+    aliases = Column(
+        JSON, default=list
+    )  # alternative names, e.g., ["JS"] for "JavaScript"
     active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)

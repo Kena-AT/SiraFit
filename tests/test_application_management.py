@@ -28,7 +28,6 @@ VALID_STATUSES = [
 
 def test_status_machine_valid_transitions():
     """Verify the status validation logic works correctly."""
-    from app.services.application import validate_transition
 
     # Valid forwards transitions
     assert validate_transition("saved", "applied") is True
@@ -52,7 +51,6 @@ def test_status_machine_valid_transitions():
 
 def test_create_application_creates_client_default_status(client, auth_headers, db):
     """A new application defaults to 'saved' status."""
-    from app.models.job import Job
 
     job = Job(
         external_id=f"test-job-{uuid.uuid4().hex[:8]}",
@@ -75,7 +73,6 @@ def test_create_application_creates_client_default_status(client, auth_headers, 
 
 def test_transition_status_valid(client, auth_headers, test_user, db):
     """Valid status transition updates application and creates event."""
-    from app.models.job import Job, JobApplication
 
     job = Job(
         external_id=f"test-job-{uuid.uuid4().hex[:8]}",
@@ -101,7 +98,6 @@ def test_transition_status_valid(client, auth_headers, test_user, db):
 
 def test_transition_status_invalid(client, auth_headers, test_user, db):
     """Invalid transition returns 400 error."""
-    from app.models.job import Job, JobApplication
 
     job = Job(
         external_id=f"test-job-{uuid.uuid4().hex[:8]}",
@@ -129,7 +125,6 @@ def test_transition_status_invalid(client, auth_headers, test_user, db):
 
 def test_create_note(client, auth_headers, test_user, db):
     """Create a note on an application."""
-    from app.models.job import Job, JobApplication
 
     job = Job(external_id="note-job", title="Title", company="Co")
     db.add(job)
@@ -157,7 +152,6 @@ def test_create_note(client, auth_headers, test_user, db):
 
 def test_list_notes_pinned_first(client, auth_headers, test_user, db):
     """Notes are returned pinned first."""
-    from app.models.job import Job, JobApplication
 
     job = Job(external_id="notes-job", title="Title", company="Co")
     db.add(job)
@@ -188,7 +182,6 @@ def test_list_notes_pinned_first(client, auth_headers, test_user, db):
 
 def test_update_note(client, auth_headers, test_user, db):
     """Update note body and pin status."""
-    from app.models.job import Job, JobApplication
 
     job = Job(external_id="upjob", title="Title", company="Co")
     db.add(job)
@@ -217,7 +210,6 @@ def test_update_note(client, auth_headers, test_user, db):
 
 def test_delete_note(client, auth_headers, test_user, db):
     """Delete a note returns 204 and removes it."""
-    from app.models.job import Job, JobApplication
 
     job = Job(external_id="deljob", title="Title", company="Co")
     db.add(job)
@@ -249,7 +241,6 @@ def test_delete_note(client, auth_headers, test_user, db):
 
 def test_create_contact(client, auth_headers, test_user, db):
     """Create a contact on an application."""
-    from app.models.job import Job, JobApplication
 
     job = Job(external_id="cont-job", title="Title", company="Co")
     db.add(job)
@@ -278,7 +269,6 @@ def test_create_contact(client, auth_headers, test_user, db):
 
 def test_list_contacts_primary_first(client, auth_headers, test_user, db):
     """Contacts are returned primary first."""
-    from app.models.job import Job, JobApplication
 
     job = Job(external_id="listcont", title="Title", company="Co")
     db.add(job)
@@ -311,7 +301,6 @@ def test_list_contacts_primary_first(client, auth_headers, test_user, db):
 
 def test_update_contact(client, auth_headers, test_user, db):
     """Update contact fields."""
-    from app.models.job import Job, JobApplication
 
     job = Job(external_id="upcont", title="Title", company="Co")
     db.add(job)
@@ -340,7 +329,6 @@ def test_update_contact(client, auth_headers, test_user, db):
 
 def test_delete_contact(client, auth_headers, test_user, db):
     """Delete a contact returns 204."""
-    from app.models.job import Job, JobApplication
 
     job = Job(external_id="delcont", title="Title", company="Co")
     db.add(job)
@@ -369,7 +357,6 @@ def test_delete_contact(client, auth_headers, test_user, db):
 
 def test_status_change_creates_event(client, auth_headers, test_user, db):
     """Status transition creates an ApplicationEvent."""
-    from app.models.job import Job, JobApplication
 
     job = Job(external_id="tlevt", title="Title", company="Co")
     db.add(job)
@@ -396,7 +383,6 @@ def test_status_change_creates_event(client, auth_headers, test_user, db):
 
 def test_user_timeline_endpoint(client, auth_headers, test_user, db):
     """GET /applications/timeline returns events across all apps."""
-    from app.models.job import Job, JobApplication
 
     job = Job(external_id="tljob", title="Title", company="Co")
     db.add(job)
@@ -436,7 +422,6 @@ def test_user_timeline_endpoint(client, auth_headers, test_user, db):
 
 def test_status_transition_creates_audit_log(client, auth_headers, test_user, db):
     """Status transition writes to audit log."""
-    from app.models.job import Job, JobApplication, AuditLog
 
     job = Job(external_id="auditjob", title="Title", company="Co")
     db.add(job)
@@ -470,9 +455,7 @@ def test_status_transition_creates_audit_log(client, auth_headers, test_user, db
 
 def test_cannot_access_other_users_notes(client, auth_headers, db):
     """User gets empty notes list (not 404) for another user's application."""
-    from app.models.user import User
     from app.models.job import Job, JobApplication
-    from app.core.security import get_password_hash
 
     other_user = User(
         email="other@example.com",
@@ -505,7 +488,6 @@ def test_cannot_access_other_users_notes(client, auth_headers, db):
 """Tests for resume generation service."""
 
 import json
-import uuid
 
 import pytest
 
@@ -517,7 +499,6 @@ from app.services.resume_generation import (
     _serialize_profile,
     _serialize_job,
 )
-from app.models.job import Job
 
 
 # ---------------------------------------------------------------------------
@@ -569,7 +550,6 @@ def sample_resume_data():
 
 @pytest.fixture
 def sample_job():
-    from app.models.job import Job
 
     return Job(
         id=uuid.uuid4(),
@@ -800,7 +780,7 @@ class TestSerializeProfile:
 
     def test_profile_with_experiences(self):
         """Test serializing a profile with experiences."""
-        from app.models.profile import Profile, Experience
+        from app.models.profile import Profile
 
         profile = Profile(
             id=uuid.uuid4(),
@@ -827,7 +807,6 @@ class TestSerializeProfile:
 class TestSerializeJob:
     def test_job_with_all_fields(self):
         """Test serializing a job with all fields."""
-        from app.models.job import Job
 
         job = Job(
             id=uuid.uuid4(),
@@ -850,7 +829,6 @@ class TestSerializeJob:
 
     def test_job_without_description(self):
         """Test serializing a job without description."""
-        from app.models.job import Job
 
         job = Job(
             id=uuid.uuid4(),
@@ -870,13 +848,15 @@ class TestSerializeJob:
 
 """Tests for resume export service (HTML, DOCX, PDF)."""
 
-import json
-import uuid
 from io import BytesIO
 import zipfile
 
 from app.models.job import ResumeVersion
-from app.services.resume_export import export_resume_html, export_resume_pdf, export_resume_docx
+from app.services.resume_export import (
+    export_resume_html,
+    export_resume_pdf,
+    export_resume_docx,
+)
 
 
 def make_version(
@@ -964,7 +944,6 @@ class TestExportResumeHtml:
     """Tests for HTML export."""
 
     def test_html_export_minimal_template(self):
-        from app.services.resume_export import export_resume_html
 
         version = make_version(MINIMAL_DATA, "minimal")
         html = export_resume_html(version)
@@ -977,7 +956,6 @@ class TestExportResumeHtml:
         assert "Python" in html
 
     def test_html_export_all_templates(self):
-        from app.services.resume_export import export_resume_html
 
         for tmpl in ("minimal", "technical", "modern", "corporate", "compact"):
             version = make_version(MINIMAL_DATA, tmpl)
@@ -986,7 +964,6 @@ class TestExportResumeHtml:
             assert "Kena Ararso" in html, f"Name missing in template {tmpl}"
 
     def test_html_export_empty_content(self):
-        from app.services.resume_export import export_resume_html
 
         version = make_version({}, "minimal")
         html = export_resume_html(version)
@@ -994,7 +971,6 @@ class TestExportResumeHtml:
         assert "<html>" in html
 
     def test_html_export_xss_escaping(self):
-        from app.services.resume_export import export_resume_html
 
         data = {
             **MINIMAL_DATA,
@@ -1008,7 +984,6 @@ class TestExportResumeHtml:
         assert "&lt;script&gt;" in html
 
     def test_html_export_is_string(self):
-        from app.services.resume_export import export_resume_html
 
         version = make_version(MINIMAL_DATA)
         result = export_resume_html(version)
@@ -1016,7 +991,6 @@ class TestExportResumeHtml:
         assert len(result) > 100
 
     def test_html_export_unknown_template_fallback(self):
-        from app.services.resume_export import export_resume_html
 
         version = make_version(MINIMAL_DATA, "nonexistent_template")
         html = export_resume_html(version)
@@ -1025,7 +999,6 @@ class TestExportResumeHtml:
         assert "<html>" in html
 
     def test_html_export_none_template_fallback(self):
-        from app.services.resume_export import export_resume_html
 
         version = make_version(MINIMAL_DATA)
         version.template = None
@@ -1034,7 +1007,6 @@ class TestExportResumeHtml:
         assert "<html>" in html
 
     def test_html_export_invalid_json_content(self):
-        from app.services.resume_export import export_resume_html
 
         version = make_version({})
         version.content = "not valid json {"
@@ -1048,7 +1020,6 @@ class TestExportResumePdf:
     """Tests for PDF export."""
 
     def test_pdf_export_returns_bytesio(self):
-        from app.services.resume_export import export_resume_pdf
 
         version = make_version(MINIMAL_DATA)
         result = export_resume_pdf(version)
@@ -1059,7 +1030,6 @@ class TestExportResumePdf:
         assert len(content) > 500
 
     def test_pdf_export_positioned_at_start(self):
-        from app.services.resume_export import export_resume_pdf
 
         version = make_version(MINIMAL_DATA)
         result = export_resume_pdf(version)
@@ -1067,7 +1037,6 @@ class TestExportResumePdf:
         assert result.tell() == 0
 
     def test_pdf_export_all_templates(self):
-        from app.services.resume_export import export_resume_pdf
 
         for tmpl in ("minimal", "technical", "modern", "corporate", "compact"):
             version = make_version(MINIMAL_DATA, tmpl)
@@ -1076,7 +1045,6 @@ class TestExportResumePdf:
             assert content.startswith(b"%PDF"), f"Template {tmpl} failed to produce PDF"
 
     def test_pdf_export_empty_content(self):
-        from app.services.resume_export import export_resume_pdf
 
         version = make_version({})
         result = export_resume_pdf(version)
@@ -1090,7 +1058,6 @@ class TestExportResumeDocx:
     """Tests for DOCX export."""
 
     def test_docx_export_returns_bytesio(self):
-        from app.services.resume_export import export_resume_docx
 
         version = make_version(MINIMAL_DATA)
         result = export_resume_docx(version)
@@ -1100,7 +1067,6 @@ class TestExportResumeDocx:
         assert len(content) > 0
 
     def test_docx_export_positioned_at_start(self):
-        from app.services.resume_export import export_resume_docx
 
         version = make_version(MINIMAL_DATA)
         result = export_resume_docx(version)
@@ -1109,7 +1075,6 @@ class TestExportResumeDocx:
 
     def test_docx_export_valid_zipfile(self):
         """DOCX files are ZIP archives — verify structure."""
-        import zipfile
         from app.services.resume_export import export_resume_docx
 
         version = make_version(MINIMAL_DATA)
@@ -1121,7 +1086,6 @@ class TestExportResumeDocx:
 
     def test_docx_export_contains_name(self):
         """Check that name appears somewhere in the docx XML."""
-        import zipfile
         from app.services.resume_export import export_resume_docx
 
         version = make_version(MINIMAL_DATA)
@@ -1133,7 +1097,6 @@ class TestExportResumeDocx:
 
     def test_docx_export_contains_experience(self):
         """Check that experience data is present in docx."""
-        import zipfile
         from app.services.resume_export import export_resume_docx
 
         version = make_version(MINIMAL_DATA)
@@ -1145,7 +1108,6 @@ class TestExportResumeDocx:
 
     def test_docx_export_empty_content(self):
         """Empty content should produce a valid DOCX."""
-        import zipfile
         from app.services.resume_export import export_resume_docx
 
         version = make_version({})
@@ -1161,7 +1123,6 @@ class TestExportResumeDocx:
 
 """Tests for PDF rendering service."""
 
-from io import BytesIO
 
 from app.services.pdf_rendering import render_html_to_pdf_bytes, render_html_to_pdf
 
@@ -1385,13 +1346,11 @@ class TestPdfRendering:
 
 """Tests for cover letter generation service."""
 
-import uuid
 
 import pytest
 
 from app.models.profile import Profile, Experience, Skill
-from app.models.job import Job
-from app.services.cover_letter_generation import _serialize_profile, _serialize_job, render_cover_letter_html
+from app.services.cover_letter_generation import render_cover_letter_html
 
 
 @pytest.fixture
@@ -1416,7 +1375,6 @@ def mock_profile():
 @pytest.fixture
 def mock_job():
     """Create a mock Job for testing."""
-    from app.models.job import Job
 
     job = Job(
         id=uuid.uuid4(),
@@ -1434,7 +1392,7 @@ def mock_job():
     return job
 
 
-class TestSerializeProfile:
+class TestCoverLetterSerializeProfile:
     """Tests for profile serialization."""
 
     def test_serialize_basic_profile(self, mock_profile):
@@ -1448,7 +1406,6 @@ class TestSerializeProfile:
         assert "Backend-focused developer" in text
 
     def test_serialize_profile_with_experiences(self, mock_profile):
-        from app.models.profile import Experience
         from app.services.cover_letter_generation import _serialize_profile
 
         exp = Experience(
@@ -1471,7 +1428,6 @@ class TestSerializeProfile:
         assert "Built web applications" in text
 
     def test_serialize_profile_with_skills(self, mock_profile):
-        from app.models.profile import Skill
         from app.services.cover_letter_generation import _serialize_profile
 
         skills = [
@@ -1488,7 +1444,7 @@ class TestSerializeProfile:
         assert "PostgreSQL" in text
 
 
-class TestSerializeJob:
+class TestCoverLetterSerializeJob:
     """Tests for job serialization."""
 
     def test_serialize_basic_job(self, mock_job):
@@ -1511,7 +1467,6 @@ class TestSerializeJob:
         assert "Python and PostgreSQL experience" in text
 
     def test_serialize_job_without_description(self):
-        from app.models.job import Job
         from app.services.cover_letter_generation import _serialize_job
 
         job = Job(
@@ -1532,7 +1487,6 @@ class TestRenderCoverLetterHtml:
     """Tests for HTML rendering."""
 
     def test_render_classic_template(self):
-        from app.services.cover_letter_generation import render_cover_letter_html
 
         body = "Dear Hiring Manager,\n\nI am writing to express my interest.\n\nSincerely,\nKena"
         html = render_cover_letter_html(body, "classic")
@@ -1543,7 +1497,6 @@ class TestRenderCoverLetterHtml:
         assert "Kena" in html
 
     def test_render_modern_template(self):
-        from app.services.cover_letter_generation import render_cover_letter_html
 
         body = "Hello team,\n\nI'm excited to apply.\n\nBest,\nKena"
         html = render_cover_letter_html(body, "modern")
@@ -1552,7 +1505,6 @@ class TestRenderCoverLetterHtml:
         assert "Hello team" in html
 
     def test_render_compact_template(self):
-        from app.services.cover_letter_generation import render_cover_letter_html
 
         body = "Short letter.\n\nThanks."
         html = render_cover_letter_html(body, "compact")
@@ -1561,7 +1513,6 @@ class TestRenderCoverLetterHtml:
         assert "Short letter" in html
 
     def test_render_unknown_template_fallback(self):
-        from app.services.cover_letter_generation import render_cover_letter_html
 
         body = "Test letter"
         html = render_cover_letter_html(body, "nonexistent")
@@ -1571,7 +1522,6 @@ class TestRenderCoverLetterHtml:
         assert "Test letter" in html
 
     def test_render_handles_html_escaping(self):
-        from app.services.cover_letter_generation import render_cover_letter_html
 
         body = "Hello <script>alert('xss')</script>"
         html = render_cover_letter_html(body, "classic")
@@ -1580,7 +1530,6 @@ class TestRenderCoverLetterHtml:
         assert "<script>alert" not in html
 
     def test_render_handles_quotes_and_ampersands(self):
-        from app.services.cover_letter_generation import render_cover_letter_html
 
         body = 'Quote: "Hello" & Ampersand'
         html = render_cover_letter_html(body, "classic")
@@ -1589,14 +1538,12 @@ class TestRenderCoverLetterHtml:
         assert "&amp;" in html  # Ampersand escaped
 
     def test_render_empty_body(self):
-        from app.services.cover_letter_generation import render_cover_letter_html
 
         html = render_cover_letter_html("", "classic")
 
         assert "<!DOCTYPE html>" in html
 
     def test_render_multiline_paragraphs(self):
-        from app.services.cover_letter_generation import render_cover_letter_html
 
         body = "Paragraph one.\n\nParagraph two.\n\nParagraph three."
         html = render_cover_letter_html(body, "classic")
@@ -1606,26 +1553,22 @@ class TestRenderCoverLetterHtml:
         assert "Paragraph two" in html
 
     def test_classic_template_has_serif_font(self):
-        from app.services.cover_letter_generation import render_cover_letter_html
 
         html = render_cover_letter_html("Test", "classic")
         assert "Georgia" in html or "serif" in html
 
     def test_modern_template_has_sans_serif(self):
-        from app.services.cover_letter_generation import render_cover_letter_html
 
         html = render_cover_letter_html("Test", "modern")
         assert "Segoe UI" in html or "Arial" in html or "sans-serif" in html
 
     def test_compact_template_has_smaller_font(self):
-        from app.services.cover_letter_generation import render_cover_letter_html
 
         html = render_cover_letter_html("Test", "compact")
         assert "12px" in html or "font-size:12px" in html
 
     def test_compact_template_has_valid_css(self):
         """Regression: compact template margin must not contain corrupted chars."""
-        from app.services.cover_letter_generation import render_cover_letter_html
 
         html = render_cover_letter_html("Test body", "compact")
         # The compact paragraph margin should be a valid CSS value

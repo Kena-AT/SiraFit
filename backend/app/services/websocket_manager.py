@@ -4,6 +4,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class ConnectionManager:
     def __init__(self):
         # Maps user_id (str) to a set of active WebSockets
@@ -30,12 +31,15 @@ class ConnectionManager:
                 try:
                     await connection.send_json(message)
                 except Exception as e:
-                    logger.warning(f"Failed to send to websocket for user {user_id}: {e}")
+                    logger.warning(
+                        f"Failed to send to websocket for user {user_id}: {e}"
+                    )
                     disconnected.add(connection)
-            
+
             # Clean up disconnected sockets
             self.active_connections[user_id].difference_update(disconnected)
             if not self.active_connections[user_id]:
                 del self.active_connections[user_id]
+
 
 manager = ConnectionManager()

@@ -12,6 +12,7 @@ Design note: placed here (rather than back on ``app.api.users``) because the
 auth token dependency ``get_current_user`` lives in ``users.py`` but does not
 itself import this module, so importing it back here creates no import cycle.
 """
+
 from __future__ import annotations
 
 from fastapi import Depends, HTTPException

@@ -80,9 +80,15 @@ RATE_LIMITS: Dict[str, Tuple[int, int]] = {
     "ai_analyze": (10, 3600),  # AI job analysis (10 / hour per user)
     "ai_generate": (10, 3600),  # AI resume/cover-letter generation (10 / hour per user)
     "session_import": (10, 3600),  # Authenticated session import (10 / hour per user)
-    "session_validate": (20, 3600),  # Session credential validation (20 / hour per user)
+    "session_validate": (
+        20,
+        3600,
+    ),  # Session credential validation (20 / hour per user)
     "agent_import": (60, 3600),  # Browser extension job import (60 / hour per user)
-    "agent_profile": (120, 3600),  # Browser extension profile reads (120 / hour per user)
+    "agent_profile": (
+        120,
+        3600,
+    ),  # Browser extension profile reads (120 / hour per user)
 }
 
 

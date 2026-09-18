@@ -3,17 +3,23 @@
 Handles TOTP secret generation, two-phase enrollment, verification,
 and single-use recovery code management following RFC 6238 standard.
 """
+
 import uuid
 import secrets
 import logging
 from dataclasses import dataclass, field
-from typing import Optional, List, Any
+from typing import Optional, Any
 
 import pyotp
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.security import encrypt_value, decrypt_value, get_password_hash, verify_password
+from app.core.security import (
+    encrypt_value,
+    decrypt_value,
+    get_password_hash,
+    verify_password,
+)
 from app.models.totp import TOTPSecret, RecoveryCode
 from app.models.user import User
 
@@ -29,6 +35,7 @@ def _parse_uuid(val: Any) -> uuid.UUID:
 @dataclass
 class TOTPSetupResult:
     """Result from TOTP setup (phase 1: pending activation)."""
+
     secret: str
     qr_uri: str
     recovery_codes: list[str] = field(default_factory=list)
@@ -37,6 +44,7 @@ class TOTPSetupResult:
 @dataclass
 class TOTPVerifyResult:
     """Result from TOTP verification."""
+
     is_valid: bool
     is_recovery_code: bool = False
     remaining_codes: int = 0

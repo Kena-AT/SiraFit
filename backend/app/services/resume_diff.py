@@ -4,7 +4,8 @@ Semantic Resume Diff Service.
 Compares two ResumeVersion JSON content payloads deterministically and structures
 the differences section-by-section without exposing raw third-party jsondiff structures.
 """
-from typing import Any, Dict, List, Optional
+
+from typing import Any, Dict, List
 import json
 import logging
 from app.schemas.resume import (
@@ -262,7 +263,9 @@ def _diff_education(
         deg = str(e.get("degree", "")).strip().lower()
         return f"{inst}::{deg}" if (inst or deg) else f"edu_{idx}"
 
-    from_map = {make_key(e, i): e for i, e in enumerate(from_list) if isinstance(e, dict)}
+    from_map = {
+        make_key(e, i): e for i, e in enumerate(from_list) if isinstance(e, dict)
+    }
     to_map = {make_key(e, i): e for i, e in enumerate(to_list) if isinstance(e, dict)}
 
     all_keys = list(from_map.keys())
@@ -318,7 +321,9 @@ def _diff_education(
                 EducationItemDiff(
                     key=k,
                     status=status,
-                    institution=str(t.get("institution", "") or f.get("institution", "")),
+                    institution=str(
+                        t.get("institution", "") or f.get("institution", "")
+                    ),
                     degree=str(t.get("degree", "") or f.get("degree", "")),
                     field_of_study_from=f.get("field_of_study"),
                     field_of_study_to=t.get("field_of_study"),

@@ -1,12 +1,9 @@
 """Prometheus metrics unit tests (Sprint 15)."""
 
-import pytest
 from app.core.metrics import (
     normalize_route_path,
     update_db_pool_metrics,
-    SIRAFIT_HTTP_REQUESTS_TOTAL,
     SIRAFIT_AI_TOKENS_TOTAL,
-    SIRAFIT_DB_POOL_SIZE,
 )
 
 
@@ -17,15 +14,18 @@ def test_normalize_route_path():
         == "/api/v1/jobs/{id}"
     )
     assert (
-        normalize_route_path(
-            "/api/v1/resumes/123e4567-e89b-12d3-a456-426614174000/pdf"
-        )
+        normalize_route_path("/api/v1/resumes/123e4567-e89b-12d3-a456-426614174000/pdf")
         == "/api/v1/resumes/{id}/pdf"
     )
 
     # Integer ID normalization
-    assert normalize_route_path("/api/v1/applications/42") == "/api/v1/applications/{id}"
-    assert normalize_route_path("/api/v1/applications/42/notes") == "/api/v1/applications/{id}/notes"
+    assert (
+        normalize_route_path("/api/v1/applications/42") == "/api/v1/applications/{id}"
+    )
+    assert (
+        normalize_route_path("/api/v1/applications/42/notes")
+        == "/api/v1/applications/{id}/notes"
+    )
 
     # Static path preservation
     assert normalize_route_path("/api/v1/auth/login") == "/api/v1/auth/login"

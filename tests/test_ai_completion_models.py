@@ -1,10 +1,8 @@
 """Tests for AICompletion and AICompletionAttempt models (Sprint 7 Issue #49)."""
 
 import uuid
-import pytest
 from datetime import datetime, timezone
 from app.models.ai_completion import AICompletion, AICompletionAttempt
-from app.models.user import User
 
 
 def test_create_ai_completion_and_attempts(db, test_user):
@@ -77,5 +75,7 @@ def test_create_ai_completion_and_attempts(db, test_user):
     db.delete(completion)
     db.commit()
 
-    remaining_attempts = db.query(AICompletionAttempt).filter_by(completion_id=completion.id).all()
+    remaining_attempts = (
+        db.query(AICompletionAttempt).filter_by(completion_id=completion.id).all()
+    )
     assert len(remaining_attempts) == 0

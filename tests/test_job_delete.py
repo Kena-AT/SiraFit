@@ -21,7 +21,7 @@ if _backend not in sys.path:
 
 from app.main import app
 from app.services.job_import import process_import
-from app.models.job import Job, JobImport, JobImportItem, JobAnalysis
+from app.models.job import Job, JobImportItem, JobAnalysis
 from app.models.score import JobMatchScore
 from app.api.users import get_current_user
 from app.core.database import get_db
@@ -65,7 +65,9 @@ class TestJobLifecycle:
 
         # Add dummy analysis and score records
         db.add(JobAnalysis(job_id=job.id, status="done", score=85))
-        db.add(JobMatchScore(user_id=test_user.id, job_id=job.id, score=90, breakdown={}))
+        db.add(
+            JobMatchScore(user_id=test_user.id, job_id=job.id, score=90, breakdown={})
+        )
         db.commit()
 
         # Delete job via API
@@ -76,11 +78,25 @@ class TestJobLifecycle:
         assert db.query(Job).filter(Job.id == uuid.UUID(job_id)).first() is None
 
         # Verify dependent records are cleaned up
-        assert db.query(JobAnalysis).filter(JobAnalysis.job_id == uuid.UUID(job_id)).first() is None
-        assert db.query(JobMatchScore).filter(JobMatchScore.job_id == uuid.UUID(job_id)).first() is None
+        assert (
+            db.query(JobAnalysis)
+            .filter(JobAnalysis.job_id == uuid.UUID(job_id))
+            .first()
+            is None
+        )
+        assert (
+            db.query(JobMatchScore)
+            .filter(JobMatchScore.job_id == uuid.UUID(job_id))
+            .first()
+            is None
+        )
 
         # Verify JobImportItem.job_id was set to NULL
-        item = db.query(JobImportItem).filter(JobImportItem.import_id == import_record.id).first()
+        item = (
+            db.query(JobImportItem)
+            .filter(JobImportItem.import_id == import_record.id)
+            .first()
+        )
         assert item is not None
         assert item.job_id is None
 

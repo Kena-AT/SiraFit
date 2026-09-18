@@ -10,7 +10,6 @@ from sqlalchemy import (
     Integer,
     Text,
     ForeignKey,
-    func,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from app.core.database import Base
@@ -35,9 +34,13 @@ class ScrapeHistory(Base):
         index=True,
     )
     url = Column(Text, nullable=False)
-    source_platform = Column(String(50), index=True)  # linkedin, greenhouse, lever, indeed
+    source_platform = Column(
+        String(50), index=True
+    )  # linkedin, greenhouse, lever, indeed
     method_used = Column(String(20), nullable=False)  # scrapling, heuristic, fallback
-    success = Column(String(10), nullable=False, default="true")  # true / false / partial
+    success = Column(
+        String(10), nullable=False, default="true"
+    )  # true / false / partial
     fields_extracted = Column(Integer, default=0)
     duration_ms = Column(Integer)  # total fetch+parse time in milliseconds
     error_message = Column(Text)

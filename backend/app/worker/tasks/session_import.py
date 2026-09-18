@@ -17,7 +17,7 @@ from app.services.scraping.session_importer import (
     ScraperFetchError,
     InvalidSessionConfig,
 )
-from app.services.scraping.extraction import normalize_url, detect_platform
+from app.services.scraping.extraction import normalize_url
 from app.services.scraping.scrapling_fetcher import fetch_job_html, parse_job_html
 from app.services.job_import import parse_job_from_url, normalize_job, check_duplicate
 
@@ -55,7 +55,9 @@ def import_saved_jobs_task(
     try:
         job_import = db.query(JobImport).filter(JobImport.id == imp_id).first()
         if not job_import:
-            logger.warning("session_import_record_not_found", extra={"import_id": import_id})
+            logger.warning(
+                "session_import_record_not_found", extra={"import_id": import_id}
+            )
             return {"status": "failed", "error": "JobImport not found"}
 
         job_import.status = "processing"
@@ -74,28 +76,49 @@ def import_saved_jobs_task(
         if not session_data:
             # Expired or decryption failure
             job_import.status = "failed"
-            job_import.error = "Session has expired or credentials could not be decrypted"
+            job_import.error = (
+                "Session has expired or credentials could not be decrypted"
+            )
             job_import.processed_at = _utcnow()
             db.commit()
-            return {"status": "failed", "error": "Session has expired or invalid credentials"}
+            return {
+                "status": "failed",
+                "error": "Session has expired or invalid credentials",
+            }
 
         # 2. Discover saved jobs
         importer = SavedJobsImporter()
         try:
-            references, discovery_status = importer.fetch_saved_jobs_list(platform, session_data)
+            references, discovery_status = importer.fetch_saved_jobs_list(
+                platform, session_data
+            )
         except SessionExpiredError:
             job_import.status = "failed"
             job_import.error = "Session expired during saved-job discovery"
             job_import.processed_at = _utcnow()
             db.commit()
-            record_session_audit(db, u_id, platform, action="expired", result="failure", error_code="session_expired")
+            record_session_audit(
+                db,
+                u_id,
+                platform,
+                action="expired",
+                result="failure",
+                error_code="session_expired",
+            )
             return {"status": "failed", "error": "Session expired"}
         except (ScraperStructureError, ScraperFetchError, InvalidSessionConfig) as exc:
             job_import.status = "failed"
             job_import.error = f"Discovery failed: {exc}"
             job_import.processed_at = _utcnow()
             db.commit()
-            record_session_audit(db, u_id, platform, action="failed", result="failure", error_code=exc.__class__.__name__)
+            record_session_audit(
+                db,
+                u_id,
+                platform,
+                action="failed",
+                result="failure",
+                error_code=exc.__class__.__name__,
+            )
             return {"status": "failed", "error": str(exc)}
 
         # 3. Handle zero saved jobs
@@ -135,7 +158,10 @@ def import_saved_jobs_task(
         return {"status": "queued_batch", "discovered": len(references)}
 
     except SoftTimeLimitExceeded:
-        logger.warning("session_discovery_timeout", extra={"import_id": import_id, "platform": platform})
+        logger.warning(
+            "session_discovery_timeout",
+            extra={"import_id": import_id, "platform": platform},
+        )
         try:
             ji = db.query(JobImport).filter(JobImport.id == imp_id).first()
             if ji and ji.status != "completed":
@@ -147,7 +173,9 @@ def import_saved_jobs_task(
             db.rollback()
         return {"status": "failed", "error": "Discovery timed out"}
     except Exception as exc:
-        logger.exception("session_importer_task_unhandled_error", extra={"import_id": import_id})
+        logger.exception(
+            "session_importer_task_unhandled_error", extra={"import_id": import_id}
+        )
         try:
             ji = db.query(JobImport).filter(JobImport.id == imp_id).first()
             if ji and ji.status != "completed":
@@ -220,7 +248,16 @@ def import_single_saved_job(
             try:
                 enriched = parse_job_html(html, clean_url)
                 if enriched:
-                    for k in ("title", "company", "location", "description", "salary_min", "salary_max", "currency", "tags"):
+                    for k in (
+                        "title",
+                        "company",
+                        "location",
+                        "description",
+                        "salary_min",
+                        "salary_max",
+                        "currency",
+                        "tags",
+                    ):
                         if enriched.get(k) is not None:
                             parsed[k] = enriched[k]
             except Exception:

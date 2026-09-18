@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { fetchAgentStatus, importCapturedJob } from "../lib/api";
-import { clearExtensionToken, getExtensionToken, setExtensionToken } from "../lib/auth";
-import { CaptureValidationResult } from "../types/job";
+import { fetchAgentStatus, importCapturedJob } from "./lib/api";
+import { clearExtensionToken, getExtensionToken, setExtensionToken } from "./lib/auth";
+import type { CaptureValidationResult } from "./types/job";
 
 export default function Popup() {
   const [status, setStatus] = useState<any>(null);

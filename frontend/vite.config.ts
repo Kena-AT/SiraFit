@@ -30,13 +30,6 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: [
-      "react",
-      "react-dom",
-      "lucide-react",
-      "react-hook-form",
-      "zod",
-      "recharts",
-    ],
+    include: ["react", "react-dom", "lucide-react", "react-hook-form", "zod", "recharts"],
   },
 });

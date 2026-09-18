@@ -254,7 +254,7 @@ function ResumePreviewPage() {
         <div className="space-y-4">
           <Panel
             title="Version History"
-            action={
+            actions={
               <Button
                 size="sm"
                 variant={selectedForCompare.length === 2 ? "default" : "outline"}
@@ -319,7 +319,9 @@ function ResumePreviewPage() {
           <DialogHeader>
             <DialogTitle>Revert to Version v{targetVersionForRevert?.version_number}</DialogTitle>
             <DialogDescription className="pt-2 text-sm leading-relaxed text-foreground/90">
-              This will create a <strong>new immutable version</strong> using this resume's exact content. The existing version history will remain intact and will never be modified or overwritten.
+              This will create a <strong>new immutable version</strong> using this resume's exact
+              content. The existing version history will remain intact and will never be modified or
+              overwritten.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-2 pt-4">
@@ -333,10 +335,7 @@ function ResumePreviewPage() {
             >
               Cancel
             </Button>
-            <Button
-              onClick={handleRevertConfirm}
-              disabled={isReverting}
-            >
+            <Button onClick={handleRevertConfirm} disabled={isReverting}>
               {isReverting ? "Creating new version..." : "Confirm Revert"}
             </Button>
           </div>
@@ -450,7 +449,8 @@ function ResumePreview({
         <footer className="border-t border-border pt-4 text-[10px] text-muted-foreground">
           <div className="flex items-center justify-between">
             <span>
-              Generated with {version.template || "default"} template · v{version.version_number} ({version.source_type})
+              Generated with {version.template || "default"} template · v{version.version_number} (
+              {version.source_type})
             </span>
             {version.score && <ScorePill value={version.score} />}
           </div>

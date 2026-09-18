@@ -10,17 +10,14 @@ interface DiffViewerProps {
   onClose: () => void;
 }
 
-export const DiffViewer: React.FC<DiffViewerProps> = ({
-  diff,
-  isLoading,
-  error,
-  onClose,
-}) => {
+export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, isLoading, error, onClose }) => {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center p-12 space-y-3">
         <span className="h-6 w-6 animate-spin rounded-full border-2 border-border border-t-foreground" />
-        <p className="text-sm text-muted-foreground">Analyzing semantic differences between versions...</p>
+        <p className="text-sm text-muted-foreground">
+          Analyzing semantic differences between versions...
+        </p>
       </div>
     );
   }
@@ -47,7 +44,9 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
         <div>
           <div className="font-semibold text-base">
-            Version Comparison: <span className="font-mono text-[color:var(--brand)]">v{from_version_number}</span> → <span className="font-mono text-[color:var(--brand)]">v{to_version_number}</span>
+            Version Comparison:{" "}
+            <span className="font-mono text-[color:var(--brand)]">v{from_version_number}</span> →{" "}
+            <span className="font-mono text-[color:var(--brand)]">v{to_version_number}</span>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
             Structured semantic changes between these snapshots
@@ -84,13 +83,17 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
                   <span className="text-[10px] font-mono text-rose-500 uppercase tracking-wider block mb-1">
                     v{from_version_number}
                   </span>
-                  {sections.summary.from_text || <span className="italic text-muted-foreground">Empty</span>}
+                  {sections.summary.from_text || (
+                    <span className="italic text-muted-foreground">Empty</span>
+                  )}
                 </div>
                 <div className="p-2.5 rounded bg-emerald-500/5 border border-emerald-500/20 text-foreground/90">
                   <span className="text-[10px] font-mono text-emerald-500 uppercase tracking-wider block mb-1">
                     v{to_version_number}
                   </span>
-                  {sections.summary.to_text || <span className="italic text-muted-foreground">Empty</span>}
+                  {sections.summary.to_text || (
+                    <span className="italic text-muted-foreground">Empty</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -145,8 +148,8 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
                         exp.status === "added"
                           ? "bg-emerald-500/5 border-emerald-500/30"
                           : exp.status === "removed"
-                          ? "bg-rose-500/5 border-rose-500/30"
-                          : "bg-muted/20 border-border"
+                            ? "bg-rose-500/5 border-rose-500/30"
+                            : "bg-muted/20 border-border"
                       }`}
                     >
                       <div className="flex items-baseline justify-between">
@@ -158,8 +161,8 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
                             exp.status === "added"
                               ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
                               : exp.status === "removed"
-                              ? "bg-rose-500/10 text-rose-600 border-rose-500/20"
-                              : "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                                ? "bg-rose-500/10 text-rose-600 border-rose-500/20"
+                                : "bg-amber-500/10 text-amber-600 border-amber-500/20"
                           }
                         >
                           {exp.status}
@@ -167,7 +170,8 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
                       </div>
 
                       {/* Period or Location Changes */}
-                      {(exp.period_from !== exp.period_to || exp.location_from !== exp.location_to) && (
+                      {(exp.period_from !== exp.period_to ||
+                        exp.location_from !== exp.location_to) && (
                         <div className="text-[11px] text-muted-foreground flex gap-4">
                           {exp.period_from !== exp.period_to && (
                             <div>
@@ -187,16 +191,24 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
                       {/* Bullets delta */}
                       {(exp.bullets_added.length > 0 || exp.bullets_removed.length > 0) && (
                         <div className="space-y-1 pt-1">
-                          <div className="font-medium text-[11px] text-muted-foreground">Bullet Points:</div>
+                          <div className="font-medium text-[11px] text-muted-foreground">
+                            Bullet Points:
+                          </div>
                           <ul className="space-y-1 pl-2">
                             {exp.bullets_added.map((b, i) => (
-                              <li key={i} className="text-emerald-600 dark:text-emerald-400 flex items-start gap-1.5">
+                              <li
+                                key={i}
+                                className="text-emerald-600 dark:text-emerald-400 flex items-start gap-1.5"
+                              >
                                 <span className="font-bold">+</span>
                                 <span>{b}</span>
                               </li>
                             ))}
                             {exp.bullets_removed.map((b, i) => (
-                              <li key={i} className="text-rose-600 dark:text-rose-400 line-through opacity-80 flex items-start gap-1.5">
+                              <li
+                                key={i}
+                                className="text-rose-600 dark:text-rose-400 line-through opacity-80 flex items-start gap-1.5"
+                              >
                                 <span className="font-bold">-</span>
                                 <span>{b}</span>
                               </li>

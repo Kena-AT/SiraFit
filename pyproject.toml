@@ -1,9 +1,6 @@
 [tool.pytest.ini_options]
-# Tests live in the repo-root `tests/` directory (relocated from backend/tests).
-# `pythonpath = ["."]` keeps `import app` working when pytest is run from
-# `./backend` (as CI does), and `testpaths` points at the relocated suite.
-pythonpath = ["."]
-testpaths = ["../tests", "tests"]
+pythonpath = ["backend"]
+testpaths = ["tests", "backend/tests"]
 asyncio_mode = "auto"
 
 [tool.ruff]
@@ -12,9 +9,10 @@ target-version = "py312"
 exclude = [
     ".git",
     "__pycache__",
-    "migrations",
+    "backend/migrations",
     ".venv",
     "venv",
+    "frontend",
 ]
 
 [tool.ruff.lint]

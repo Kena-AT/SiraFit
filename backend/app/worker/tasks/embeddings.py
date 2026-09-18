@@ -3,6 +3,7 @@
 Handles asynchronous embedding generation, idempotency checking,
 retry classification, and embedding status transitions.
 """
+
 from __future__ import annotations
 
 import logging
@@ -69,7 +70,8 @@ def generate_job_embedding_task(self, job_id: str | uuid.UUID) -> dict:
         if (
             job.embedding_status == "ready"
             and job.embedding_source_hash == current_hash
-            and job.embedding_version == (settings.EMBEDDING_VERSION or EMBEDDING_VERSION)
+            and job.embedding_version
+            == (settings.EMBEDDING_VERSION or EMBEDDING_VERSION)
             and job.embedding is not None
         ):
             logger.debug("Job %s embedding is already up-to-date", job_id)
@@ -115,7 +117,7 @@ def generate_job_embedding_task(self, job_id: str | uuid.UUID) -> dict:
 
         # Retry transient exceptions
         if self.request.retries < self.max_retries:
-            raise self.retry(exc=exc, countdown=2 ** self.request.retries * 5)
+            raise self.retry(exc=exc, countdown=2**self.request.retries * 5)
 
         # Mark failed if max retries exceeded
         try:

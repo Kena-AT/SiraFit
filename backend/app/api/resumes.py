@@ -285,7 +285,8 @@ async def create_resume_version(
         template=version_in.template,
         job_id=version_in.job_id,
         parent_version_id=version_in.parent_version_id,
-        source_type=version_in.source_type or ("tailored" if version_in.job_id else "base"),
+        source_type=version_in.source_type
+        or ("tailored" if version_in.job_id else "base"),
         tailoring_notes=version_in.tailoring_notes,
         score=version_in.score,
         status=version_in.status or "completed",

@@ -53,8 +53,10 @@ class Job(Base):
     def _resolve_vector_col():
         try:
             import importlib.util
+
             if importlib.util.find_spec("pgvector") is not None:
                 from pgvector.sqlalchemy import Vector
+
                 return Vector(384)
         except Exception:
             pass
@@ -80,7 +82,9 @@ class JobApplication(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False,
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
         index=True,
     )
     job_id = Column(
@@ -97,7 +101,9 @@ class JobApplication(Base):
         String(50), default="saved"
     )  # saved, preparing, applied, screening, interview, final_round, offer, rejected, withdrawn, archived
     stage = Column(Integer, default=0)  # Application stage number
-    rejection_stage = Column(String(30), nullable=True)  # resume_screen, recruiter_call, tech_screen, onsite, offer_declined
+    rejection_stage = Column(
+        String(30), nullable=True
+    )  # resume_screen, recruiter_call, tech_screen, onsite, offer_declined
     general_notes = Column(
         Text, nullable=True
     )  # General notes (legacy field, use ApplicationNote for rich notes)
@@ -195,7 +201,10 @@ class Resume(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     application_id = Column(
         UUID(as_uuid=True),
@@ -249,7 +258,10 @@ class ResumeVersion(Base):
         String(100), nullable=True
     )  # "minimal", "technical", "modern", "corporate", "compact"
     job_id = Column(
-        UUID(as_uuid=True), ForeignKey("jobs.id", ondelete="SET NULL"), nullable=True, index=True
+        UUID(as_uuid=True),
+        ForeignKey("jobs.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
     parent_version_id = Column(
         UUID(as_uuid=True),
@@ -298,6 +310,7 @@ class ApplicationEvent(Base):
 
     class EventType(str, Enum):
         """Valid event types for application tracking."""
+
         status_change = "status_change"
         note_added = "note_added"
         note_updated = "note_updated"
@@ -407,7 +420,6 @@ class JobImportItem(Base):
 
     job_import = relationship("JobImport", backref="items")
     job = relationship("Job")
-
 
 
 class ApplicationContact(Base):

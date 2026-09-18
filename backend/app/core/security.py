@@ -155,4 +155,3 @@ def decode_access_token(token: str) -> Optional[dict]:
         return decode_token(token)
     except Exception:
         return None
-

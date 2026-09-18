@@ -5,9 +5,8 @@ Verifies async batch discovery, decoupled JobImportItem dispatching,
 external_id deduplication, error handling, and stuck import detection.
 """
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from datetime import datetime, timezone, timedelta
-import pytest
 
 from app.models.job import Job, JobImport, JobImportItem
 from app.services.session_management import store_user_session
@@ -127,11 +126,19 @@ def test_import_saved_jobs_task_discovery_and_batch_dispatch(db, test_user):
     db.commit()
 
     mock_refs = [
-        SavedJobReference(url="https://www.linkedin.com/jobs/view/111", external_id="linkedin:111"),
-        SavedJobReference(url="https://www.linkedin.com/jobs/view/222", external_id="linkedin:222"),
+        SavedJobReference(
+            url="https://www.linkedin.com/jobs/view/111", external_id="linkedin:111"
+        ),
+        SavedJobReference(
+            url="https://www.linkedin.com/jobs/view/222", external_id="linkedin:222"
+        ),
     ]
 
-    with patch.object(SavedJobsImporter, "fetch_saved_jobs_list", return_value=(mock_refs, "completed")):
+    with patch.object(
+        SavedJobsImporter,
+        "fetch_saved_jobs_list",
+        return_value=(mock_refs, "completed"),
+    ):
         with patch.object(import_single_saved_job, "delay") as mock_single_task:
             result = import_saved_jobs_task.run(
                 user_id=str(test_user.id),
@@ -176,8 +183,13 @@ def test_import_single_saved_job_success(db, test_user):
         "description": "Full job description with Python and FastAPI.",
     }
 
-    with patch("app.worker.tasks.session_import.fetch_job_html", return_value="<html>job</html>"):
-        with patch("app.worker.tasks.session_import.parse_job_html", return_value=mock_enriched):
+    with patch(
+        "app.worker.tasks.session_import.fetch_job_html",
+        return_value="<html>job</html>",
+    ):
+        with patch(
+            "app.worker.tasks.session_import.parse_job_html", return_value=mock_enriched
+        ):
             result = import_single_saved_job.run(
                 item_id=str(import_item.id),
                 import_id=str(job_import.id),

@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import re
 import time
-from typing import Any
 from fastapi import APIRouter
 from prometheus_client import (
     CONTENT_TYPE_LATEST,
@@ -82,12 +81,12 @@ def update_db_pool_metrics():
             overflow = pool.overflow()
 
             SIRAFIT_DB_POOL_SIZE.set(size if size is not None else 0)
-            SIRAFIT_DB_POOL_CHECKED_OUT.set(checked_out if checked_out is not None else 0)
+            SIRAFIT_DB_POOL_CHECKED_OUT.set(
+                checked_out if checked_out is not None else 0
+            )
             SIRAFIT_DB_POOL_CHECKED_IN.set(checked_in if checked_in is not None else 0)
             SIRAFIT_DB_POOL_OVERFLOW.set(overflow if overflow is not None else 0)
-            SIRAFIT_DB_POOL_CONNECTIONS.set(
-                (checked_out or 0) + (checked_in or 0)
-            )
+            SIRAFIT_DB_POOL_CONNECTIONS.set((checked_out or 0) + (checked_in or 0))
     except Exception:
         pass
 

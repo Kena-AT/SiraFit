@@ -1,4 +1,5 @@
 """Tests for Sprint 9: Immutable Resume Variants, Diff, Revert, and Application Tracking."""
+
 import uuid
 import json
 import pytest
@@ -9,7 +10,6 @@ from app.services.resume_diff import compute_resume_diff
 from app.services.resume_versioning import (
     create_base_version_from_profile,
     revert_to_version,
-    compare_resume_versions,
 )
 
 
@@ -181,7 +181,10 @@ def test_resume_diff_semantic_changes():
                 "title": "Dev",
                 "company": "Acme",
                 "period": "2020-2022",  # changed period
-                "bullets": ["Fixed bugs", "Architected cloud infra"],  # -Wrote tests, +Architected...
+                "bullets": [
+                    "Fixed bugs",
+                    "Architected cloud infra",
+                ],  # -Wrote tests, +Architected...
             }
         ],
     }
@@ -223,7 +226,9 @@ def test_revert_version_flow(db, test_user, test_resume, test_profile, test_job)
     tailored_v = ResumeVersion(
         resume_id=test_resume.id,
         version_number=2,
-        content=json.dumps({"summary": "Tailored for DreamWorks", "skills": ["Python", "AI"]}),
+        content=json.dumps(
+            {"summary": "Tailored for DreamWorks", "skills": ["Python", "AI"]}
+        ),
         job_id=test_job.id,
         parent_version_id=base_v.id,
         source_type="tailored",
@@ -265,7 +270,9 @@ def test_revert_version_flow(db, test_user, test_resume, test_profile, test_job)
     assert reverted_v.job_id == tailored_v.job_id
 
     # Verify target was NOT changed
-    reloaded_target = db.query(ResumeVersion).filter(ResumeVersion.id == tailored_v.id).first()
+    reloaded_target = (
+        db.query(ResumeVersion).filter(ResumeVersion.id == tailored_v.id).first()
+    )
     assert reloaded_target.version_number == 2
     assert reloaded_target.source_type == "tailored"
 
@@ -275,7 +282,9 @@ def test_revert_version_flow(db, test_user, test_resume, test_profile, test_job)
 # ---------------------------------------------------------------------------
 
 
-def test_job_application_version_tracking(db, test_user, test_job, test_resume, test_profile):
+def test_job_application_version_tracking(
+    db, test_user, test_job, test_resume, test_profile
+):
     base_v = create_base_version_from_profile(db, test_resume, test_profile)
 
     app = JobApplication(
@@ -297,8 +306,11 @@ def test_job_application_version_tracking(db, test_user, test_job, test_resume, 
 # ---------------------------------------------------------------------------
 
 
-def test_api_versions_list_and_diff(client, db, test_user, other_user, test_resume, test_profile):
+def test_api_versions_list_and_diff(
+    client, db, test_user, other_user, test_resume, test_profile
+):
     from app.core.security import create_access_token
+
     token_user = create_access_token(str(test_user.id))
     headers_user = {"Authorization": f"Bearer {token_user}"}
 
@@ -312,7 +324,9 @@ def test_api_versions_list_and_diff(client, db, test_user, other_user, test_resu
     tailored_v = ResumeVersion(
         resume_id=test_resume.id,
         version_number=2,
-        content=json.dumps({"summary": "Senior Go Dev", "skills": ["Go", "Kubernetes"]}),
+        content=json.dumps(
+            {"summary": "Senior Go Dev", "skills": ["Go", "Kubernetes"]}
+        ),
         source_type="tailored",
         parent_version_id=base_v.id,
         status="completed",
@@ -328,7 +342,9 @@ def test_api_versions_list_and_diff(client, db, test_user, other_user, test_resu
     assert versions[0]["source_type"] in ["base", "tailored"]
 
     # User B lists User A's versions -> 404
-    res_b = client.get(f"/api/v1/resumes/{test_resume.id}/versions", headers=headers_other)
+    res_b = client.get(
+        f"/api/v1/resumes/{test_resume.id}/versions", headers=headers_other
+    )
     assert res_b.status_code == 404
 
     # User A diffs versions -> 200
@@ -367,8 +383,11 @@ def test_api_versions_list_and_diff(client, db, test_user, other_user, test_resu
     assert rev_b.status_code == 404
 
 
-def test_api_application_cross_user_rejection(client, db, test_user, other_user, test_job, test_resume, test_profile):
+def test_api_application_cross_user_rejection(
+    client, db, test_user, other_user, test_job, test_resume, test_profile
+):
     from app.core.security import create_access_token
+
     token_other = create_access_token(str(other_user.id))
     headers_other = {"Authorization": f"Bearer {token_other}"}
 

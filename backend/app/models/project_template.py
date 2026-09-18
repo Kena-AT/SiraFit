@@ -5,8 +5,10 @@ from sqlalchemy import Column, String, Integer, DateTime, Boolean, JSON, Text
 from sqlalchemy.dialects.postgresql import UUID
 from app.core.database import Base
 
+
 def _utcnow():
     return datetime.now(timezone.utc)
+
 
 class ProjectTemplate(Base):
     __tablename__ = "project_templates"
@@ -21,6 +23,8 @@ class ProjectTemplate(Base):
     acceptance_criteria = Column(JSON, nullable=False, default=list)
     evidence_artifacts = Column(JSON, nullable=False, default=list)
     is_active = Column(Boolean, default=True, nullable=False)
-    skill_ids = Column(JSON, nullable=False, default=list) # List of SkillTaxonomy.canonical_key
+    skill_ids = Column(
+        JSON, nullable=False, default=list
+    )  # List of SkillTaxonomy.canonical_key
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
