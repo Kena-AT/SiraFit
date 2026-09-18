@@ -220,6 +220,59 @@ function SettingsIndex() {
       <Panel title="Devices" className="lg:col-span-2">
         <DeviceList />
       </Panel>
+      <Panel title="Browser Extension" className="lg:col-span-2">
+        <ExtensionTokenPanel />
+      </Panel>
+    </div>
+  );
+}
+
+function ExtensionTokenPanel() {
+  const [tokenInfo, setTokenInfo] = useState<{ token: string; name: string; expires_at: string } | null>(null);
+  
+  const tokenMutation = useMutation({
+    mutationFn: async () => {
+      const { issueExtensionToken } = await import("@/lib/api/agent");
+      return issueExtensionToken({ name: "Browser Extension" });
+    },
+    onSuccess: (data) => {
+      setTokenInfo(data);
+      toast.success("Extension token generated");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to generate token");
+    },
+  });
+
+  return (
+    <div className="p-4 space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Generate a token to connect the SiraFit Browser Extension to your account. This token will grant the extension access to capture and import jobs on your behalf.
+      </p>
+      
+      {!tokenInfo ? (
+        <Button onClick={() => tokenMutation.mutate()} disabled={tokenMutation.isPending}>
+          {tokenMutation.isPending ? "Generating..." : "Generate Connection Token"}
+        </Button>
+      ) : (
+        <div className="space-y-3 bg-muted/40 p-4 rounded-md ring-1 ring-border">
+          <div>
+            <Label>Your Extension Token</Label>
+            <div className="mt-1 flex items-center gap-2">
+              <Input value={tokenInfo.token} readOnly className="font-mono text-sm bg-background" />
+              <Button variant="outline" onClick={() => {
+                navigator.clipboard.writeText(tokenInfo.token);
+                toast.success("Token copied to clipboard");
+              }}>
+                Copy
+              </Button>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground text-destructive">
+            Warning: This token is only shown once. Copy it and paste it into the extension popup.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
