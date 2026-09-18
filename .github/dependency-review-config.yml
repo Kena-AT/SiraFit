@@ -1,12 +1,31 @@
-# Dependency Review Configuration
-# This file configures the dependency review action to fail on high severity vulnerabilities
+# Dependency Review Configuration (Sprint 16)
+# Configures the actions/dependency-review-action for pull requests.
 
-# Fail the build if any vulnerability with severity HIGH or CRITICAL is found
 fail-on-severity: high
+allow-licenses:
+  - MIT
+  - Apache-2.0
+  - BSD-2-Clause
+  - BSD-3-Clause
+  - ISC
+  - Python-2.0
+  - 0BSD
+  - Unlicense
+  - CC0-1.0
 
-# Allow specific vulnerabilities to be ignored (use sparingly)
+# Block copyleft / restrictive licenses unless explicitly audited
+deny-licenses:
+  - GPL-1.0-only
+  - GPL-1.0-or-later
+  - GPL-2.0-only
+  - GPL-2.0-or-later
+  - GPL-3.0-only
+  - GPL-3.0-or-later
+  - AGPL-1.0-only
+  - AGPL-1.0-or-later
+  - AGPL-3.0-only
+  - AGPL-3.0-or-later
+
+# Allow specific vulnerabilities only if triaged and documented
 # allow-ghsas:
 #   - GHSA-xxxx-xxxx-xxxx
-
-# Configuration for the dependency review
-# See: https://github.com/actions/dependency-review-action#configuration-options
