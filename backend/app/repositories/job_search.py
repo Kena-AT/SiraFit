@@ -48,15 +48,41 @@ def keyword_search_jobs(
         q = q.filter(Job.is_archived == False)  # noqa: E712
 
     if query_text and query_text.strip():
-        term = f"%{query_text.strip()}%"
-        q = q.filter(
-            or_(
-                Job.title.ilike(term),
-                Job.company.ilike(term),
-                Job.description.ilike(term),
-                Job.location.ilike(term),
+        term_clean = query_text.strip()
+        if is_postgres(db):
+            # Postgres FTS + Trigram
+            fts_cond = text("search_vector @@ websearch_to_tsquery('english', :query)")
+            # For fuzzy trigram matching, use similarity operator %
+            trgm_cond = or_(
+                Job.title.op('%')(term_clean),
+                Job.company.op('%')(term_clean)
             )
-        )
+            q = q.filter(or_(fts_cond, trgm_cond)).params(query=term_clean)
+            
+            # Rank based on a combination of FTS rank and Trigram word_similarity
+            # We use GREATEST for word_similarity because we just care about the best fuzzy match
+            fts_rank = text("ts_rank_cd(search_vector, websearch_to_tsquery('english', :query))")
+            trgm_rank = text("GREATEST(word_similarity(:query, title), word_similarity(:query, company))")
+            
+            # Combine the scores. word_similarity is 0-1, ts_rank_cd can be > 1.
+            # Normalization can be complex, but simple addition works as a baseline.
+            relevance = (fts_rank + trgm_rank).desc()
+            
+            # Update order_by
+            q = q.order_by(relevance, Job.created_at.desc())
+        else:
+            term = f"%{term_clean}%"
+            q = q.filter(
+                or_(
+                    Job.title.ilike(term),
+                    Job.company.ilike(term),
+                    Job.description.ilike(term),
+                    Job.location.ilike(term),
+                )
+            )
+            q = q.order_by(Job.created_at.desc())
+    else:
+        q = q.order_by(Job.created_at.desc())
 
     if company:
         q = q.filter(Job.company.ilike(f"%{company}%"))
@@ -73,7 +99,7 @@ def keyword_search_jobs(
         q = q.filter(or_(Job.salary_max <= max_salary, Job.salary_min <= max_salary))
 
     total = q.count()
-    jobs = q.order_by(Job.created_at.desc()).offset(skip).limit(limit).all()
+    jobs = q.offset(skip).limit(limit).all()
     return jobs, total
 
 

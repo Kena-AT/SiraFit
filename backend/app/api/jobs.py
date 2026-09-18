@@ -258,16 +258,32 @@ def _list_jobs_query(db: Session, current_user: User, skip: int, limit: int,
     if not include_archived:
         query = query.filter(Job.is_archived == False)  # noqa: E712
 
+    relevance_col = None
     if search:
-        term = f"%{search}%"
-        query = query.filter(
-            or_(
-                Job.title.ilike(term),
-                Job.company.ilike(term),
-                Job.description.ilike(term),
-                Job.location.ilike(term),
+        term_clean = search.strip()
+        from app.repositories.job_search import is_postgres
+        if is_postgres(db):
+            from sqlalchemy import text
+            fts_cond = text("search_vector @@ websearch_to_tsquery('english', :query)")
+            trgm_cond = or_(
+                Job.title.op('%')(term_clean),
+                Job.company.op('%')(term_clean)
             )
-        )
+            query = query.filter(or_(fts_cond, trgm_cond)).params(query=term_clean)
+            
+            fts_rank = text("ts_rank_cd(search_vector, websearch_to_tsquery('english', :query))")
+            trgm_rank = text("GREATEST(word_similarity(:query, title), word_similarity(:query, company))")
+            relevance_col = (fts_rank + trgm_rank).desc()
+        else:
+            term = f"%{term_clean}%"
+            query = query.filter(
+                or_(
+                    Job.title.ilike(term),
+                    Job.company.ilike(term),
+                    Job.description.ilike(term),
+                    Job.location.ilike(term),
+                )
+            )
 
     if company:
         query = query.filter(Job.company.ilike(f"%{company}%"))
@@ -305,7 +321,11 @@ def _list_jobs_query(db: Session, current_user: User, skip: int, limit: int,
     total = query.with_entities(func.count(Job.id)).order_by(None).scalar() or 0
 
     sort_col = getattr(Job, sort_by, Job.created_at)
-    query = query.order_by(sort_col.asc() if sort_order == "asc" else sort_col.desc())
+    primary_sort = sort_col.asc() if sort_order == "asc" else sort_col.desc()
+    if relevance_col is not None:
+        query = query.order_by(relevance_col, primary_sort)
+    else:
+        query = query.order_by(primary_sort)
     jobs = query.offset(skip).limit(limit).all()
 
     return JobListResponse(jobs=jobs, total=total, skip=skip, limit=limit)
