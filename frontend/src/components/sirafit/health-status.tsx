@@ -51,13 +51,16 @@ export function HealthStatusDot({
   // Get the appropriate color class
   const colorClass = getColorClass(status.color);
 
-  // Determine what to show in the label. We don't distinguish ".env file" from
-  // "OS env var" (pydantic-settings merges both), so just name the provider.
+  // Determine what to show in the label. Only display "connected" when the API
+  // connection is genuinely verified and guaranteed by the backend probe.
   const provider = status.agent_api.provider || "Agent";
+  const isConnected = Boolean(status.agent_api.connected && status.agent_api.provider);
   const label = showLabel
-    ? status.agent_api.connected
+    ? isConnected
       ? `${provider} connected`
-      : status.agent_api.error || `${provider} disconnected`
+      : status.agent_api.error
+        ? `${provider} unverified`
+        : "AI offline"
     : null;
 
   if (isLoading && !data) {

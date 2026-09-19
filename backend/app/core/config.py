@@ -74,12 +74,20 @@ class Settings(BaseSettings):
     # AI Integration — one field per supported provider. All optional; the
     # agent connection check and generation dispatcher pick the first key set.
     GEMINI_API: str | None = None
+    GEMINI_API_KEY: str | None = None
     OPENROUTER_API: str | None = None
+    OPENROUTER_API_KEY: str | None = None
     ANTHROPIC_API: str | None = None
+    ANTHROPIC_API_KEY: str | None = None
     OPENAI_API: str | None = None
+    OPENAI_API_KEY: str | None = None
     GROK_API: str | None = None
+    GROK_API_KEY: str | None = None
+    XAI_API_KEY: str | None = None
     MISTRAL_API: str | None = None
+    MISTRAL_API_KEY: str | None = None
     NVIDIA_API: str | None = None
+    NVIDIA_API_KEY: str | None = None
 
     # Data encryption for user-stored API keys (fall back to SECRET_KEY if not set)
     DATA_ENCRYPTION_KEY: str | None = None
@@ -130,7 +138,9 @@ class Settings(BaseSettings):
     }
 
     class Config:
-        env_file = str(Path(__file__).resolve().parent.parent.parent.parent / ".env")
+        _root_env = Path(__file__).resolve().parent.parent.parent.parent / ".env"
+        _backend_env = Path(__file__).resolve().parent.parent.parent / ".env"
+        env_file = [str(_root_env), str(_backend_env)]
         case_sensitive = True
         extra = "ignore"  # Ignore extra environment variables
 

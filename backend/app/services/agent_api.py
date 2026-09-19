@@ -39,12 +39,14 @@ class AgentAPIStatus(BaseModel):
 #   auth: "bearer"    -> `Authorization: Bearer <key>`
 #         "x-api-key" -> `x-api-key: <key>` (Anthropic)
 #         "query"     -> `?key=<key>` (Gemini)
+# Provider registry — ordered. The first provider with a key that reaches its
+# API and is guaranteed functional is the "active" one.
 PROVIDERS: list[dict] = [
     {
         "id": "openrouter",
         "label": "OpenRouter",
         "attr": "OPENROUTER_API",
-        "url": "https://openrouter.ai/api/v1/models",
+        "url": "https://openrouter.ai/api/v1/auth/key",
         "auth": "bearer",
     },
     {
@@ -70,6 +72,13 @@ PROVIDERS: list[dict] = [
         "auth": "bearer",
     },
     {
+        "id": "groq",
+        "label": "Groq",
+        "attr": "GROQ_API",
+        "url": "https://api.groq.com/openai/v1/models",
+        "auth": "bearer",
+    },
+    {
         "id": "grok",
         "label": "Grok (xAI)",
         "attr": "GROK_API",
@@ -87,26 +96,78 @@ PROVIDERS: list[dict] = [
         "id": "nvidia",
         "label": "Nvidia NIM",
         "attr": "NVIDIA_API",
-        "url": "https://integrate.api.nvidia.com/v1/models",
+        "url": "https://integrate.api.nvidia.com/v1/chat/completions",
         "auth": "bearer",
     },
 ]
 
 
-def check_agent_api_connection() -> AgentAPIStatus:
-    """
-    Check whether the agent API is configured and reachable.
+def is_valid_candidate_key(key: Optional[str]) -> bool:
+    """Return True if the key is non-empty and not a known placeholder string."""
+    if not key or not isinstance(key, str):
+        return False
+    k = key.strip()
+    if len(k) < 10:
+        return False
+    low = k.lower()
+    for placeholder in (
+        "not_set",
+        "your_key",
+        "your-key",
+        "your_api_key",
+        "placeholder",
+        "example",
+        "api_key_here",
+        "sk-...",
+        "dummy",
+        "replace_me",
+        "none",
+    ):
+        if placeholder in low:
+            return False
+    return True
 
-    Iterates configured providers in registry order; the first whose
-    authenticated `GET /models` returns 2xx is the active provider. On
-    failure, returns a professional, trace-free message.
+
+def check_agent_api_connection(db=None, user_id=None) -> AgentAPIStatus:
     """
-    configured = []
+    Check whether an agent API is configured and GUARANTEED functional.
+
+    A provider is ONLY reported as connected if an authenticated live probe
+    confirms reachability and authorization. Public endpoints that return 200
+    without authentication (such as Nvidia/OpenRouter /models catalogs) are never
+    treated as sufficient proof of connectivity.
+    """
+    from app.services.ai_keys import get_env_provider_keys, resolve_provider_key
+
+    # Check if a specific user context is available
+    if db is not None and user_id:
+        from app.models.user import UserPreference
+
+        prefs = (
+            db.query(UserPreference).filter(UserPreference.user_id == user_id).first()
+        )
+        if prefs and prefs.ai_provider:
+            pref_p = next(
+                (p for p in PROVIDERS if p["id"] == prefs.ai_provider.lower()), None
+            )
+            if pref_p:
+                key = resolve_provider_key(pref_p["id"], db=db, user_id=user_id)
+                if is_valid_candidate_key(key) and _ping(pref_p, key):
+                    return AgentAPIStatus(
+                        connected=True,
+                        source="settings_ui"
+                        if getattr(prefs, f"encrypted_{pref_p['id']}_key", None)
+                        else "env",
+                        provider=pref_p["label"],
+                    )
+
+    # Inspect all configured environment keys across aliases
+    env_keys = get_env_provider_keys()
+    configured: list[tuple[dict, str]] = []
     for p in PROVIDERS:
-        val = getattr(settings, p["attr"], None)
-        # Consider a provider configured only if the value is a non-empty string (after stripping whitespace)
-        if val and isinstance(val, str) and val.strip():
-            configured.append((p, val))
+        key = env_keys.get(p["id"]) or getattr(settings, p["attr"], None)
+        if is_valid_candidate_key(key):
+            configured.append((p, key.strip()))
 
     if not configured:
         return AgentAPIStatus(
@@ -115,6 +176,7 @@ def check_agent_api_connection() -> AgentAPIStatus:
             error="No AI provider API key is configured",
         )
 
+    # Probe each candidate in priority order
     for provider, key in configured:
         if _ping(provider, key):
             return AgentAPIStatus(
@@ -123,7 +185,6 @@ def check_agent_api_connection() -> AgentAPIStatus:
                 provider=provider["label"],
             )
 
-    # Keys exist but none reached its API.
     first_label = configured[0][0]["label"]
     return AgentAPIStatus(
         connected=False,
@@ -134,41 +195,62 @@ def check_agent_api_connection() -> AgentAPIStatus:
 
 
 def _ping(provider: dict, key: str) -> bool:
-    """Return True if the provider's /models endpoint responds 2xx.
+    """Return True ONLY if the provider's authenticated endpoint responds 2xx with valid data.
 
-    Checks Redis cache first with 60 s TTL so the /health/status probe
-    doesn't re-dial the same provider on every landing-page poll.
+    Checks cache first with 60s TTL so the health check doesn't spam external APIs.
     """
+    if not is_valid_candidate_key(key):
+        return False
+
     cache_key = (
-        f"agent_api:{provider['id']}:{hashlib.sha256(key.encode()).hexdigest()[:16]}"
+        f"agent_api_guaranteed:{provider['id']}:{hashlib.sha256(key.encode()).hexdigest()[:16]}"
     )
     cached = cache_get(cache_key)
     if cached is not None:
-        return cached
+        return bool(cached)
 
-    url = provider["url"]
-    headers: dict[str, str] = {}
-    auth = provider["auth"]
-
-    if auth == "bearer":
-        headers["Authorization"] = f"Bearer {key}"
-    elif auth == "x-api-key":
-        headers["x-api-key"] = key
-        headers.update(provider.get("extra_headers", {}))
-    # "query": key is embedded in the URL template
-
-    if auth == "query":
-        url = url.format(key=key)
-
+    pid = provider["id"]
     try:
-        response = httpx.get(url, headers=headers, timeout=5.0)
-        result = 200 <= response.status_code < 300
-        # Cache result for 60 s so the next health-check poll doesn't re-dial
-        cache_set(cache_key, result, ttl=60)
-        return result
+        if pid == "nvidia":
+            # NVIDIA's GET /models endpoint is public and unauthenticated.
+            # A 1-token completion probe is required to guarantee the key is active and authorized.
+            probe_url = "https://integrate.api.nvidia.com/v1/chat/completions"
+            headers = {"Authorization": f"Bearer {key}"}
+            payload = {
+                "model": "nvidia/llama-3.1-nemotron-70b-instruct",
+                "messages": [{"role": "user", "content": "ping"}],
+                "max_tokens": 1,
+            }
+            resp = httpx.post(probe_url, headers=headers, json=payload, timeout=5.0)
+            is_valid = 200 <= resp.status_code < 300 and "choices" in resp.json()
+        elif pid == "openrouter":
+            # OpenRouter's /models endpoint is public. /auth/key verifies the key and returns key metadata.
+            resp = httpx.get(
+                "https://openrouter.ai/api/v1/auth/key",
+                headers={"Authorization": f"Bearer {key}"},
+                timeout=5.0,
+            )
+            is_valid = 200 <= resp.status_code < 300 and isinstance(
+                resp.json().get("data"), dict
+            )
+        elif pid == "gemini":
+            url = f"https://generativelanguage.googleapis.com/v1beta/models?key={key}"
+            resp = httpx.get(url, timeout=5.0)
+            is_valid = 200 <= resp.status_code < 300 and bool(resp.json().get("models"))
+        else:
+            headers = {}
+            if provider.get("auth") == "bearer":
+                headers["Authorization"] = f"Bearer {key}"
+            elif provider.get("auth") == "x-api-key":
+                headers["x-api-key"] = key
+                headers.update(provider.get("extra_headers", {}))
+            resp = httpx.get(provider["url"], headers=headers, timeout=5.0)
+            is_valid = 200 <= resp.status_code < 300 and bool(resp.json().get("data"))
+
+        cache_set(cache_key, is_valid, ttl=60 if is_valid else 30)
+        return is_valid
     except Exception:
-        # Cache the negative result too so we don't spend 5 s timing out every poll
-        cache_set(cache_key, False, ttl=60)
+        cache_set(cache_key, False, ttl=30)
         return False
 
 

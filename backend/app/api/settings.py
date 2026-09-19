@@ -37,6 +37,19 @@ class AIConfigUpdate(BaseModel):
     fallback_order: Optional[list[str]] = None
 
 
+class DiscoveredModel(BaseModel):
+    id: str
+    label: str
+    description: Optional[str] = None
+
+
+class DiscoveredModelsResponse(BaseModel):
+    provider: str
+    source: str  # "api" | "fallback"
+    models: list[DiscoveredModel]
+    error: Optional[str] = None
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -128,3 +141,33 @@ def delete_ai_config(
         db.commit()
 
     return AIConfigResponse()
+
+
+@router.get("/me/models", response_model=DiscoveredModelsResponse)
+async def get_provider_models(
+    provider: str,
+    force_refresh: bool = False,
+    api_key: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Discover available models for a provider using dynamic API discovery.
+
+    Resolves active API key (User UI key first, then server/.env), executes the
+    discovery call against the provider's /v1/models endpoint, and gracefully falls back
+    to curated models if no key exists or external endpoint is unreachable.
+    """
+    from app.services.ai_keys import resolve_provider_key
+    from app.services.model_discovery import fetch_provider_models
+
+    key_to_use = api_key
+    if not key_to_use:
+        key_to_use = resolve_provider_key(provider, db=db, user_id=current_user.id)
+
+    result = await fetch_provider_models(
+        provider=provider,
+        api_key=key_to_use,
+        force_refresh=force_refresh,
+    )
+    return result
+
