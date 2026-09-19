@@ -9,38 +9,42 @@ export const Route = createFileRoute("/help")({
     const articles = [
       {
         id: "install-agent",
-        title: "Install the local agent",
-        description: "Download the desktop agent and connect it to your account.",
+        title: "Browser extension & local agent",
+        description:
+          "Capture postings directly on ATS sites with Plasmo or pair the desktop agent.",
         href: "/docs/agent-install",
       },
       {
         id: "gemini-key",
-        title: "Connect your Gemini key",
-        description: "Bring your own key. Stored locally only.",
+        title: "Connect your AI keys",
+        description: "Bring your own key: Gemini, Claude, GPT-4o, Groq, Mistral, or local Ollama.",
         href: "/docs/gemini-key",
       },
       {
         id: "import-jobs",
-        title: "Import your first jobs",
-        description: "Paste a URL or watch the agent scrape Lever, Greenhouse, Ashby.",
+        title: "Import & capture jobs",
+        description: "Scrape via URL, browser extension, saved-jobs session, or batch CSV.",
         href: "/docs/import-jobs",
       },
       {
         id: "resume-profile",
-        title: "Build a resume profile",
-        description: "Structured JSON beats PDF editing every time.",
+        title: "Master profile & resume variants",
+        description:
+          "Structured JSON profiles, variant versioning, diff-revert, and PDF/Word export.",
         href: "/docs/resume-profile",
       },
       {
         id: "match-scores",
-        title: "Understand match scores",
-        description: "Skill overlap, seniority alignment, domain relevance - explained.",
+        title: "Hybrid match scoring",
+        description:
+          "Deterministic skill overlap, seniority alignment, and pgvector semantic similarity.",
         href: "/docs/match-scores",
       },
       {
         id: "track-applications",
-        title: "Track applications",
-        description: "Move cards through Saved → Applied → Interview → Offer.",
+        title: "Application tracking & analytics",
+        description:
+          "Full lifecycle pipeline, follow-ups, salary benchmarks, and interview preparation.",
         href: "/docs/track-applications",
       },
     ];

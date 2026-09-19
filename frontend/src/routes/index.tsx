@@ -33,14 +33,14 @@ function VersionTag() {
     queryFn: getHealthStatus,
   });
 
-  const version = "0.0.1";
+  const version = "1.0.0";
 
   return (
     <div className="inline-flex items-center gap-2 rounded-full bg-card px-3 py-1 text-[11px] font-medium text-muted-foreground ring-1 ring-border">
       <HealthStatusDot showLabel={false} />v{version} ·{" "}
       {data?.agent_api?.connected
         ? `${data?.agent_api?.provider || "Agent"} active`
-        : "No agent configured"}
+        : "AI Agent & Engine ready"}
     </div>
   );
 }
@@ -201,7 +201,7 @@ function TopMatchQueue() {
         Top match queue
       </div>
       <table className="w-full text-left text-sm">
-        <tbody className="divide-y divide-border">
+        <tbody className="divide-y border-border">
           {data?.top_match_queue?.length ? (
             data.top_match_queue.map((item) => (
               <tr key={`${item.company}-${item.role}`} className="hover:bg-muted/40">
@@ -257,9 +257,9 @@ function Landing() {
             Career operations for engineers who actually&nbsp;ship.
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-pretty text-base text-muted-foreground md:text-lg">
-            SiraFit ingests jobs from Lever, Greenhouse, and Ashby, scores them deterministically,
-            and tailors structured resumes - all from a local agent you control, with your own
-            Gemini key.
+            SiraFit ingests jobs across LinkedIn, Indeed, Greenhouse, Lever, and Ashby, ranks them
+            with hybrid pgvector semantic search, and tailors structured resumes - powered by
+            multi-model AI (Gemini, Claude, GPT-4o, or Local).
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
             {isLoading ? (
@@ -325,20 +325,36 @@ function Landing() {
               The pipeline
             </div>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
-              Scrape · Normalize · Score · Tailor · Track.
+              Scrape · Normalize · Dedupe · Score · Tailor.
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Every job that enters SiraFit follows the same deterministic pipeline. AI generates
-              content. AI does not decide outcomes.
+              Every job that enters SiraFit follows a deterministic, observable pipeline. Structured
+              AI via Instructor generates content, while hybrid vector and rule scoring determines
+              match quality.
             </p>
           </div>
           <div className="grid gap-4 md:grid-cols-5">
             {[
-              { t: "Scrape", d: "Playwright pulls postings from Lever, Greenhouse, Ashby." },
-              { t: "Normalize", d: "Unified schema across ATS sources." },
-              { t: "Dedupe", d: "3-stage deterministic + fuzzy matching." },
-              { t: "Score", d: "Rule-based skill + seniority + domain match." },
-              { t: "Tailor", d: "Structured resume JSON → ATS-ready PDF." },
+              {
+                t: "Scrape",
+                d: "Playwright, Scrapling, & Plasmo extension pull postings from major job boards and ATS portals.",
+              },
+              {
+                t: "Normalize",
+                d: "Unified schema with deep skill taxonomy extraction across all platforms.",
+              },
+              {
+                t: "Dedupe & Index",
+                d: "3-stage deterministic deduplication + pgvector semantic and FTS indexing.",
+              },
+              {
+                t: "Score & Rank",
+                d: "Hybrid scoring: deterministic skill overlap, seniority alignment, and vector similarity.",
+              },
+              {
+                t: "Tailor & Export",
+                d: "Structured resume JSON tailored via Instructor → export to ATS-ready PDF & Word (.docx).",
+              },
             ].map((c, i) => (
               <div key={c.t} className="rounded-lg bg-card p-5 ring-1 ring-border">
                 <div className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
@@ -362,11 +378,24 @@ function Landing() {
               Every job, scored. Every application, tracked.
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              No more guessing whether to apply. Deterministic match scores cite which skills
-              overlapped and which gaps cost you points. Your call - better informed.
+              No more guessing whether to apply. Deterministic match scores and pgvector embeddings
+              cite exact skill overlap, seniority alignment, and missing competencies. Your call -
+              better informed.
             </p>
             <div className="mt-6 flex flex-wrap gap-2">
-              {["Greenhouse", "Lever", "Ashby", "Workday", "Gemini", "Local-first"].map((t) => (
+              {[
+                "LinkedIn",
+                "Indeed",
+                "Greenhouse",
+                "Lever",
+                "Ashby",
+                "pgvector",
+                "Claude 3.5",
+                "GPT-4o",
+                "Gemini",
+                "Plasmo Extension",
+                "PDF & DOCX",
+              ].map((t) => (
                 <Tag key={t}>{t}</Tag>
               ))}
             </div>
@@ -380,7 +409,7 @@ function Landing() {
           <div>
             <div className="text-lg font-semibold tracking-tight">Ready to operate?</div>
             <p className="text-sm text-muted-foreground">
-              The dashboard is a click away. Set up the local agent when you're ready.
+              The dashboard is a click away. Connect your AI keys or run locally when you're ready.
             </p>
           </div>
           <div className="flex items-center gap-3">

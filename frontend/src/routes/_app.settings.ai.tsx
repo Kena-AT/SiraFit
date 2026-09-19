@@ -403,7 +403,7 @@ function AISettings() {
       {/* Local agent */}
       <Panel title="Local agent">
         <div className="space-y-3 p-4 text-sm">
-          <AgentDot label="Connected · v0.8.2" />
+          <AgentDot label="Connected · v1.0.0" />
           <div className="text-[12px] text-muted-foreground">
             Auto-update enabled. Next check in 4h.
           </div>

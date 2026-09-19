@@ -3,7 +3,7 @@ import { ChevronRight } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/docs/match-scores")({
-  head: () => ({ meta: [{ title: "Understand match scores · SiraFit" }] }),
+  head: () => ({ meta: [{ title: "Hybrid match scores · SiraFit" }] }),
   component: () => (
     <article className="mx-auto max-w-3xl px-6 py-16">
       <nav className="mb-6 flex items-center gap-1 text-xs text-muted-foreground">
@@ -11,31 +11,38 @@ export const Route = createFileRoute("/docs/match-scores")({
           Documentation
         </Link>
         <ChevronRight className="h-3 w-3" />
-        <span>Understand match scores</span>
+        <span>Hybrid match scores</span>
       </nav>
-      <h1 className="text-3xl font-semibold tracking-tight">Understand match scores</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">Hybrid match scoring</h1>
       <p className="mt-4 text-muted-foreground">
-        Every job is scored with a deterministic algorithm — no black-box AI decides outcomes.
-        Scores combine three weighted dimensions.
+        SiraFit pairs deterministic rule-based evaluation with high-dimensional vector embeddings
+        via PostgreSQL pgvector. This ensures transparent, verifiable scoring with deep contextual
+        understanding.
       </p>
-      <h2 className="mt-8 text-lg font-semibold">The formula</h2>
-      <ul className="mt-4 list-disc list-inside space-y-1 text-sm">
+      <h2 className="mt-8 text-lg font-semibold">The scoring architecture</h2>
+      <ul className="mt-4 list-disc list-inside space-y-2 text-sm">
         <li>
-          <strong>Skills (50%):</strong> Keyword overlap between your profile and the job's required
-          tags.
+          <strong>Skills Overlap (50%):</strong> Hard &amp; soft skill taxonomy mapping against your
+          master profile. Distinguishes between required vs. preferred competencies.
         </li>
         <li>
-          <strong>Experience (30%):</strong> Years of experience relative to the role's seniority
-          tier.
+          <strong>Experience &amp; Seniority (30%):</strong> Matches your verified years of
+          experience against the role tier (Junior, Mid, Senior, Staff, Lead).
         </li>
         <li>
-          <strong>Education (20%):</strong> Highest degree level mapped to a point multiplier.
+          <strong>Education &amp; Domain Relevance (20%):</strong> Degree field alignment and domain
+          expertise multipliers.
+        </li>
+        <li>
+          <strong>pgvector Semantic Bonus:</strong> Cosine similarity between your profile embedding
+          and the job posting requirements surfaces conceptual alignment even when phrasing differs.
         </li>
       </ul>
-      <h2 className="mt-8 text-lg font-semibold">Reading the breakdown</h2>
+      <h2 className="mt-8 text-lg font-semibold">Reading the breakdown &amp; Gap-to-Plan</h2>
       <p className="mt-2 text-sm text-muted-foreground">
-        Hover any job card to see the score breakdown. A score of 30+ is the application threshold —
-        jobs below that typically lack the minimum skill overlap for a competitive application.
+        Click any job card to inspect the match breakdown. SiraFit highlights exact overlapping
+        skills, missing keywords, and automatically triggers the Gap-to-Plan engine to give you
+        targeted talking points and interview preparation notes.
       </p>
     </article>
   ),

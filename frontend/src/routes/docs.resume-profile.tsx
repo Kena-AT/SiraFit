@@ -3,7 +3,7 @@ import { ChevronRight } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/docs/resume-profile")({
-  head: () => ({ meta: [{ title: "Build a resume profile · SiraFit" }] }),
+  head: () => ({ meta: [{ title: "Master profile & variants · SiraFit" }] }),
   component: () => (
     <article className="mx-auto max-w-3xl px-6 py-16">
       <nav className="mb-6 flex items-center gap-1 text-xs text-muted-foreground">
@@ -11,30 +11,37 @@ export const Route = createFileRoute("/docs/resume-profile")({
           Documentation
         </Link>
         <ChevronRight className="h-3 w-3" />
-        <span>Build a resume profile</span>
+        <span>Master profile &amp; variants</span>
       </nav>
-      <h1 className="text-3xl font-semibold tracking-tight">Build a resume profile</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">
+        Master profile &amp; resume variants
+      </h1>
       <p className="mt-4 text-muted-foreground">
-        Structured JSON beats PDF editing every time. Your profile defines your skills, experience,
-        and education — which the matcher and resume builder consume deterministically.
+        Structured JSON beats manual PDF editing every time. Your master profile defines your
+        skills, work experience, projects, and education. Every change is tracked with immutable
+        version snapshots and rollback support.
       </p>
-      <h2 className="mt-8 text-lg font-semibold">Profile sections</h2>
-      <ul className="mt-4 list-disc list-inside space-y-1 text-sm">
+      <h2 className="mt-8 text-lg font-semibold">Profile architecture</h2>
+      <ul className="mt-4 list-disc list-inside space-y-1.5 text-sm">
         <li>
-          <strong>Skills:</strong> Tag-based, auto-suggested as you type.
+          <strong>Canonical Skill Taxonomy:</strong> Standardized skill identification with
+          auto-suggestions and alias normalization.
         </li>
         <li>
-          <strong>Experience:</strong> Role, company, dates, and bullet points.
+          <strong>Work Experience &amp; Projects:</strong> Measurable bullet points, tech stack
+          tags, and quantifiable accomplishments.
         </li>
         <li>
-          <strong>Education:</strong> Degrees, institutions, and graduation dates.
+          <strong>Version History:</strong> Every profile edit creates a snapshot so you can revert
+          to any historical state with a single click.
         </li>
       </ul>
-      <h2 className="mt-8 text-lg font-semibold">From profile to PDF</h2>
+      <h2 className="mt-8 text-lg font-semibold">Job-specific resume variants &amp; visual diff</h2>
       <p className="mt-2 text-sm text-muted-foreground">
-        Once your profile is complete, click <strong>Generate Resume</strong> on any job page. The
-        engine tailors bullet points by keyword overlap and seniority alignment, then exports an
-        ATS-ready PDF.
+        Generate tailored variants for specific job postings. Use our side-by-side visual diff
+        viewer to compare tailored bullet points against your master profile, accept or reject AI
+        modifications, and export cleanly formatted documents to either ATS-ready PDF or Microsoft
+        Word (.docx).
       </p>
     </article>
   ),

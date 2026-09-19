@@ -142,7 +142,7 @@ export function AppShell() {
             <Logo />
           </Link>
           <span className="font-mono text-[9px] font-medium uppercase tracking-widest text-muted-foreground">
-            v0.8.2
+            v1.0.0
           </span>
         </div>
         <nav className="flex-1 overflow-y-auto px-2 py-3">
@@ -260,7 +260,7 @@ function TopBar({ pathname }: { pathname: string }) {
           <span className="font-mono text-muted-foreground">⌘K</span>
           <span className="text-muted-foreground">Search jobs, apps, resumes…</span>
         </button>
-        <AgentDot label="Gemini · connected" />
+        <AgentDot />
         <UserMenu />
       </div>
 
@@ -540,8 +540,8 @@ export function AuthShell({
               Why SiraFit
             </div>
             <p className="mt-3 max-w-md text-[15px] leading-relaxed text-foreground">
-              A career operations layer for engineers. Deterministic scoring, ATS-normalized data,
-              and structured resume tailoring - without the autonomous-agent nonsense.
+              A career operations layer for engineers. Deterministic scoring, hybrid semantic
+              search, ATS-normalized data, and structured resume tailoring with multi-model AI.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3">

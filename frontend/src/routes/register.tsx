@@ -94,7 +94,7 @@ function RegisterPage() {
   return (
     <AuthShell
       title="Create your account"
-      subtitle="One device per account. Bring your own Gemini key."
+      subtitle="Deterministic career operations. Multi-model AI (Gemini, Claude, GPT, Groq, or Local)."
       footer={
         <>
           Have an account?{" "}

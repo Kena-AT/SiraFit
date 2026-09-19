@@ -241,7 +241,15 @@ function Import() {
             </Button>
             <div className="flex flex-wrap gap-1.5 text-[11px] text-muted-foreground">
               Supported:{" "}
-              {["LinkedIn", "Indeed", "Glassdoor", "Greenhouse"].map((s) => (
+              {[
+                "LinkedIn",
+                "Indeed",
+                "Glassdoor",
+                "Greenhouse",
+                "Lever",
+                "Ashby",
+                "ZipRecruiter",
+              ].map((s) => (
                 <Tag key={s}>{s}</Tag>
               ))}
             </div>
