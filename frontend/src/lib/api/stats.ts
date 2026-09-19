@@ -29,6 +29,15 @@ export interface HealthStatusResponse {
   checked_at: string;
   color: string;
   message: string;
+  worker_healthy?: boolean;
+  system_status?: {
+    overall: string;
+    api: string;
+    database: string;
+    redis: string;
+    background_jobs: string;
+    last_checked: string;
+  };
 }
 
 export const getLandingStats = async (): Promise<LandingStatsResponse> => {

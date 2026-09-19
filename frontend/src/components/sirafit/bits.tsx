@@ -213,7 +213,29 @@ export function Stat({
   );
 }
 
-export function AgentDot({ label }: { label?: string }) {
+export function AgentDot({
+  label,
+  variant,
+}: {
+  label?: string;
+  variant?: "ready" | "offline" | "warning";
+}) {
+  if (label) {
+    const dotColor =
+      variant === "offline"
+        ? "bg-muted-foreground/50"
+        : variant === "warning"
+          ? "bg-amber-500"
+          : "bg-emerald-500";
+    return (
+      <span className="inline-flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+        <span className="relative inline-flex h-1.5 w-1.5">
+          <span className={cn("relative inline-block h-1.5 w-1.5 rounded-full", dotColor)} />
+        </span>
+        {label}
+      </span>
+    );
+  }
   return <HealthStatusDot showLabel={true} className="text-muted-foreground" />;
 }
 

@@ -9,6 +9,7 @@ import {
   LandingStatsResponse,
   HealthStatusResponse,
 } from "@/lib/api/stats";
+import { getBatchJobs } from "@/lib/api/batch";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api/client";
 import {
@@ -94,6 +95,28 @@ export function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [sidebarWidth, setSidebarWidth] = useState(240);
   const isResizing = useRef(false);
+
+  const { data: health } = useQuery({
+    queryKey: ["health-status"],
+    queryFn: getHealthStatus,
+    refetchInterval: 30000,
+  });
+
+  const { data: batchData } = useQuery({
+    queryKey: ["batch-jobs-summary"],
+    queryFn: () => getBatchJobs({ limit: 10 }),
+    refetchInterval: 15000,
+  });
+
+  const activeJobsCount =
+    batchData?.jobs.filter((j) => j.status === "pending" || j.status === "running").length ?? 0;
+  const totalJobsInBatch = batchData?.total ?? 0;
+  const mostRecentJob = batchData?.jobs?.[0];
+  const lastSyncText = mostRecentJob?.completed_at
+    ? "Synced"
+    : mostRecentJob?.created_at
+      ? "Active"
+      : "Idle";
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -188,14 +211,19 @@ export function AppShell() {
         </nav>
         <div className="border-t border-border p-3">
           <div className="rounded-md bg-card p-3 ring-1 ring-border">
-            <AgentDot label="Agent: connected" />
+            <AgentDot
+              label={health?.agent_api?.connected ? `Agent: connected` : "Agent: standby"}
+              variant={health?.agent_api?.connected ? "ready" : "offline"}
+            />
             <div className="mt-2 flex items-center justify-between text-[11px]">
               <span className="text-muted-foreground">Queue</span>
-              <span className="font-mono font-semibold tabular-nums">3 / 64</span>
+              <span className="font-mono font-semibold tabular-nums">
+                {activeJobsCount} active / {totalJobsInBatch} total
+              </span>
             </div>
             <div className="mt-1 flex items-center justify-between text-[11px]">
-              <span className="text-muted-foreground">Last sync</span>
-              <span className="font-mono tabular-nums">12s</span>
+              <span className="text-muted-foreground">Status</span>
+              <span className="font-mono tabular-nums">{lastSyncText}</span>
             </div>
           </div>
         </div>
@@ -504,7 +532,7 @@ export function AuthShell({
   // Build stats items from real data, with fallbacks
   const statsItems: [string, string][] = [
     [stats?.jobs_ingested_per_day?.toString() ?? "—", "Jobs ingested today"],
-    [health?.agent_api?.connected ? "99.9%" : "—", "Local agent uptime"],
+    [health?.agent_api?.connected ? "Operational" : "Standby", "Local agent status"],
     [stats?.ats_sources_polled?.toString() ?? "—", "ATS sources polled"],
     [
       stats?.top_match_queue?.length ? `${stats.top_match_queue.length} matches available` : "—",
