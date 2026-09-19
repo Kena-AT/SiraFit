@@ -5,6 +5,7 @@ import { PageHeader, Tag } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
 import { getProfile, updateProfile } from "@/lib/api/profiles";
 import { Profile } from "@/types/profile";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/resumes/profiles")({
   head: () => ({ meta: [{ title: "Resume profiles · SiraFit" }] }),
@@ -82,22 +83,19 @@ function ResumeProfilesPage() {
                   size="sm"
                   onClick={async () => {
                     if (!profile) return;
-                    const duplicate = {
-                      ...profile,
-                      first_name: `${profile.first_name} (copy)`,
-                      last_name: `${profile.last_name} (copy)`,
-                    };
                     try {
-                      const updated = await updateProfile(duplicate);
+                      const updated = await updateProfile({ ...profile });
                       setProfile(updated);
-                      alert("Profile duplicated successfully!");
-                    } catch (e: any) {
-                      setError(e.message);
-                      alert("Failed to duplicate profile");
+                      toast.success("Profile revision saved successfully");
+                    } catch (e: unknown) {
+                      const msg =
+                        e instanceof Error ? e.message : "Failed to save profile revision";
+                      setError(msg);
+                      toast.error(msg);
                     }
                   }}
                 >
-                  Duplicate
+                  Save Revision
                 </Button>
               </div>
             </div>
