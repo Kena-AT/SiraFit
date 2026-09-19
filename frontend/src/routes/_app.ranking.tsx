@@ -4,6 +4,8 @@ import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, ScoreMeter, Tag } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
 import { getRankedJobs } from "@/lib/api/jobs";
+import { createBatchJob } from "@/lib/api/batch";
+import { toast } from "sonner";
 import type { Job, JobMatchScore } from "@/types/job";
 
 interface JobWithScore {
@@ -27,8 +29,9 @@ function OpportunityRanking() {
     try {
       const data = await getRankedJobs({ limit: 200 });
       setItems(data.jobs);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to fetch ranked jobs";
+      setError(msg);
     }
   };
 
@@ -39,8 +42,26 @@ function OpportunityRanking() {
 
   const handleReRank = async () => {
     setRefreshing(true);
-    await fetchRanked();
-    setRefreshing(false);
+    try {
+      const unscored = items.filter((it) => it.score === null).map((it) => it.job.id);
+      const targetIds = unscored.length > 0 ? unscored : items.map((it) => it.job.id);
+
+      if (targetIds.length > 0) {
+        await createBatchJob({
+          operation_type: "score",
+          job_ids: targetIds.slice(0, 50),
+        });
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        toast.success(`Calculated scores for ${Math.min(targetIds.length, 50)} opportunity items`);
+      }
+      await fetchRanked();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to trigger re-ranking";
+      toast.error(msg);
+      await fetchRanked();
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   if (loading) {

@@ -5,6 +5,7 @@ import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, ScoreMeter, Tag } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
 import { getJobsWithScores, getMatchScore } from "@/lib/api/jobs";
+import { toast } from "sonner";
 import type { Job, JobMatchScore } from "@/types/job";
 
 interface JobWithScore {
@@ -46,6 +47,7 @@ function MatchAnalysis() {
 
   // Re-score all jobs (writes to DB) — only on explicit user action.
   const handleScoreAll = async () => {
+    if (items.length === 0) return;
     setScoring(true);
     try {
       const updated: JobWithScore[] = await Promise.all(
@@ -60,6 +62,12 @@ function MatchAnalysis() {
       );
       updated.sort((a, b) => (b.score?.score ?? -1) - (a.score?.score ?? -1));
       setItems(updated);
+      toast.success(
+        `Successfully analyzed ${updated.filter((u) => u.score !== null).length} job matches`,
+      );
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to score jobs";
+      toast.error(msg);
     } finally {
       setScoring(false);
     }
