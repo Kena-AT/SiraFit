@@ -41,6 +41,9 @@ export interface TopTechItem {
 
 export interface MetricsResponse {
   total_applications: number;
+  applications_this_week?: number;
+  applications_last_week?: number;
+  applications_trend?: string;
   interview_rate: number;
   avg_response_time_days: number;
   offer_rate: number;

@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, StatusPill } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { Trash2, RefreshCw } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useState, useCallback, useEffect } from "react";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import {
@@ -51,6 +52,8 @@ function Notifications() {
     data: response,
     isLoading,
     error,
+    refetch,
+    isFetching,
   } = useQuery({
     queryKey: ["notifications", statusFilter, limit],
     queryFn: () =>
@@ -126,15 +129,30 @@ function Notifications() {
         title="Notifications"
         description="Alerts, reminders, sync events."
         actions={
-          unreadCount > 0 ? (
-            <Button variant="outline" onClick={() => markAllReadMutation.mutate()}>
-              Mark all read ({unreadCount})
+          <div className="flex items-center gap-2">
+            {unreadCount > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => markAllReadMutation.mutate()}
+                disabled={markAllReadMutation.isPending}
+              >
+                Mark all read ({unreadCount})
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                refetch();
+                queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
+              }}
+              disabled={isFetching}
+            >
+              <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", isFetching && "animate-spin")} />
+              {isFetching ? "Checking..." : "Refresh"}
             </Button>
-          ) : (
-            <Button variant="outline" disabled>
-              All caught up
-            </Button>
-          )
+          </div>
         }
       />
       <div className="mb-4 flex items-center gap-2">

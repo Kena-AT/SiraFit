@@ -134,10 +134,18 @@ function NotificationsSettings() {
           </tbody>
         </table>
       </Panel>
-      <div className="flex justify-end">
-        <Button disabled={saveMutation.isPending}>
-          {saveMutation.isPending ? "Saving..." : "Preferences saved automatically"}
-        </Button>
+      <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
+        {saveMutation.isPending ? (
+          <span className="flex items-center gap-1.5 text-amber-500">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
+            Saving preferences...
+          </span>
+        ) : (
+          <span className="flex items-center gap-1.5 text-emerald-600">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            Preferences saved automatically
+          </span>
+        )}
       </div>
     </div>
   );
