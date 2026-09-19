@@ -8,6 +8,7 @@ from app.core.database import get_db
 from app.api.users import get_current_user
 from app.models.user import User, UserPreference
 from app.models.job import Job, JobApplication, Resume, AuditLog, JobImport
+from app.models.score import JobMatchScore
 from app.schemas.dashboard import (
     DashboardStats,
     AuditLogItem,
@@ -40,12 +41,19 @@ def _compute_stats(db: Session, user: User) -> DashboardStats:
         db.query(func.count(Resume.id)).filter(Resume.user_id == user.id).scalar() or 0
     )
 
-    jobs_scored = (
+    match_scores_count = (
+        db.query(func.count(JobMatchScore.id))
+        .filter(JobMatchScore.user_id == user.id)
+        .scalar()
+        or 0
+    )
+    app_scores_count = (
         db.query(func.count(JobApplication.id))
         .filter(JobApplication.user_id == user.id, JobApplication.score.isnot(None))
         .scalar()
         or 0
     )
+    jobs_scored = max(match_scores_count, app_scores_count)
 
     total_jobs = db.query(func.count(Job.id)).scalar() or 0
 
