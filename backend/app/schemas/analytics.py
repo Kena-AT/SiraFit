@@ -58,6 +58,9 @@ class StallInsightsResponse(BaseModel):
 
 class MetricsResponse(BaseModel):
     total_applications: int
+    applications_this_week: int = 0
+    applications_last_week: int = 0
+    applications_trend: Optional[str] = None
     interview_rate: float
     avg_response_time_days: float
     offer_rate: float

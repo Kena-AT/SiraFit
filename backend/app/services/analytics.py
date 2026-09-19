@@ -4,7 +4,7 @@ Sprint 10: Salary Benchmarks, Skills Gap, and Application Stall Insights.
 """
 
 from collections import Counter, defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import io
 import math
 import re
@@ -497,6 +497,30 @@ def generate_analytics_metrics(db: Session, user_id: uuid.UUID) -> Dict[str, Any
     )
     total_applications = len(applications)
 
+    # Weekly application trend calculation
+    now = datetime.now(timezone.utc)
+    seven_days_ago = now - timedelta(days=7)
+    fourteen_days_ago = now - timedelta(days=14)
+    apps_this_week = 0
+    apps_last_week = 0
+    for app in applications:
+        if app.created_at:
+            c_at = app.created_at if app.created_at.tzinfo else app.created_at.replace(tzinfo=timezone.utc)
+            if c_at >= seven_days_ago:
+                apps_this_week += 1
+            elif c_at >= fourteen_days_ago:
+                apps_last_week += 1
+
+    diff = apps_this_week - apps_last_week
+    if diff > 0:
+        applications_trend = f"+{diff} this week"
+    elif diff < 0:
+        applications_trend = f"{diff} this week"
+    elif apps_this_week > 0:
+        applications_trend = f"+{apps_this_week} this week"
+    else:
+        applications_trend = "+0 this week"
+
     # Interview stages
     interview_stages = ["screening", "interview", "final_round"]
     interviewed = sum(1 for a in applications if a.status in interview_stages)
@@ -586,22 +610,44 @@ def generate_analytics_metrics(db: Session, user_id: uuid.UUID) -> Dict[str, Any
 
     # 5. Market demand - aggregated from the jobs imported/applied
     title_counter: Counter[str] = Counter()
+    thirty_days_ago = now - timedelta(days=30)
+    sixty_days_ago = now - timedelta(days=60)
+    recent_roles: Counter[str] = Counter()
+    prior_roles: Counter[str] = Counter()
+
     for job in applied_jobs:
         normalised = normalize_job_role(job.title)
         if normalised:
             title_counter[normalised] += 1
+            job_time = job.created_at or job.posted_at
+            if job_time:
+                jt = job_time if job_time.tzinfo else job_time.replace(tzinfo=timezone.utc)
+                if jt >= thirty_days_ago:
+                    recent_roles[normalised] += 1
+                elif jt >= sixty_days_ago:
+                    prior_roles[normalised] += 1
 
     top_roles = title_counter.most_common(8)
     market_demand = []
 
     for role, count in top_roles:
         demand = min(100, count * 10)
+        recent_count = recent_roles.get(role, 0)
+        prior_count = prior_roles.get(role, 0)
+        if prior_count > 0:
+            pct = ((recent_count - prior_count) / prior_count) * 100
+            change_str = f"+{pct:.1f}%" if pct >= 0 else f"{pct:.1f}%"
+        elif recent_count > 0:
+            change_str = f"+{recent_count * 10.0:.1f}%"
+        else:
+            change_str = "+0.0%"
+
         market_demand.append(
             {
                 "role": role,
                 "demand": demand,
                 "postings": count,
-                "change": "+0.0%",
+                "change": change_str,
             }
         )
 
@@ -666,6 +712,9 @@ def generate_analytics_metrics(db: Session, user_id: uuid.UUID) -> Dict[str, Any
 
     return {
         "total_applications": total_applications,
+        "applications_this_week": apps_this_week,
+        "applications_last_week": apps_last_week,
+        "applications_trend": applications_trend,
         "interview_rate": round(interview_rate, 1),
         "avg_response_time_days": round(avg_response_time, 1),
         "offer_rate": round(offer_rate, 1),

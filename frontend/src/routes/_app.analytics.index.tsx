@@ -115,7 +115,14 @@ function AnalyticsDashboard() {
         <Stat
           label="Applications"
           value={metrics?.total_applications?.toString() || "0"}
-          trend={{ value: "+0 this week", positive: true }}
+          trend={
+            metrics?.applications_trend
+              ? {
+                  value: metrics.applications_trend,
+                  positive: !metrics.applications_trend.startsWith("-"),
+                }
+              : undefined
+          }
         />
         <Stat
           label="Interview rate"
