@@ -10,6 +10,19 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+# Passlib 1.7.4 compatibility with newer bcrypt versions
+try:
+    import bcrypt
+
+    if not hasattr(bcrypt, "__about__"):
+
+        class _BcryptAbout:
+            __version__ = getattr(bcrypt, "__version__", "4.0.0")
+
+        bcrypt.__about__ = _BcryptAbout()
+except ImportError:
+    pass
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # ---------------------------------------------------------------------------
