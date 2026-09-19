@@ -2,16 +2,38 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { RefreshCw, Sparkles, CheckCircle2 } from "lucide-react";
 import { Panel, AgentDot } from "@/components/sirafit/bits";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { apiFetch } from "@/lib/api/client";
+import { getHealthStatus } from "@/lib/api/stats";
 
 export const Route = createFileRoute("/_app/settings/ai")({
   head: () => ({ meta: [{ title: "AI & agent settings · SiraFit" }] }),
   component: AISettings,
 });
+
+export interface DiscoveredModel {
+  id: string;
+  label: string;
+  description?: string;
+}
+
+export interface DiscoveredModelsResponse {
+  provider: string;
+  source: "api" | "fallback";
+  models: DiscoveredModel[];
+  error?: string | null;
+}
 
 const MODELS = [
   { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro", provider: "gemini" },
@@ -26,7 +48,11 @@ const MODELS = [
   { id: "xai/grok-beta", label: "Grok Beta", provider: "grok" },
   { id: "mistralai/mistral-large-latest", label: "Mistral Large", provider: "mistral" },
   { id: "mistralai/mistral-small-latest", label: "Mistral Small", provider: "mistral" },
-  { id: "nvidia/meta/llama-3.1-405b-instruct", label: "Llama 3.1 405B", provider: "nvidia" },
+  {
+    id: "nvidia/llama-3.1-nemotron-70b-instruct",
+    label: "Llama 3.1 Nemotron 70B",
+    provider: "nvidia",
+  },
 ];
 
 const PROVIDERS = [
@@ -66,6 +92,52 @@ function AISettings() {
     Object.fromEntries(PROVIDERS.map((p) => [p.id, true])),
   );
 
+  const [logsOpen, setLogsOpen] = useState(false);
+  const [restartingAgent, setRestartingAgent] = useState(false);
+  const [repairAttempts, setRepairAttempts] = useState(() => {
+    return Number(localStorage.getItem("sirafit_ai_repair_attempts") || "1");
+  });
+  const [tokensPerGen, setTokensPerGen] = useState(() => {
+    return Number(localStorage.getItem("sirafit_ai_tokens_per_gen") || "1500");
+  });
+  const [throttlePerMin, setThrottlePerMin] = useState(() => {
+    return Number(localStorage.getItem("sirafit_ai_throttle") || "5");
+  });
+
+  const { data: health, refetch: refetchHealth } = useQuery({
+    queryKey: ["health-status"],
+    queryFn: getHealthStatus,
+  });
+
+  const handleRestartAgent = async () => {
+    setRestartingAgent(true);
+    try {
+      await apiFetch("/api/v1/health/ready");
+      await refetchHealth();
+      await queryClient.invalidateQueries({ queryKey: ["ai-key-status"] });
+      toast.success("Agent connection rechecked and responsive");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to restart agent connection";
+      toast.error(msg);
+    } finally {
+      setRestartingAgent(false);
+    }
+  };
+
+  const handleUpdateGenerationOption = (field: string, val: number) => {
+    if (field === "repair") {
+      setRepairAttempts(val);
+      localStorage.setItem("sirafit_ai_repair_attempts", String(val));
+    } else if (field === "tokens") {
+      setTokensPerGen(val);
+      localStorage.setItem("sirafit_ai_tokens_per_gen", String(val));
+    } else if (field === "throttle") {
+      setThrottlePerMin(val);
+      localStorage.setItem("sirafit_ai_throttle", String(val));
+    }
+    toast.success("Generation option updated");
+  };
+
   const { data: config, isLoading } = useQuery({
     queryKey: ["ai-config"],
     queryFn: async () => {
@@ -85,6 +157,58 @@ function AISettings() {
     },
     retry: false,
   });
+
+  const {
+    data: modelsData,
+    isLoading: modelsLoading,
+    isFetching: modelsFetching,
+  } = useQuery<DiscoveredModelsResponse>({
+    queryKey: ["discovered-models", provider],
+    queryFn: async () => {
+      const res = await apiFetch(
+        `/api/v1/users/me/models?provider=${encodeURIComponent(provider)}`,
+      );
+      if (!res.ok) throw new Error("Failed to fetch provider models");
+      return res.json();
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const availableModels =
+    modelsData?.models && modelsData.models.length > 0
+      ? modelsData.models
+      : MODELS.filter((m) => m.provider === provider);
+
+  useEffect(() => {
+    if (availableModels.length > 0) {
+      const exists = availableModels.some((m) => m.id === activeModel);
+      if (!exists && !isLoading) {
+        setActiveModel(availableModels[0].id);
+      }
+    }
+  }, [availableModels, isLoading]);
+
+  const handleRefreshModels = async () => {
+    try {
+      const res = await apiFetch(
+        `/api/v1/users/me/models?provider=${encodeURIComponent(provider)}&force_refresh=true`,
+      );
+      if (!res.ok) throw new Error("Failed to query models from provider");
+      const data: DiscoveredModelsResponse = await res.json();
+      queryClient.setQueryData(["discovered-models", provider], data);
+      if (data.source === "api") {
+        toast.success(
+          `Discovered ${data.models.length} live models from ${provider.toUpperCase()} API!`,
+        );
+      } else {
+        toast.info(
+          `Loaded ${data.models.length} fallback models (${data.error || "curated catalog"})`,
+        );
+      }
+    } catch (err: any) {
+      toast.error(`Discovery error: ${err.message}`);
+    }
+  };
 
   useEffect(() => {
     if (config) {
@@ -139,6 +263,7 @@ function AISettings() {
     onSuccess: () => {
       toast.success("API keys saved securely.");
       queryClient.invalidateQueries({ queryKey: ["ai-key-status"] });
+      queryClient.invalidateQueries({ queryKey: ["discovered-models"] });
     },
     onError: (err: Error) => {
       toast.error(`Error: ${err.message}`);
@@ -232,18 +357,15 @@ function AISettings() {
       >
         <div className="space-y-4">
           <div className="space-y-3">
-            <Label className="flex items-center space-x-2">
-              <span className="flex-1">Default Provider & Model</span>
-              <div className="flex items-center space-x-4">
+            <div className="flex flex-col gap-2">
+              <Label className="text-sm font-medium">Default Provider & Model</Label>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 <select
                   value={provider}
                   onChange={(e) => {
                     setProvider(e.target.value);
-                    setActiveModel(
-                      MODELS.find((m) => m.provider === e.target.value)?.id || MODELS[0].id,
-                    );
                   }}
-                  className="border rounded px-3 py-2 text-sm"
+                  className="border border-input rounded-md px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   {PROVIDERS.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -252,19 +374,61 @@ function AISettings() {
                   ))}
                 </select>
 
-                <select
-                  value={activeModel}
-                  onChange={(e) => setActiveModel(e.target.value)}
-                  className="border rounded px-3 py-2 text-sm min-w-[200px]"
-                >
-                  {MODELS.filter((m) => m.provider === provider).map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-center gap-2 flex-1">
+                  <select
+                    value={activeModel}
+                    onChange={(e) => setActiveModel(e.target.value)}
+                    disabled={modelsLoading}
+                    className="border border-input rounded-md px-3 py-2 text-sm flex-1 min-w-[220px] bg-background focus:outline-none focus:ring-2 focus:ring-ring truncate"
+                  >
+                    {modelsLoading ? (
+                      <option value="">Querying available models...</option>
+                    ) : availableModels.length > 0 ? (
+                      availableModels.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.label}
+                        </option>
+                      ))
+                    ) : (
+                      <option value={activeModel}>{activeModel}</option>
+                    )}
+                  </select>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRefreshModels}
+                    disabled={modelsFetching}
+                    title="Query provider API to discover available models"
+                    className="shrink-0 flex items-center gap-1.5"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${modelsFetching ? "animate-spin" : ""}`} />
+                    <span>{modelsFetching ? "Scanning..." : "Scan API"}</span>
+                  </Button>
+                </div>
               </div>
-            </Label>
+
+              <div className="flex items-center gap-2 pt-0.5">
+                {modelsData?.source === "api" ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Live from API: {availableModels.length} models discovered from{" "}
+                    {provider.toUpperCase()}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground/70" />
+                    Recommended catalog ({availableModels.length} models)
+                    {modelsData?.error && (
+                      <span className="text-[11px] text-amber-600 dark:text-amber-400">
+                        — {modelsData.error}
+                      </span>
+                    )}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="rounded-md border border-border p-3 text-sm">
@@ -403,9 +567,18 @@ function AISettings() {
       {/* Local agent */}
       <Panel title="Local agent">
         <div className="space-y-3 p-4 text-sm">
-          <AgentDot label="Connected · v1.0.0" />
+          <AgentDot
+            label={
+              health?.agent_api?.connected
+                ? `Connected · ${health.agent_api.provider || "Active"}`
+                : "Standby / Offline"
+            }
+            variant={health?.agent_api?.connected ? "ready" : "offline"}
+          />
           <div className="text-[12px] text-muted-foreground">
-            Auto-update enabled. Next check in 4h.
+            {health?.agent_api?.connected
+              ? "Live background worker and agent communication verified."
+              : "Agent in standby mode. Ready to accept capture queries."}
           </div>
           <div className="grid grid-cols-2 gap-2 text-[12px]">
             <div>
@@ -434,10 +607,15 @@ function AISettings() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">
-              Restart agent
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRestartAgent}
+              disabled={restartingAgent}
+            >
+              {restartingAgent ? "Rechecking..." : "Restart agent"}
             </Button>
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" onClick={() => setLogsOpen(true)}>
               View logs
             </Button>
           </div>
@@ -445,28 +623,133 @@ function AISettings() {
       </Panel>
 
       {/* Generation options */}
-      <Panel title="Generation options" className="">
-        <div className="grid gap-3 p-4 sm:grid-cols-3 text-sm">
-          <div>
-            <div className="text-[10px] font-semibold uppercase text-muted-foreground">
+      <Panel title="Generation options">
+        <div className="grid gap-4 p-4 sm:grid-cols-3 text-sm">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-semibold uppercase text-muted-foreground">
               Repair attempts
-            </div>
-            1 (max)
+            </label>
+            <select
+              className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+              value={repairAttempts}
+              onChange={(e) => handleUpdateGenerationOption("repair", Number(e.target.value))}
+            >
+              <option value={1}>1 (fastest)</option>
+              <option value={2}>2 attempts</option>
+              <option value={3}>3 (max robust)</option>
+            </select>
           </div>
-          <div>
-            <div className="text-[10px] font-semibold uppercase text-muted-foreground">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-semibold uppercase text-muted-foreground">
               Tokens / generation
-            </div>
-            1500
+            </label>
+            <select
+              className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+              value={tokensPerGen}
+              onChange={(e) => handleUpdateGenerationOption("tokens", Number(e.target.value))}
+            >
+              <option value={1000}>1000 tokens</option>
+              <option value={1500}>1500 tokens (recommended)</option>
+              <option value={2048}>2048 tokens</option>
+              <option value={4096}>4096 tokens</option>
+            </select>
           </div>
-          <div>
-            <div className="text-[10px] font-semibold uppercase text-muted-foreground">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-semibold uppercase text-muted-foreground">
               Throttle
-            </div>
-            5 / min
+            </label>
+            <select
+              className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+              value={throttlePerMin}
+              onChange={(e) => handleUpdateGenerationOption("throttle", Number(e.target.value))}
+            >
+              <option value={5}>5 / min (standard)</option>
+              <option value={10}>10 / min</option>
+              <option value={20}>20 / min (burst)</option>
+            </select>
           </div>
         </div>
       </Panel>
+
+      {/* Diagnostics & Logs Dialog */}
+      <Dialog open={logsOpen} onOpenChange={setLogsOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>System & Agent Diagnostics</DialogTitle>
+            <DialogDescription className="text-xs">
+              Live status probes and background service logs
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 text-xs">
+            <div className="rounded border border-border p-3 space-y-2 bg-muted/20 font-mono">
+              <div className="flex justify-between items-center pb-1 border-b border-border">
+                <span className="text-muted-foreground">Overall System</span>
+                <span
+                  className={health?.backend ? "text-emerald-600 font-semibold" : "text-amber-500"}
+                >
+                  {health?.system_status?.overall || (health?.backend ? "healthy" : "unknown")}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">API Server</span>
+                <span className="text-emerald-600">{health?.system_status?.api || "healthy"}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Database Pool</span>
+                <span className={health?.database ? "text-emerald-600" : "text-destructive"}>
+                  {health?.database ? "connected" : "disconnected"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Agent API Service</span>
+                <span
+                  className={
+                    health?.agent_api?.connected ? "text-emerald-600" : "text-muted-foreground"
+                  }
+                >
+                  {health?.agent_api?.connected
+                    ? `connected (${health.agent_api.provider || "active"})`
+                    : "standby / not connected"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Celery Worker</span>
+                <span
+                  className={
+                    health?.worker_healthy !== false ? "text-emerald-600" : "text-amber-500"
+                  }
+                >
+                  {health?.worker_healthy !== false ? "operational" : "degraded"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Redis Cache</span>
+                <span>{health?.system_status?.redis || "available"}</span>
+              </div>
+              <div className="flex justify-between items-center pt-1 border-t border-border text-[11px]">
+                <span className="text-muted-foreground">Last Probed</span>
+                <span>
+                  {health?.checked_at
+                    ? new Date(health.checked_at).toLocaleTimeString()
+                    : "Just now"}
+                </span>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  await refetchHealth();
+                  toast.success("Diagnostics refreshed");
+                }}
+              >
+                Refresh
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
