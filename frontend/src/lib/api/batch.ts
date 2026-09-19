@@ -43,10 +43,14 @@ export interface BatchJobCreateInput {
 export const getBatchJobs = async (params?: {
   status?: string;
   operation_type?: string;
+  limit?: number;
+  skip?: number;
 }): Promise<BatchJobListResponse> => {
   const search = new URLSearchParams();
   if (params?.status) search.set("status", params.status);
   if (params?.operation_type) search.set("operation_type", params.operation_type);
+  if (params?.limit !== undefined) search.set("limit", params.limit.toString());
+  if (params?.skip !== undefined) search.set("skip", params.skip.toString());
   const qs = search.toString();
   const response = await apiFetch(`/api/v1/batch${qs ? `?${qs}` : ""}`);
   if (!response.ok) throw new Error("Failed to fetch batch jobs");
