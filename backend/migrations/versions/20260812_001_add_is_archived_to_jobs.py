@@ -16,13 +16,10 @@ depends_on = None
 
 
 def upgrade():
-    op.add_column(
-        "jobs",
-        sa.Column("is_archived", sa.Boolean(), nullable=False, server_default=sa.false()),
-    )
-    op.create_index("ix_jobs_is_archived", "jobs", ["is_archived"])
+    # is_archived and ix_jobs_is_archived are already introduced in
+    # add_job_is_archived_and_indexes on the parallel branch merging into 6f076c0ee183.
+    pass
 
 
 def downgrade():
-    op.drop_index("ix_jobs_is_archived", table_name="jobs")
-    op.drop_column("jobs", "is_archived")
+    pass
