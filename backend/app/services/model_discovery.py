@@ -38,13 +38,19 @@ FALLBACK_MODELS: dict[str, list[dict[str, str]]] = {
         {"id": "anthropic/claude-3.5-sonnet", "label": "Anthropic: Claude 3.5 Sonnet"},
         {"id": "meta-llama/llama-3.3-70b-instruct", "label": "Meta: Llama 3.3 70B"},
         {"id": "deepseek/deepseek-chat", "label": "DeepSeek: V3"},
-        {"id": "google/gemini-2.0-flash-exp:free", "label": "Google: Gemini 2.0 Flash (Free)"},
+        {
+            "id": "google/gemini-2.0-flash-exp:free",
+            "label": "Google: Gemini 2.0 Flash (Free)",
+        },
     ],
     "groq": [
         {"id": "llama-3.3-70b-versatile", "label": "Llama 3.3 70B Versatile (Groq)"},
         {"id": "llama-3.1-8b-instant", "label": "Llama 3.1 8B Instant (Groq)"},
         {"id": "mixtral-8x7b-32768", "label": "Mixtral 8x7B (Groq)"},
-        {"id": "deepseek-r1-distill-llama-70b", "label": "DeepSeek R1 Distill Llama 70B (Groq)"},
+        {
+            "id": "deepseek-r1-distill-llama-70b",
+            "label": "DeepSeek R1 Distill Llama 70B (Groq)",
+        },
     ],
     "mistral": [
         {"id": "mistral-large-latest", "label": "Mistral Large (Latest)"},
@@ -58,11 +64,26 @@ FALLBACK_MODELS: dict[str, list[dict[str, str]]] = {
         {"id": "grok-beta", "label": "Grok Beta (xAI)"},
     ],
     "nvidia": [
-        {"id": "nvidia/llama-3.1-nemotron-70b-instruct", "label": "Llama 3.1 Nemotron 70B (NVIDIA)"},
-        {"id": "meta/llama-3.2-90b-vision-instruct", "label": "Llama 3.2 90B Vision (Meta/NVIDIA)"},
-        {"id": "meta/llama-3.2-11b-vision-instruct", "label": "Llama 3.2 11B Vision (Meta/NVIDIA)"},
-        {"id": "meta/llama-3.1-70b-instruct", "label": "Llama 3.1 70B Instruct (Meta/NVIDIA)"},
-        {"id": "deepseek-ai/deepseek-coder-6.7b-instruct", "label": "DeepSeek Coder 6.7B (NVIDIA)"},
+        {
+            "id": "nvidia/llama-3.1-nemotron-70b-instruct",
+            "label": "Llama 3.1 Nemotron 70B (NVIDIA)",
+        },
+        {
+            "id": "meta/llama-3.2-90b-vision-instruct",
+            "label": "Llama 3.2 90B Vision (Meta/NVIDIA)",
+        },
+        {
+            "id": "meta/llama-3.2-11b-vision-instruct",
+            "label": "Llama 3.2 11B Vision (Meta/NVIDIA)",
+        },
+        {
+            "id": "meta/llama-3.1-70b-instruct",
+            "label": "Llama 3.1 70B Instruct (Meta/NVIDIA)",
+        },
+        {
+            "id": "deepseek-ai/deepseek-coder-6.7b-instruct",
+            "label": "DeepSeek Coder 6.7B (NVIDIA)",
+        },
         {"id": "01-ai/yi-large", "label": "Yi Large (01.AI/NVIDIA)"},
     ],
 }
@@ -74,9 +95,9 @@ CACHE_TTL_SECONDS = 600  # 10 minutes cache
 
 def get_fallback_models(provider: str) -> list[dict[str, str]]:
     """Return static fallback models for a provider."""
-    return FALLBACK_MODELS.get(provider.lower(), [
-        {"id": "default", "label": f"Default {provider} Model"}
-    ])
+    return FALLBACK_MODELS.get(
+        provider.lower(), [{"id": "default", "label": f"Default {provider} Model"}]
+    )
 
 
 async def fetch_provider_models(
@@ -85,7 +106,7 @@ async def fetch_provider_models(
     force_refresh: bool = False,
 ) -> dict[str, Any]:
     """Discover available models for a provider by calling its API models endpoint.
-    
+
     Returns:
         dict with keys:
             provider: str
@@ -134,7 +155,9 @@ async def fetch_provider_models(
         return fallback
 
 
-async def _query_provider_models_api(provider: str, api_key: str) -> list[dict[str, str]]:
+async def _query_provider_models_api(
+    provider: str, api_key: str
+) -> list[dict[str, str]]:
     """Execute the HTTP query to the provider's /models endpoint."""
     async with httpx.AsyncClient(timeout=12.0) as client:
         if provider == "gemini":
@@ -154,10 +177,14 @@ async def _query_provider_models_api(provider: str, api_key: str) -> list[dict[s
         elif provider == "grok":
             return await _fetch_grok_models(client, api_key)
         else:
-            raise ValueError(f"Unsupported provider for dynamic model discovery: {provider}")
+            raise ValueError(
+                f"Unsupported provider for dynamic model discovery: {provider}"
+            )
 
 
-async def _fetch_openai_models(client: httpx.AsyncClient, api_key: str) -> list[dict[str, str]]:
+async def _fetch_openai_models(
+    client: httpx.AsyncClient, api_key: str
+) -> list[dict[str, str]]:
     res = await client.get(
         "https://api.openai.com/v1/models",
         headers={"Authorization": f"Bearer {api_key}"},
@@ -189,7 +216,9 @@ async def _fetch_openai_models(client: httpx.AsyncClient, api_key: str) -> list[
     return valid_models or FALLBACK_MODELS["openai"]
 
 
-async def _fetch_anthropic_models(client: httpx.AsyncClient, api_key: str) -> list[dict[str, str]]:
+async def _fetch_anthropic_models(
+    client: httpx.AsyncClient, api_key: str
+) -> list[dict[str, str]]:
     res = await client.get(
         "https://api.anthropic.com/v1/models",
         headers={
@@ -208,7 +237,9 @@ async def _fetch_anthropic_models(client: httpx.AsyncClient, api_key: str) -> li
     return models or FALLBACK_MODELS["anthropic"]
 
 
-async def _fetch_gemini_models(client: httpx.AsyncClient, api_key: str) -> list[dict[str, str]]:
+async def _fetch_gemini_models(
+    client: httpx.AsyncClient, api_key: str
+) -> list[dict[str, str]]:
     url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
     res = await client.get(url)
     res.raise_for_status()
@@ -227,7 +258,9 @@ async def _fetch_gemini_models(client: httpx.AsyncClient, api_key: str) -> list[
     return models or FALLBACK_MODELS["gemini"]
 
 
-async def _fetch_openrouter_models(client: httpx.AsyncClient, api_key: str) -> list[dict[str, str]]:
+async def _fetch_openrouter_models(
+    client: httpx.AsyncClient, api_key: str
+) -> list[dict[str, str]]:
     headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
     res = await client.get("https://openrouter.ai/api/v1/models", headers=headers)
     res.raise_for_status()
@@ -241,7 +274,9 @@ async def _fetch_openrouter_models(client: httpx.AsyncClient, api_key: str) -> l
     return models or FALLBACK_MODELS["openrouter"]
 
 
-async def _fetch_groq_models(client: httpx.AsyncClient, api_key: str) -> list[dict[str, str]]:
+async def _fetch_groq_models(
+    client: httpx.AsyncClient, api_key: str
+) -> list[dict[str, str]]:
     res = await client.get(
         "https://api.groq.com/openai/v1/models",
         headers={"Authorization": f"Bearer {api_key}"},
@@ -258,7 +293,9 @@ async def _fetch_groq_models(client: httpx.AsyncClient, api_key: str) -> list[di
     return models or FALLBACK_MODELS["groq"]
 
 
-async def _fetch_mistral_models(client: httpx.AsyncClient, api_key: str) -> list[dict[str, str]]:
+async def _fetch_mistral_models(
+    client: httpx.AsyncClient, api_key: str
+) -> list[dict[str, str]]:
     res = await client.get(
         "https://api.mistral.ai/v1/models",
         headers={"Authorization": f"Bearer {api_key}"},
@@ -275,7 +312,9 @@ async def _fetch_mistral_models(client: httpx.AsyncClient, api_key: str) -> list
     return models or FALLBACK_MODELS["mistral"]
 
 
-async def _fetch_nvidia_models(client: httpx.AsyncClient, api_key: str) -> list[dict[str, str]]:
+async def _fetch_nvidia_models(
+    client: httpx.AsyncClient, api_key: str
+) -> list[dict[str, str]]:
     res = await client.get(
         "https://integrate.api.nvidia.com/v1/models",
         headers={"Authorization": f"Bearer {api_key}"},
@@ -297,7 +336,9 @@ async def _fetch_nvidia_models(client: httpx.AsyncClient, api_key: str) -> list[
     return models or FALLBACK_MODELS["nvidia"]
 
 
-async def _fetch_grok_models(client: httpx.AsyncClient, api_key: str) -> list[dict[str, str]]:
+async def _fetch_grok_models(
+    client: httpx.AsyncClient, api_key: str
+) -> list[dict[str, str]]:
     res = await client.get(
         "https://api.x.ai/v1/models",
         headers={"Authorization": f"Bearer {api_key}"},

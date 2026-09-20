@@ -505,7 +505,11 @@ def generate_analytics_metrics(db: Session, user_id: uuid.UUID) -> Dict[str, Any
     apps_last_week = 0
     for app in applications:
         if app.created_at:
-            c_at = app.created_at if app.created_at.tzinfo else app.created_at.replace(tzinfo=timezone.utc)
+            c_at = (
+                app.created_at
+                if app.created_at.tzinfo
+                else app.created_at.replace(tzinfo=timezone.utc)
+            )
             if c_at >= seven_days_ago:
                 apps_this_week += 1
             elif c_at >= fourteen_days_ago:
@@ -621,7 +625,11 @@ def generate_analytics_metrics(db: Session, user_id: uuid.UUID) -> Dict[str, Any
             title_counter[normalised] += 1
             job_time = job.created_at or job.posted_at
             if job_time:
-                jt = job_time if job_time.tzinfo else job_time.replace(tzinfo=timezone.utc)
+                jt = (
+                    job_time
+                    if job_time.tzinfo
+                    else job_time.replace(tzinfo=timezone.utc)
+                )
                 if jt >= thirty_days_ago:
                     recent_roles[normalised] += 1
                 elif jt >= sixty_days_ago:

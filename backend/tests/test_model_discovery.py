@@ -2,13 +2,22 @@
 
 import pytest
 from unittest.mock import AsyncMock, patch
-from app.services.model_discovery import fetch_provider_models, get_fallback_models, FALLBACK_MODELS
-from app.services.ai_keys import get_env_provider_keys, resolve_provider_key, build_candidates
+from app.services.model_discovery import fetch_provider_models, get_fallback_models
+from app.services.ai_keys import get_env_provider_keys, build_candidates
 
 
 def test_fallback_models_exist_for_all_supported_providers():
     """Verify all 7 supported providers have fallback model definitions."""
-    providers = ["gemini", "openai", "anthropic", "openrouter", "groq", "mistral", "nvidia", "grok"]
+    providers = [
+        "gemini",
+        "openai",
+        "anthropic",
+        "openrouter",
+        "groq",
+        "mistral",
+        "nvidia",
+        "grok",
+    ]
     for p in providers:
         models = get_fallback_models(p)
         assert len(models) > 0
@@ -36,7 +45,7 @@ async def test_fetch_provider_models_mock_api_success():
             {"id": "test/embedding-model"},  # Should be filtered out
         ]
     }
-    
+
     with patch("httpx.AsyncClient.get") as mock_get:
         mock_resp = AsyncMock()
         mock_resp.status_code = 200
@@ -44,7 +53,9 @@ async def test_fetch_provider_models_mock_api_success():
         mock_resp.json = lambda: mock_payload
         mock_get.return_value = mock_resp
 
-        res = await fetch_provider_models("nvidia", api_key="test_key_12345", force_refresh=True)
+        res = await fetch_provider_models(
+            "nvidia", api_key="test_key_12345", force_refresh=True
+        )
         assert res["provider"] == "nvidia"
         assert res["source"] == "api"
         model_ids = [m["id"] for m in res["models"]]
@@ -57,7 +68,9 @@ async def test_fetch_provider_models_mock_api_success():
 async def test_fetch_provider_models_api_failure_falls_back():
     """When external API raises an error or times out, should return fallback catalog without raising exception."""
     with patch("httpx.AsyncClient.get", side_effect=Exception("Connection timed out")):
-        res = await fetch_provider_models("mistral", api_key="bad_key", force_refresh=True)
+        res = await fetch_provider_models(
+            "mistral", api_key="bad_key", force_refresh=True
+        )
         assert res["provider"] == "mistral"
         assert res["source"] == "fallback"
         assert len(res["models"]) > 0
@@ -96,7 +109,10 @@ def test_agent_api_unauthorized_key_never_reports_connected():
     with patch("httpx.post") as mock_post:
         mock_resp = AsyncMock()
         mock_resp.status_code = 404
-        mock_resp.json = lambda: {"status": 404, "detail": "Function not found for account"}
+        mock_resp.json = lambda: {
+            "status": 404,
+            "detail": "Function not found for account",
+        }
         mock_post.return_value = mock_resp
 
         is_connected = _ping(nvidia_p, "nvapi-test-unauthorized-key-123456789")
@@ -117,4 +133,3 @@ def test_agent_api_authorized_key_reports_connected():
 
         is_connected = _ping(nvidia_p, "nvapi-test-valid-working-key-123456789")
         assert is_connected is True
-

@@ -4,7 +4,7 @@ from datetime import datetime, timezone, timedelta
 import uuid
 from unittest.mock import MagicMock
 from app.services.analytics import generate_analytics_metrics
-from app.models.job import JobApplication, Job
+from app.models.job import JobApplication
 
 
 def test_analytics_weekly_trend_calculation():

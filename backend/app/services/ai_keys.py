@@ -82,7 +82,11 @@ def get_env_provider_keys(force_reload: bool = False) -> dict:
     from dotenv import dotenv_values
 
     # Cache for 15 seconds unless forced, so changes to .env files are picked up quickly
-    if not force_reload and _ENV_KEYS_CACHE is not None and (time.time() - _CACHE_TIMESTAMP < 15.0):
+    if (
+        not force_reload
+        and _ENV_KEYS_CACHE is not None
+        and (time.time() - _CACHE_TIMESTAMP < 15.0)
+    ):
         return _ENV_KEYS_CACHE
 
     keys: dict = {}
@@ -250,9 +254,12 @@ def build_candidates(
     # If provider/model or fallback_order not explicitly passed, inspect user preferences
     if db is not None and user_id:
         from app.models.user import UserPreference
+
         try:
             uid = user_id if isinstance(user_id, uuid.UUID) else uuid.UUID(str(user_id))
-            prefs = db.query(UserPreference).filter(UserPreference.user_id == uid).first()
+            prefs = (
+                db.query(UserPreference).filter(UserPreference.user_id == uid).first()
+            )
             if prefs:
                 if not provider and prefs.ai_provider:
                     provider = prefs.ai_provider
@@ -284,7 +291,9 @@ def build_candidates(
             continue
         # Use chosen model if this provider happens to be the primary provider,
         # otherwise use default model for this provider
-        cand_model = model if (provider and prov == provider) else DEFAULT_MODELS.get(prov, "")
+        cand_model = (
+            model if (provider and prov == provider) else DEFAULT_MODELS.get(prov, "")
+        )
         add(prov, cand_model, user_keys.get(prov))
         add(prov, cand_model, env_keys.get(prov))
 
@@ -314,4 +323,3 @@ def available_providers(db=None, user_id=None) -> dict:
     env_keys = get_env_provider_keys()
     user_keys = get_user_stored_keys(db, user_id) if db is not None and user_id else {}
     return {p: {"ui": p in user_keys, "env": p in env_keys} for p in _PROVIDERS}
-

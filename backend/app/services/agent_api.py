@@ -202,9 +202,7 @@ def _ping(provider: dict, key: str) -> bool:
     if not is_valid_candidate_key(key):
         return False
 
-    cache_key = (
-        f"agent_api_guaranteed:{provider['id']}:{hashlib.sha256(key.encode()).hexdigest()[:16]}"
-    )
+    cache_key = f"agent_api_guaranteed:{provider['id']}:{hashlib.sha256(key.encode()).hexdigest()[:16]}"
     cached = cache_get(cache_key)
     if cached is not None:
         return bool(cached)
