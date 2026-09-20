@@ -4,7 +4,7 @@ uvicorn[standard]==0.53.0
 fastapi==0.141.1
 structlog==26.1.0
 passlib[bcrypt]==1.7.4
-bcrypt<6.0.0
+bcrypt<4.1.0
 prometheus-client==0.26.0
 pyjwt==2.14.0
 fastapi-csrf-protect==1.0.7
