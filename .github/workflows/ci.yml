@@ -120,7 +120,7 @@ jobs:
           pytest tests/ -v --tb=short --cov=app --cov-report=xml
 
       - name: Upload Test Coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backend-coverage
           path: backend/coverage.xml
@@ -232,7 +232,7 @@ jobs:
         run: npm run build
 
       - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-dist
           path: frontend/dist/
@@ -261,7 +261,7 @@ jobs:
         run: npm run build
 
       - name: Upload Extension Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: extension-dist
           path: frontend/extension/build/
@@ -371,7 +371,7 @@ jobs:
 
       - name: Upload Playwright Report on Failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: frontend/playwright-report/
