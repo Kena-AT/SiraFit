@@ -120,6 +120,14 @@ export const deleteNotification = async (id: string): Promise<{ message: string 
   return response.json();
 };
 
+export const deleteAllNotifications = async (): Promise<{ deleted: number }> => {
+  const response = await apiFetch(`/api/v1/notifications`, {
+    method: "DELETE",
+  });
+  if (!response.ok) throw new Error("Failed to delete all notifications");
+  return response.json();
+};
+
 export const getAnalyticsMetrics = async (): Promise<MetricsResponse> => {
   const response = await apiFetch("/api/v1/analytics/metrics");
   if (!response.ok) throw new Error("Failed to fetch analytics metrics");

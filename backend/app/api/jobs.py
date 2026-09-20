@@ -882,12 +882,25 @@ def import_jobs(
             ).model_dump(mode="json"),
         )
 
-    # Broker unavailable → sync fallback already completed the import inline.
-    # Re-read the record so the response reflects the terminal status set by
-    # the worker's session.
-    db.refresh(job_import)
-    invalidate_job_related(str(current_user.id))
-    return _import_detail_response(db, import_record=job_import)
+    # Broker unavailable -> sync fallback in background task to avoid holding HTTP DB session!
+    from app.services.job_import import _scrape_and_import_job_sync
+    background_tasks.add_task(
+        _scrape_and_import_job_sync,
+        str(job_import.id),
+        import_in.data,
+        "url",
+        str(current_user.id)
+    )
+
+    return JSONResponse(
+        status_code=202,
+        content=ImportResultResponse(
+            import_record=JobImportResponse.model_validate(job_import),
+            jobs=[],
+            errors=[],
+            scrape_method="async_fallback",
+        ).model_dump(mode="json"),
+    )
 
 
 @router.get("/import/history", response_model=List[JobImportResponse])

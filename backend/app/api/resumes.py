@@ -384,7 +384,7 @@ async def generate_resume(
     parent_version_id: Optional[uuid.UUID] = Query(
         None, description="Source version to tailor from"
     ),
-    template: str = Query("minimal", description="Template name"),
+    template: Optional[str] = Query(None, description="Template name. Defaults to user preference."),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     profile: Profile = Depends(get_user_profile),
@@ -397,6 +397,9 @@ async def generate_resume(
     back to synchronous execution when Celery/Redis is unavailable.
     """
     from app.worker.tasks import enqueue_resume_generation
+
+    if template is None:
+        template = current_user.preferences.default_template if current_user.preferences else "modern"
 
     resume = (
         db.query(Resume)
@@ -505,7 +508,7 @@ async def generate_resume(
 def export_resume_version(
     resume_id: uuid.UUID,
     version_id: uuid.UUID,
-    format: str = Query("html", description="Export format: html, docx, pdf"),
+    format: Optional[str] = Query(None, description="Export format: html, docx, pdf. Defaults to user preference."),
     async_export: bool = Query(
         False, description="If true, queue PDF rendering on a worker and return 202"
     ),
@@ -522,6 +525,9 @@ def export_resume_version(
     When ``async_export=True`` and ``format=pdf``, the PDF is rendered on the
     Celery ``pdf_rendering`` queue and a 202 with a polling URL is returned.
     """
+    if format is None:
+        format = current_user.preferences.export_format if current_user.preferences else "pdf"
+
     resume = (
         db.query(Resume)
         .filter(Resume.id == resume_id, Resume.user_id == current_user.id)

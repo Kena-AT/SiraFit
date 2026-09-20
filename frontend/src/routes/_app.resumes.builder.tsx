@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { generateResume, getResumes, createResume, getResumeVersions } from "@/lib/api/resumes";
 import { getJobs } from "@/lib/api/jobs";
+import { getResumeDefaults } from "@/lib/api/users";
 import type { Job } from "@/types/job";
 import type { Resume, ResumeVersion } from "@/types/resume";
 
@@ -77,7 +78,14 @@ function Builder() {
         }
       })
       .catch(console.error);
-  }, []);
+    getResumeDefaults()
+      .then((defaults) => {
+        if (defaults?.default_template) {
+          setTemplate(defaults.default_template);
+        }
+      })
+      .catch(console.error);
+  }, [preselectedJobId]);
 
   // Poll for version status updates when any version is processing
   useEffect(() => {

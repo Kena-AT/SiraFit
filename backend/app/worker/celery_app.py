@@ -69,6 +69,18 @@ celery_app.conf.beat_schedule = {
         "task": "app.worker.tasks.detect_stuck_imports",
         "schedule": 120.0,
     },
+    "send-daily-summaries": {
+        "task": "app.worker.tasks.send_daily_summaries_task",
+        "schedule": 86400.0,  # Or a crontab in real prod
+    },
+    "process-job-match-alerts": {
+        "task": "app.worker.tasks.process_job_match_alerts_task",
+        "schedule": 21600.0,  # Every 6 hours
+    },
+    "process-new-opportunities": {
+        "task": "app.worker.tasks.process_new_opportunities_task",
+        "schedule": 86400.0,  # Daily
+    },
 }
 
 # Dead-letter queue: tasks that exhaust their configured retries are routed

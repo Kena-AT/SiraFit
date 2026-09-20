@@ -123,3 +123,19 @@ def delete_notification(
     db.commit()
 
     return {"message": "Notification deleted"}
+
+
+@router.delete("", response_model=Dict[str, int])
+def delete_all_notifications(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """Delete all notifications for the current user."""
+    count = (
+        db.query(Notification)
+        .filter(Notification.user_id == current_user.id)
+        .delete(synchronize_session=False)
+    )
+    db.commit()
+
+    return {"deleted": count}

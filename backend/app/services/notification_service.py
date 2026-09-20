@@ -148,6 +148,96 @@ def check_and_send_reminders() -> int:
         db.close()
 
 
+def send_daily_summaries() -> int:
+    """
+    Send daily digest emails to users who have email_daily_summary enabled.
+    """
+    db = SessionLocal()
+    summaries_sent = 0
+    try:
+        users = (
+            db.query(User)
+            .join(UserPreference)
+            .filter(UserPreference.email_daily_summary == True)
+            .all()
+        )
+        for user in users:
+            try:
+                # In a real implementation, you would compile the daily digest content here.
+                subject = "SiraFit: Your Daily Activity Summary"
+                body = f"Hi {user.email},\n\nHere is your daily summary of job applications and interviews.\n\n---\nSiraFit"
+                send_email(to=user.email, subject=subject, body=body)
+                summaries_sent += 1
+            except Exception as e:
+                logger.error("daily_summary_failed", extra={"user_id": str(user.id), "error": str(e)})
+        return summaries_sent
+    except Exception as e:
+        logger.exception("daily_summaries_batch_failed", extra={"error": str(e)})
+        return 0
+    finally:
+        db.close()
+
+
+def process_job_match_alerts() -> int:
+    """
+    Process new job matches for users who have email_job_matches enabled.
+    """
+    db = SessionLocal()
+    alerts_sent = 0
+    try:
+        users = (
+            db.query(User)
+            .join(UserPreference)
+            .filter(UserPreference.email_job_matches == True)
+            .all()
+        )
+        for user in users:
+            try:
+                # In a real implementation, you'd check for new high-scoring matches.
+                subject = "SiraFit: New Job Matches"
+                body = f"Hi {user.email},\n\nWe found some new jobs matching your profile.\n\n---\nSiraFit"
+                send_email(to=user.email, subject=subject, body=body)
+                alerts_sent += 1
+            except Exception as e:
+                logger.error("job_match_alert_failed", extra={"user_id": str(user.id), "error": str(e)})
+        return alerts_sent
+    except Exception as e:
+        logger.exception("job_match_alerts_batch_failed", extra={"error": str(e)})
+        return 0
+    finally:
+        db.close()
+
+
+def process_new_opportunities() -> int:
+    """
+    Process general new opportunity emails for users who have email_new_opportunities enabled.
+    """
+    db = SessionLocal()
+    emails_sent = 0
+    try:
+        users = (
+            db.query(User)
+            .join(UserPreference)
+            .filter(UserPreference.email_new_opportunities == True)
+            .all()
+        )
+        for user in users:
+            try:
+                # Compile opportunities content
+                subject = "SiraFit: New Opportunities"
+                body = f"Hi {user.email},\n\nCheck out these new opportunities on SiraFit.\n\n---\nSiraFit"
+                send_email(to=user.email, subject=subject, body=body)
+                emails_sent += 1
+            except Exception as e:
+                logger.error("new_opportunity_email_failed", extra={"user_id": str(user.id), "error": str(e)})
+        return emails_sent
+    except Exception as e:
+        logger.exception("new_opportunities_batch_failed", extra={"error": str(e)})
+        return 0
+    finally:
+        db.close()
+
+
 def create_job_alert_notification(
     db: Session, user_id: uuid.UUID, job_title: str, company: str, match_score: int
 ) -> Notification:

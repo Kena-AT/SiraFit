@@ -4,6 +4,7 @@ import { PageBody } from "@/components/sirafit/shell";
 import { PageHeader, Panel, StatusPill } from "@/components/sirafit/bits";
 import { Button } from "@/components/ui/button";
 import { Trash2, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useState, useCallback, useEffect } from "react";
 import { useWebSocket } from "@/hooks/useWebSocket";
@@ -13,6 +14,7 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
   deleteNotification,
+  deleteAllNotifications,
 } from "@/lib/api/notifications";
 
 export const Route = createFileRoute("/_app/notifications")({
@@ -98,6 +100,15 @@ function Notifications() {
     },
   });
 
+  const deleteAllMutation = useMutation({
+    mutationFn: deleteAllNotifications,
+    onSuccess: () => {
+      toast.success("All notifications deleted");
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
+    },
+  });
+
   if (isLoading && limit === 50) {
     return (
       <PageBody>
@@ -138,6 +149,21 @@ function Notifications() {
                 disabled={markAllReadMutation.isPending}
               >
                 Mark all read ({unreadCount})
+              </Button>
+            )}
+            {total > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (confirm("Are you sure you want to delete all notifications?")) {
+                    deleteAllMutation.mutate();
+                  }
+                }}
+                disabled={deleteAllMutation.isPending}
+                className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+              >
+                Delete all
               </Button>
             )}
             <Button

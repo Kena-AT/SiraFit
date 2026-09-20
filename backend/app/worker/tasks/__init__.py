@@ -503,6 +503,42 @@ try:
         check_and_send_reminders()
         return {"status": "checked"}
 
+    @celery_app.task(
+        name="app.worker.tasks.send_daily_summaries_task",
+        bind=True,
+        base=BaseRetryTask,
+        max_retries=0,
+        acks_late=True,
+    )
+    def send_daily_summaries_task(self) -> dict:
+        from app.services.notification_service import send_daily_summaries
+        count = send_daily_summaries()
+        return {"status": "checked", "summaries_sent": count}
+
+    @celery_app.task(
+        name="app.worker.tasks.process_job_match_alerts_task",
+        bind=True,
+        base=BaseRetryTask,
+        max_retries=0,
+        acks_late=True,
+    )
+    def process_job_match_alerts_task(self) -> dict:
+        from app.services.notification_service import process_job_match_alerts
+        count = process_job_match_alerts()
+        return {"status": "checked", "alerts_sent": count}
+
+    @celery_app.task(
+        name="app.worker.tasks.process_new_opportunities_task",
+        bind=True,
+        base=BaseRetryTask,
+        max_retries=0,
+        acks_late=True,
+    )
+    def process_new_opportunities_task(self) -> dict:
+        from app.services.notification_service import process_new_opportunities
+        count = process_new_opportunities()
+        return {"status": "checked", "emails_sent": count}
+
 except Exception as exc:  # pragma: no cover - import-time broker failure
     logger.warning(
         "celery_task_registration_skipped_notifications", extra={"error": str(exc)}
@@ -568,4 +604,7 @@ __all__ = [
     "import_single_saved_job",
     "generate_job_embedding_task",
     "enqueue_job_embedding",
+    "send_daily_summaries_task",
+    "process_job_match_alerts_task",
+    "process_new_opportunities_task",
 ]

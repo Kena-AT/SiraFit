@@ -10,29 +10,13 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Passlib 1.7.4 compatibility with newer bcrypt versions (4.1.0+ and 5.0.0+)
+# Passlib 1.7.4 compatibility
 try:
     import bcrypt
-
     if not hasattr(bcrypt, "__about__"):
-
         class _BcryptAbout:
             __version__ = getattr(bcrypt, "__version__", "4.0.0")
-
         bcrypt.__about__ = _BcryptAbout()
-
-    # Passlib's detect_wrap_bug passes a 255-byte test password to bcrypt.hashpw,
-    # which raises ValueError in bcrypt >= 4.1.0. Safe truncation prevents this.
-    _orig_hashpw = bcrypt.hashpw
-
-    def _safe_hashpw(password, salt):
-        if isinstance(password, (bytes, bytearray)) and len(password) > 72:
-            password = password[:72]
-        elif isinstance(password, str) and len(password.encode("utf-8")) > 72:
-            password = password.encode("utf-8")[:72]
-        return _orig_hashpw(password, salt)
-
-    bcrypt.hashpw = _safe_hashpw
 except ImportError:
     pass
 
