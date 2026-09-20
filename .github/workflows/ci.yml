@@ -116,6 +116,8 @@ jobs:
           ENABLE_TRACING: "False"
           ERROR_TRACKING_ENABLED: "False"
           PYTHONPATH: .
+          NVIDIA_API_KEY: "nvapi-ci-mock-key-12345"
+          OPENAI_API_KEY: "sk-ci-mock-key-12345"
         run: |
           pytest tests/ -v --tb=short --cov=app --cov-report=xml
 
