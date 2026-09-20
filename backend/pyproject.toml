@@ -3,7 +3,7 @@
 # `pythonpath = ["."]` keeps `import app` working when pytest is run from
 # `./backend` (as CI does), and `testpaths` points at the relocated suite.
 pythonpath = ["."]
-testpaths = ["../tests", "tests"]
+testpaths = ["tests"]
 asyncio_mode = "auto"
 
 [tool.ruff]
