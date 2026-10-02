@@ -40,7 +40,7 @@ jobs:
 
       - name: Extract metadata (Backend)
         id: meta-backend
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend
           tags: |
@@ -83,7 +83,7 @@ jobs:
 
       - name: Extract metadata (Celery Worker)
         id: meta-celery
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-celery-worker
           tags: |
@@ -104,7 +104,7 @@ jobs:
 
       - name: Extract metadata (Frontend)
         id: meta-frontend
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend
           tags: |
