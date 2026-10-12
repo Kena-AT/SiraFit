@@ -49,7 +49,7 @@ jobs:
             type=semver,pattern={{version}}
 
       - name: Build Backend Docker Image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: ./backend
           file: ./backend/Dockerfile
@@ -73,7 +73,7 @@ jobs:
           docker rm smoke-backend
 
       - name: Push Backend Docker Image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: ./backend
           file: ./backend/Dockerfile
@@ -92,7 +92,7 @@ jobs:
             type=semver,pattern={{version}}
 
       - name: Build & Push Celery Worker
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: ./backend
           file: ./backend/Dockerfile.celery
@@ -113,7 +113,7 @@ jobs:
             type=semver,pattern={{version}}
 
       - name: Build & Push Frontend
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: ./frontend
           file: ./frontend/Dockerfile
